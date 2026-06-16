@@ -292,6 +292,7 @@ if(!DB||!DB.seeded){DB=seed();save();}
   if(pm&&pm.phone!=='9909960404'){pm.phone='9909960404';changed=true;}
   DB.users.forEach(function(x){if('pwd' in x){delete x.pwd;changed=true;}});
   if(!DB.schoolsCleared){DB.schools=[];DB.schoolsCleared=true;changed=true;}
+  if(!DB.cleanV2){var realIds=['pm1','tl_nilesh','tl_yogesh','tch_disha'];DB.users=DB.users.filter(function(uu){return realIds.indexOf(uu.id)>-1;});DB.entries=[];DB.tasks=[];DB.cleanV2=true;changed=true;}
   if(changed)save();
 })();
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
