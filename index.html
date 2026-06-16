@@ -283,7 +283,7 @@ if(!DB||!DB.seeded){DB=seed();save();}
     else if(ex.phone!==r.phone||ex.org!==r.org){ex.phone=r.phone;ex.org=r.org;changed=true;}
   });
   const teachers=[
-    {id:'tch_disha',name:'Disha Patod',tl:'tl_nilesh',phone:'6351676335'}
+    {id:'tch_disha',name:'Disha Patod',tl:'tl_nilesh',phone:'6351676335'},{id:'tch_9265825570',name:'Bhavna Dharmendrabhai Bhabhor',tl:'tl_nilesh',phone:'9265825570'},{id:'tch_7016331672',name:'Tamannaben Harishbhai Bamanya',tl:'tl_nilesh',phone:'7016331672'},{id:'tch_8347271269',name:'Ravina Ditiyabhai Bhuriya',tl:'tl_nilesh',phone:'8347271269'},{id:'tch_9875264540',name:'Shivani Juvansinh Bhabhor',tl:'tl_nilesh',phone:'9875264540'},{id:'tch_7862967620',name:'Purvi Lalitbhai Bhabhor',tl:'tl_nilesh',phone:'7862967620'},{id:'tch_8758856634',name:'Jagruti Ashishbhai Minama',tl:'tl_nilesh',phone:'8758856634'},{id:'tch_6353507962',name:'Vijay Kantilal Katara',tl:'tl_nilesh',phone:'6353507962'},{id:'tch_7016205975',name:'Asmita Savsingbhai Bariya',tl:'tl_nilesh',phone:'7016205975'},{id:'tch_9875176685',name:'Kajal Gajabhai Ninama',tl:'tl_nilesh',phone:'9875176685'},{id:'tch_8758656867',name:'Pragna Bharatkumar Bhabhor',tl:'tl_nilesh',phone:'8758656867'}
   ];
   teachers.forEach(r=>{let ex=DB.users.find(x=>x.id===r.id);
     if(!ex){DB.users.push({id:r.id,name:r.name,role:'Teacher',tl:r.tl,phone:r.phone});changed=true;}
@@ -293,7 +293,7 @@ if(!DB||!DB.seeded){DB=seed();save();}
   if(pm&&pm.phone!=='9909960404'){pm.phone='9909960404';changed=true;}
   DB.users.forEach(function(x){if('pwd' in x){delete x.pwd;changed=true;}});
   if(!DB.schoolsCleared){DB.schools=[];DB.schoolsCleared=true;changed=true;}
-  if(!DB.cleanV2){var realIds=['pm1','tl_nilesh','tl_yogesh','tch_disha'];DB.users=DB.users.filter(function(uu){return realIds.indexOf(uu.id)>-1;});DB.entries=[];DB.tasks=[];DB.cleanV2=true;changed=true;}
+  if(!DB.cleanV2){var realIds=['pm1','tl_nilesh','tl_yogesh','tch_disha','tch_9265825570','tch_7016331672','tch_8347271269','tch_9875264540','tch_7862967620','tch_8758856634','tch_6353507962','tch_7016205975','tch_9875176685','tch_8758656867'];DB.users=DB.users.filter(function(uu){return realIds.indexOf(uu.id)>-1;});DB.entries=[];DB.tasks=[];DB.cleanV2=true;changed=true;}
   if(changed)save();
 })();
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
