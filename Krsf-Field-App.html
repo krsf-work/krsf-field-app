@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#15803d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Krsf">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAKHElEQVR4nO3d6XOV5R3G8QuSnOwJCUkgAmELOwKyyFbE0tKilkIohCXLOSPtTN9ABAOCDIsg+xISrdURNCckJIQlKaIsCsgiUvZFJGGLLLIvgRCyQ19QxnYcR0bPfT/Pc37X5w/Idb/4fXkYGIZa4TP6PAKRULWNfgCRkRgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASLR/AVlXtBDV1Nf8AAAAAElFTkSuQmCC">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('sw',e);});});}</script>
+<title>Krsf Field App — TL Monitoring & Daily Diary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Vadodara:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1f5;--panel:#ffffff;--ink:#1b2030;--muted:#6b7280;--soft:#9aa1ad;
+    --line:#e6e9ef;--line2:#d7dbe3;
+    --brand:#15803d;--brand-d:#0f5f2e;--brand-tint:#eaf5ee;
+    --gI:#16a34a;--gA:#d97706;--gR:#dc2626;--gB:#2563eb;
+    --gI-bg:#e9f7ef;--gA-bg:#fdf0dd;--gR-bg:#fbe9e9;--gB-bg:#e9f0fd;
+    --gI-tx:#15803d;--gA-tx:#b45309;--gR-tx:#b91c1c;--gB-tx:#1d4ed8;
+    --r:12px;--r2:9px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  /* topbar */
+  #topbar{height:60px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 18px;gap:12px;position:sticky;top:0;z-index:30}
+  .brand{display:flex;align-items:center;gap:11px;min-width:0}
+  .logo{width:38px;height:38px;border-radius:11px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0}
+  .brand .t{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand .s{font-size:11.5px;color:var(--muted)}
+  .ctrls{display:flex;align-items:center;gap:8px}
+  select#userSel{padding:8px 11px;border-radius:9px;border:1px solid var(--line2);font-size:13px;font-weight:600;color:var(--ink);background:var(--panel);max-width:46vw}
+  .lang{border:1px solid var(--line2);background:var(--panel);color:var(--brand-d);padding:8px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer}
+  /* shell */
+  #shell{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 60px)}
+  #master{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:14px}
+  #detail{overflow:auto;padding:20px 22px}
+  /* master pieces */
+  .msearch{width:100%;padding:9px 12px;border:1px solid var(--line2);border-radius:10px;font-size:14px;margin-bottom:10px;font-family:inherit}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{font-size:12px;font-weight:600;padding:6px 11px;border-radius:20px;border:1px solid var(--line2);background:var(--panel);color:var(--muted);cursor:pointer;white-space:nowrap}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .mlabel{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--soft);margin:10px 4px 7px}
+  .mrow{display:flex;align-items:center;gap:11px;padding:10px;border-radius:11px;cursor:pointer;margin-bottom:3px}
+  .mrow:hover{background:#f4f6f9}
+  .mrow.sel{background:var(--brand-tint)}
+  .mrow.sel .mr-name{color:var(--brand-d)}
+  .ava{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+  .ava.r{background:var(--gR-bg);color:var(--gR-tx)}.ava.a{background:var(--gA-bg);color:var(--gA-tx)}.ava.g{background:var(--gI-bg);color:var(--gI-tx)}.ava.n{background:#eef1f5;color:var(--muted)}
+  .mr-mid{min-width:0;flex:1}
+  .mr-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mr-sub{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mr-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+  .navrow{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:11px;cursor:pointer;margin-bottom:4px;font-size:14px;font-weight:600}
+  .navrow:hover{background:#f4f6f9}
+  .navrow.sel{background:var(--brand-tint);color:var(--brand-d)}
+  .navrow i{width:20px;text-align:center;color:var(--muted)}
+  .navrow.sel i{color:var(--brand-d)}
+  .navrow .ct{margin-left:auto;font-size:12px;font-weight:700;background:#eef1f5;color:var(--muted);border-radius:20px;padding:1px 9px}
+  .navrow .ct.r{background:var(--gR-bg);color:var(--gR-tx)}
+  /* dots & pills & badges */
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block}
+  .dot.r{background:var(--gR)}.dot.a{background:var(--gA)}.dot.g{background:var(--gI)}.dot.n{background:#c3c8d1}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .pill.r{background:var(--gR-bg);color:var(--gR-tx)}.pill.a{background:var(--gA-bg);color:var(--gA-tx)}.pill.g{background:var(--gI-bg);color:var(--gI-tx)}.pill.b{background:var(--gB-bg);color:var(--gB-tx)}.pill.n{background:#eef1f5;color:var(--muted)}
+  /* detail */
+  .dhead{display:flex;align-items:center;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .dhead .ava{width:52px;height:52px;font-size:18px}
+  .dh-name{font-size:21px;font-weight:700;line-height:1.1}
+  .dh-sub{font-size:13px;color:var(--muted);margin-top:3px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
+  .card h3{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--brand-d);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h3 i{font-size:15px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:11px}
+  .tile{background:#f7f9fb;border:1px solid var(--line);border-radius:var(--r2);padding:12px 13px}
+  .tile .v{font-size:22px;font-weight:800;line-height:1}
+  .tile .l{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.25}
+  .tile.r .v{color:var(--gR-tx)}.tile.a .v{color:var(--gA-tx)}.tile.g .v{color:var(--gI-tx)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:16px}
+  .kpi{border-radius:var(--r);padding:16px;color:#fff}
+  .kpi .n{font-size:27px;font-weight:800;line-height:1}
+  .kpi .l{font-size:12px;margin-top:7px;opacity:.95}
+  .kpi.g{background:#15803d}.kpi.b{background:#2563eb}.kpi.a{background:#d97706}.kpi.r{background:#dc2626}
+  .entry{border:1px solid var(--line);border-radius:var(--r2);padding:13px 14px;margin-bottom:10px}
+  .entry .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:6px}
+  .entry .body{font-size:14px}
+  .muted{color:var(--muted)}
+  .warnline{color:var(--gA-tx);font-size:13px;font-weight:600}
+  .item{display:flex;align-items:center;gap:10px;background:var(--gA-bg);border-radius:9px;padding:10px 12px;margin-top:8px;font-size:14px}
+  .item.r{background:var(--gR-bg)}
+  .item.b{background:var(--gB-bg)}
+  .item.done{background:#f1f3f6;color:var(--muted)}
+  .item .x{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+  .item.r .x{color:var(--gR-tx)}
+  .empty{text-align:center;color:var(--muted);font-size:13.5px;padding:22px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft)}
+  /* forms / buttons */
+  label{display:block;font-size:12.5px;font-weight:700;margin:13px 0 6px;color:var(--ink)}
+  input,textarea,select.fld{width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:10px;font-size:14.5px;font-family:inherit;background:var(--panel);color:var(--ink)}
+  textarea{min-height:78px;resize:vertical}
+  .row{display:flex;gap:11px;flex-wrap:wrap}.row>*{flex:1;min-width:130px}
+  .btn{background:var(--brand);color:#fff;border:none;padding:12px 17px;border-radius:10px;font-size:14.5px;font-weight:700;cursor:pointer}
+  .btn:active{transform:translateY(1px)}.btn.block{width:100%}
+  .btn.out{background:var(--gR)}.btn.sec{background:var(--gB)}
+  .btn.sm{padding:8px 13px;font-size:13px;border-radius:9px}
+  .btn.ghost{background:var(--panel);color:var(--brand-d);border:1px solid var(--line2)}
+  .gps{font-size:13px;background:var(--gB-bg);color:var(--gB-tx);padding:10px 13px;border-radius:10px;margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600}
+  .greet{font-size:17px;font-weight:700;margin-bottom:2px}
+  .punchstat{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  /* modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(20,26,40,.5);z-index:60;align-items:center;justify-content:center;padding:18px}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--panel);border-radius:16px;padding:22px;max-width:460px;width:100%}
+  .modal h4{font-size:17px;margin-bottom:4px}
+  .modal .ms{font-size:13px;color:var(--muted);margin-bottom:6px}
+  .modal .acts{display:flex;gap:10px;margin-top:18px}.modal .acts .btn{flex:1}
+  /* bilingual */
+  .bilingual .gu{display:none}
+  body.gu .bilingual .gu{display:inline}body.gu .bilingual .en{display:none}
+  .gu-rem{font-family:'Hind Vadodara','Noto Sans Gujarati',sans-serif;font-size:14.5px;line-height:1.7}
+  textarea#d_obs{font-family:'Hind Vadodara','Noto Sans Gujarati',sans-serif;line-height:1.7}
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1b2030;color:#fff;padding:13px 24px;border-radius:30px;font-size:14.5px;font-weight:600;opacity:0;transition:.3s;z-index:80}
+  .toast.show{opacity:1}
+  @media(max-width:880px){
+    #shell{grid-template-columns:1fr;height:auto}
+    #master{border-right:none;border-bottom:1px solid var(--line)}
+    #detail{padding:16px}
+    select#userSel{max-width:38vw}
+  }
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="brand">
+    <div class="logo">K</div>
+    <div style="min-width:0">
+      <div class="t bilingual"><span class="en">Krsf Field App</span><span class="gu">ક્રસફ ફિલ્ડ એપ</span></div>
+      <div class="s bilingual"><span class="en">TL monitoring & daily diary · Gujarat</span><span class="gu">TL મોનિટરિંગ અને દૈનિક ડાયરી</span></div>
+    </div>
+  </div>
+  <div class="ctrls">
+    <select id="userSel" onchange="switchUser()" style="display:none"></select>
+    <button id="syncBtn" onclick="syncNow(true)" title="Sync now" style="margin-right:8px;padding:7px 10px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;gap:6px"><span id="netDot" style="width:9px;height:9px;border-radius:50%;background:#16a34a;display:inline-block"></span><i class="ti ti-refresh"></i><span id="syncLbl">Sync</span></button>
+    <button id="bellBtn" onclick="toggleNotif()" title="Notifications" style="position:relative;margin-right:8px;padding:7px 10px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;cursor:pointer"><i class="ti ti-bell"></i><span id="bellBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px"></span></button>
+    <span id="identName" style="font-size:13px;font-weight:600;color:var(--ink);max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <button id="logoutBtn" onclick="logout()" title="Log out" style="margin-left:8px;padding:7px 11px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer"><i class="ti ti-logout"></i></button>
+  </div>
+</div>
+<div id="notifPanel" style="display:none;position:fixed;top:58px;right:14px;width:330px;max-height:65vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.2);z-index:9000"></div>
+
+<div id="shell">
+  <aside id="master"></aside>
+  <main id="detail"></main>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h4><span class="bilingual"><span class="en">Assign task to</span><span class="gu">કાર્ય સોંપો</span></span> <span id="m_tl"></span></h4>
+    <div class="ms bilingual"><span class="en">Appears in the TL's app and is tracked on your dashboard.</span><span class="gu">TL ની એપમાં દેખાશે અને ડેશબોર્ડ પર ટ્રેક થશે.</span></div>
+    <label class="bilingual"><span class="en">Task</span><span class="gu">કાર્ય</span></label>
+    <textarea id="m_text" placeholder="e.g. Submit remedial plan for Valia school"></textarea>
+    <label class="bilingual"><span class="en">Due date</span><span class="gu">મુદત તારીખ</span></label>
+    <input type="date" id="m_due">
+    <div class="acts">
+      <button class="btn" onclick="saveTask()"><span class="bilingual"><span class="en">Assign Task</span><span class="gu">સોંપો</span></span></button>
+      <button class="btn ghost" onclick="closeModal()"><span class="bilingual"><span class="en">Cancel</span><span class="gu">રદ</span></span></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="loginOverlay" style="position:fixed;inset:0;background:#0e3a2f;display:none;align-items:center;justify-content:center;z-index:99999;padding:20px">
+  <div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:26px 22px;box-shadow:0 12px 44px rgba(0,0,0,.3)">
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:21px;font-weight:700;color:#14532d">Krsf Field App</div>
+      <div style="font-size:13px;color:#6b7280;margin-top:3px">Sign in with your mobile number</div>
+    </div>
+    <label style="font-size:13px;color:#374151;font-weight:600">Mobile number</label>
+    <input id="lg_phone" inputmode="numeric" autocomplete="username" placeholder="10-digit mobile" style="width:100%;padding:11px;margin:6px 0 12px;border:1px solid #d1d5db;border-radius:9px;font-size:15px;box-sizing:border-box" onkeydown="if(event.key==='Enter')doLogin()">
+    <label style="font-size:13px;color:#374151;font-weight:600">Password</label>
+    <input id="lg_pwd" type="password" autocomplete="current-password" placeholder="Password" style="width:100%;padding:11px;margin:6px 0 4px;border:1px solid #d1d5db;border-radius:9px;font-size:15px;box-sizing:border-box" onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="lg_err" style="color:#b91c1c;font-size:13px;min-height:18px;margin:4px 0"></div>
+    <button onclick="doLogin()" style="width:100%;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer">Log in</button>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/tabler-icons.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+/* ===================== DATA ===================== */
+const KEY='krsf_md_v3';
+// ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
+const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
+// =================================================================================================
+let FS=null, AUTH=null; const FB_ON=!!(firebaseConfig.projectId);
+if(FB_ON && window.firebase){try{firebase.initializeApp(firebaseConfig);FS=firebase.firestore();AUTH=firebase.auth();FS.enablePersistence({synchronizeTabs:true}).catch(function(e){console.warn('offline persistence',e&&e.code);});}catch(err){console.warn('firebase init',err);FS=null;AUTH=null;}}
+const AUTH_DOMAIN='@krsf-field.app', PWD_PREFIX='krsf';
+function pushLog(e){ if(!FS)return; try{ FS.collection('logs').doc(String(e.id)).set(e,{merge:true}); }catch(err){console.warn('pushLog',err);} }
+async function loadSharedLogs(){ if(!FS)return; try{ const snap=await FS.collection('logs').get(); const remote=snap.docs.map(d=>d.data()); const ids=new Set(remote.map(r=>r.id)); DB.entries=DB.entries.filter(e=>!ids.has(e.id)).concat(remote); save(); renderAll(); }catch(err){console.warn('loadSharedLogs',err);} }
+function pushTask(t){ if(!FS)return; try{ FS.collection('tasks').doc(String(t.id)).set(t,{merge:true}); }catch(err){console.warn('pushTask',err);} }
+async function loadSharedTasks(){ if(!FS)return; try{ const snap=await FS.collection('tasks').get(); const remote=snap.docs.map(d=>d.data()); const ids=new Set(remote.map(r=>r.id)); DB.tasks=DB.tasks.filter(t=>!ids.has(t.id)).concat(remote); save(); renderAll(); }catch(err){console.warn('loadSharedTasks',err);} }
+const PURPOSES=['School observation','Teacher mentoring','Remedial session','Community/parent meeting','BRC/CRC coordination','Material distribution','Other'];
+const PEOPLE_MET=['BRC','CRC','Head Master','Teachers','SMC/Parents'];
+const ACTION_SLA=5;
+function dstr(d){return d.toISOString().slice(0,10);}
+function lastWeekdays(n){const out=[];let d=new Date();while(out.length<n){const wd=d.getDay();if(wd!==0&&wd!==6)out.unshift(dstr(d));d=new Date(d.getTime()-864e5);}return out;}
+function addDays(s,n){return dstr(new Date(new Date(s).getTime()+n*864e5));}
+function rnd(){return Math.random();}
+function pick(a){return a[Math.floor(rnd()*a.length)];}
+
+function seed(){
+  const schools=['Dediapada PS','Sagbara School','Valia PS','Netrang School','Umarpada PS','Zankhvav School','Mandvi PS','Dediapada Girls School'];
+  const users=[{id:'pm1',name:'Guru (Program Manager)',role:'PM'}];
+  const tlDefs=[
+    {id:'tl1',name:'Ramesh Vasava',present:.95,obs:.9,close:.93,sMin:2,sMax:3,loggedToday:true,teachers:['Anita Gamit','Mahesh Vasava','Priya Tadvi']},
+    {id:'tl2',name:'Sunita Chaudhari',present:.85,obs:.7,close:.4,sMin:1,sMax:2,loggedToday:true,teachers:['Dinesh Bhil','Rekha Vasava']},
+    {id:'tl3',name:'Kiran Patel',present:.6,obs:.5,close:.3,sMin:1,sMax:1,loggedToday:false,teachers:['Jignesh Padvi','Bhavna Tadvi']},
+    {id:'tl4',name:'Mehul Padvi',present:.92,obs:.85,close:.92,sMin:2,sMax:3,loggedToday:true,teachers:['Sapna Gamit','Ketan Vasava']},
+    {id:'tl5',name:'Asha Gamit',present:.8,obs:.65,close:.6,sMin:1,sMax:2,loggedToday:true,teachers:['Nilesh Bhil','Hetal Tadvi']},
+    {id:'tl6',name:'Pravin Tadvi',present:.65,obs:.55,close:.5,sMin:1,sMax:2,loggedToday:false,teachers:['Manish Vasava']},
+  ];
+  const obsText=['ધોરણ 5 ના વાંચન સ્તરમાં સુધારો; મોટાભાગના બાળકો ફકરા સડસડાટ વાંચે છે.','મલ્ટિ-ગ્રેડ વર્ગ સારી રીતે સંભાળ્યો; પ્રવૃત્તિ ખૂણાનો વધુ ઉપયોગ સૂચવ્યો.','વરસાદના કારણે હાજરી ઓછી; શિક્ષકને રેમેડિયલ જૂથ માટે માર્ગદર્શન આપ્યું.','ગણિતનો સ્થાનકિંમત પાઠ મજબૂત; પુસ્તકાલય ફરી ભરવાની જરૂર.','પાઠ આયોજન અપડેટ થયું નથી; શિક્ષકને સાપ્તાહિક આયોજન શીખવ્યું.','સારી ફોનિક્સ પ્રેક્ટિસ; શૌચાલય સમારકામ BRC પાસે બાકી.'];
+  const actText=['Follow up with BRC on toilet repair','Send phonics flashcards to teacher','Review remedial session plan','Request new library set','Check lesson-plan submission','Arrange TLM for Std 4'];
+  const days=lastWeekdays(7);
+  const td=days[days.length-1];
+  const entries=[];let tc=0;
+  tlDefs.forEach(d=>{
+    d.teachers.forEach(tn=>{const tid='t'+(++tc);users.push({id:tid,name:tn,role:'Teacher',tl:d.id});});
+    days.forEach((day,i)=>{
+      const isLast=i===days.length-1;
+      if(isLast){if(!d.loggedToday)return;}else if(rnd()>d.present)return;
+      const pin=pick(['08:55','09:05','09:15','09:35','09:50']);
+      const pout=pick(['16:10','16:30','16:45','17:00']);
+      const nS=Math.max(1,Math.round(d.sMin+rnd()*(d.sMax-d.sMin)));
+      const vis=[...new Set(Array.from({length:nS},()=>pick(schools)))];
+      const hasObs=rnd()<d.obs;
+      const acts=[];const nAct=hasObs?Math.floor(rnd()*2.3):0;
+      for(let k=0;k<nAct;k++){let closed=rnd()<d.close;if(!closed&&addDays(day,7)<td)closed=rnd()<(d.close+.45);acts.push({text:pick(actText),created:day,status:closed?'done':'open',closedOn:closed?addDays(day,1+Math.floor(rnd()*4)):null,due:addDays(day,ACTION_SLA)});}
+      const metSubset=[...new Set([rnd()<.4?'BRC':'Teachers', rnd()<.5?'Head Master':'Teachers'])];
+      entries.push({id:d.id+'-'+day,userId:d.id,date:day,role:'TL',punchIn:pin,punchOut:isLast&&rnd()<.3?'':pout,
+        gps:{lat:+(21.55+rnd()*.12).toFixed(4),lng:+(73.55+rnd()*.25).toFixed(4),acc:8+Math.floor(rnd()*16)},
+        visited:vis.join('; '),visitedCount:vis.length,schools:vis,purpose:pick(PURPOSES),met:metSubset,observation:hasObs?pick(obsText):'',
+        summary:`Visited ${vis.length} school(s), observed classes, mentored teachers.`,actions:acts});
+    });
+    users.push({id:d.id,name:d.name,role:'TL'});
+  });
+  const someT=users.filter(x=>x.role==='Teacher').slice(0,5);
+  someT.forEach((t,i)=>{if(rnd()<.75)entries.push({id:t.id+'-'+td,userId:t.id,date:td,role:'Teacher',punchIn:pick(['09:05','09:20','09:40']),punchOut:i%2?'15:20':'',gps:{lat:21.63,lng:73.59,acc:11},present:14+Math.floor(rnd()*12),total:24+Math.floor(rnd()*4),school:pick(schools),topic:pick(['Gujarati reading, Std 4','Maths place-value, Std 5','EVS, Std 3','Story-telling, Std 2']),summary:'Class conducted as planned.',challenge:pick(['Need more flashcards.','TLM storage limited.','None.','Rain disrupted plan.']),actions:[]});});
+  const tasks=[
+    {id:'tk1',tlid:'tl2',text:'Submit remedial plan for Valia school',created:addDays(td,-8),due:addDays(td,-3),status:'open',closedOn:null},
+    {id:'tk2',tlid:'tl2',text:'Share monthly attendance summary',created:addDays(td,-2),due:addDays(td,4),status:'open',closedOn:null},
+    {id:'tk3',tlid:'tl1',text:'Pilot new phonics kit in 2 schools',created:addDays(td,-6),due:addDays(td,3),status:'open',closedOn:null},
+    {id:'tk4',tlid:'tl3',text:'Explain 3 missed field days this month',created:addDays(td,-4),due:addDays(td,-1),status:'open',closedOn:null},
+    {id:'tk5',tlid:'tl5',text:'Coordinate cluster review meeting',created:addDays(td,-10),due:addDays(td,-2),status:'done',closedOn:addDays(td,-3)},
+  ];
+  return {users,entries,tasks,schools,days,seeded:true};
+}
+let DB=JSON.parse(localStorage.getItem(KEY)||'null');
+if(!DB||!DB.seeded){DB=seed();save();}
+(function ensureTeamLeaders(){
+  const real=[
+    {id:'tl_nilesh',name:'Nilesh Hathila',org:'Dahod Cluster',phone:'9537505490'},
+    {id:'tl_yogesh',name:'Yogesh Vasava',org:'Sarvangi Vikas Trust',phone:'7624035564'}
+  ];
+  let changed=false;
+  real.forEach(r=>{let ex=DB.users.find(x=>x.id===r.id);
+    if(!ex){DB.users.push({id:r.id,name:r.name,role:'TL',org:r.org,phone:r.phone});changed=true;}
+    else if(ex.phone!==r.phone||ex.org!==r.org){ex.phone=r.phone;ex.org=r.org;changed=true;}
+  });
+  const pm=DB.users.find(x=>x.id==='pm1');
+  if(pm&&pm.phone!=='9909960404'){pm.phone='9909960404';changed=true;}
+  DB.users.forEach(function(x){if('pwd' in x){delete x.pwd;changed=true;}});
+  if(changed)save();
+})();
+function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
+const today=()=>DB.days[DB.days.length-1];
+const realToday=()=>dstr(new Date());
+const nowHM=()=>new Date().toTimeString().slice(0,5);
+const u=id=>DB.users.find(x=>x.id===id);
+const overdue=(d,st)=>st==='open'&&d<realToday();
+function initials(n){return n.replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+
+/* ===================== STATE ===================== */
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null;
+function T(en,gu){return LANG==='gu'?gu:en;}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
+
+/* ===================== ANALYTICS ===================== */
+function tlInfo(tlid){
+  const es=DB.entries.filter(e=>e.userId===tlid&&e.role==='TL').sort((a,b)=>b.date.localeCompare(a.date));
+  const td=today();
+  const todayLog=es.find(e=>e.date===td)||null;
+  const lastLog=es[0]?es[0].date:null;
+  const logs7=es.filter(e=>e.date>=addDays(td,-7)).length;
+  let aOpen=0,aOver=0,aDone=0;const openActs=[];
+  es.forEach(e=>(e.actions||[]).forEach((a,i)=>{if(a.status==='done')aDone++;else{aOpen++;openActs.push({...a,eid:e.id,i});if(overdue(a.due,a.status))aOver++;}}));
+  const tks=DB.tasks.filter(t=>t.tlid===tlid);
+  const tkOpen=tks.filter(t=>t.status==='open');
+  const tkOver=tkOpen.filter(t=>overdue(t.due,t.status)).length;
+  const tkDone=tks.filter(t=>t.status==='done').length;
+  const daysSinceLog=lastLog?Math.round((new Date(realToday())-new Date(lastLog))/864e5):99;
+  let rag='g';
+  if(!todayLog||tkOver>0||aOver>=2||daysSinceLog>3)rag='r';
+  else if(aOpen||tkOpen.length||aOver>=1)rag='a';
+  const teachers=DB.users.filter(x=>x.tl===tlid);
+  return {tlid,name:u(tlid).name,es,todayLog,lastLog,logs7,aOpen,aOver,aDone,openActs,tks,tkOpen,tkOver,tkDone,rag,teachers,activeDays:es.length,workdays:DB.days.length};
+}
+function allTL(){const o={r:0,a:1,g:2};return DB.users.filter(x=>x.role==='TL').map(t=>tlInfo(t.id)).sort((a,b)=>o[a.rag]-o[b.rag]||(b.aOver+b.tkOver)-(a.aOver+a.tkOver)||b.aOpen-a.aOpen);}
+const ragWord=r=>r==='r'?T('Needs attention','ધ્યાન જરૂરી'):r==='a'?T('Watch','નજર રાખો'):T('On track','ઠીક');
+
+/* ===================== TOPBAR ===================== */
+function buildUserSel(){const s=document.getElementById('userSel');s.innerHTML='';
+  const ord=DB.users.filter(x=>x.role==='PM').concat(DB.users.filter(x=>x.role==='TL'),DB.users.filter(x=>x.role==='Teacher'));
+  ord.forEach(x=>{const o=document.createElement('option');o.value=x.id;o.textContent=`${x.name} · ${x.role}`;s.appendChild(o);});s.value=CUR;}
+function switchUser(){CUR=document.getElementById('userSel').value;const r=u(CUR).role;SEL=r==='PM'?'overview':'diary';renderAll();}
+
+/* ===================== RENDER ROOT ===================== */
+function renderAll(){renderMaster();renderDetail();renderBell();updateNetStatus();}
+function updateNetStatus(){var d=document.getElementById('netDot');if(!d)return;var on=navigator.onLine;d.style.background=on?'#16a34a':'#9ca3af';var b=document.getElementById('syncBtn');if(b)b.title=on?'Online — tap to sync now':'Offline — changes are saved on this device and will sync when online';var l=document.getElementById('syncLbl');if(l)l.textContent=on?'Sync':'Offline';}
+function syncNow(manual){updateNetStatus();
+  if(!FS){if(manual)toast(T('Cloud not set up','ક્લાઉડ સેટ નથી'));return;}
+  if(!navigator.onLine){if(manual)toast(T('Offline — will sync automatically when online','ઓફલાઇન — ઓનલાઇન થતાં આપમેળે સિંક થશે'));return;}
+  try{DB.entries.filter(e=>e&&e.id&&e.userId===CUR).forEach(e=>FS.collection('logs').doc(String(e.id)).set(e,{merge:true}));}catch(err){console.warn('sync logs',err);}
+  try{if(u(CUR)&&u(CUR).role==='PM')DB.tasks.filter(t=>t&&t.id).forEach(t=>FS.collection('tasks').doc(String(t.id)).set(t,{merge:true}));}catch(err){console.warn('sync tasks',err);}
+  loadSharedLogs();loadSharedTasks();
+  if(manual)toast(T('Synced ✓','સિંક થયું ✓'));}
+window.addEventListener('online',function(){updateNetStatus();syncNow(false);});
+window.addEventListener('offline',updateNetStatus);
+function myNotifications(){
+  if(!CUR||!u(CUR))return [];
+  const role=u(CUR).role, out=[];
+  if(role==='TL'){
+    DB.tasks.filter(t=>t.tlid===CUR&&t.status==='open').forEach(t=>out.push({key:t.id+':open',icon:'ti-checklist',title:T('New task from PM','PM તરફથી નવું કાર્ય'),detail:t.text,sub:T('Due ','મુદત ')+t.due}));
+  } else if(role==='PM'){
+    DB.tasks.filter(t=>t.status==='done').forEach(t=>{const tl=u(t.tlid);out.push({key:t.id+':done',icon:'ti-check',title:(tl?tl.name:'TL')+' '+T('completed a task','એ કાર્ય પૂર્ણ કર્યું'),detail:t.text,sub:t.closedOn||''});});
+  }
+  return out;
+}
+function notifSeen(){try{return JSON.parse(localStorage.getItem('krsf_seen_'+CUR)||'[]');}catch(e){return [];}}
+function renderBell(){const badge=document.getElementById('bellBadge');if(!badge)return;const n=myNotifications(),seen=notifSeen();const unread=n.filter(x=>seen.indexOf(x.key)<0).length;if(unread>0){badge.style.display='block';badge.textContent=unread>9?'9+':unread;}else{badge.style.display='none';}}
+function toggleNotif(){const p=document.getElementById('notifPanel');if(!p)return;if(p.style.display==='block'){p.style.display='none';return;}const n=myNotifications();
+  p.innerHTML='<div style="padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)">'+T('Notifications','નોટિફિકેશન')+'</div>'+(n.length?n.map(x=>'<div style="padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:flex-start"><i class="ti '+x.icon+'" style="color:var(--brand);margin-top:2px"></i><div style="min-width:0"><div style="font-weight:600;font-size:13px">'+escA(x.title)+'</div><div style="font-size:13px;color:var(--ink)">'+escA(x.detail||'')+'</div><div style="font-size:11.5px;color:var(--muted)">'+escA(x.sub||'')+'</div></div></div>').join(''):'<div style="padding:18px;color:var(--muted);font-size:13px;text-align:center">'+T('No notifications','કોઈ નોટિફિકેશન નથી')+'</div>');
+  p.style.display='block';
+  localStorage.setItem('krsf_seen_'+CUR,JSON.stringify(n.map(x=>x.key)));renderBell();}
+function showLogin(){const o=document.getElementById('loginOverlay');if(o)o.style.display='flex';const e=document.getElementById('lg_err');if(e)e.textContent='';const p=document.getElementById('lg_phone'),pw=document.getElementById('lg_pwd');if(p)p.value='';if(pw)pw.value='';if(p)p.focus();}
+function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim();const pw=document.getElementById('lg_pwd').value||'';const err=document.getElementById('lg_err');
+  if(!ph||!pw){err.textContent=T('Enter mobile number and password.','મોબાઇલ નંબર અને પાસવર્ડ ભરો.');return;}
+  if(!AUTH){err.textContent=T('Login service unavailable — check your internet.','લોગિન સેવા ઉપલબ્ધ નથી.');return;}
+  err.textContent=T('Signing in…','સાઇન ઇન થઈ રહ્યું…');
+  AUTH.signInWithEmailAndPassword(ph+AUTH_DOMAIN, PWD_PREFIX+pw).catch(function(e){err.textContent=T('Wrong mobile number or password.','ખોટો મોબાઇલ નંબર અથવા પાસવર્ડ.');});}
+function startSession(id){CUR=id;const r=u(id).role;SEL=r==='PM'?'overview':'diary';buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();}}
+function logout(){if(AUTH)AUTH.signOut();CUR=null;showLogin();}
+function selectItem(k){SEL=k;document.getElementById('detail').scrollTop=0;renderAll();}
+
+/* ----- MASTER ----- */
+function renderMaster(){
+  const role=u(CUR).role;const m=document.getElementById('master');
+  if(role==='PM'){m.innerHTML=masterPM();}
+  else{m.innerHTML=masterNav(role);}
+}
+function masterPM(){
+  const all=allTL();
+  const q=(document.getElementById('search')&&document.getElementById('search').value||'').toLowerCase();
+  let list=all.filter(s=>s.name.toLowerCase().includes(q));
+  if(FILTER==='attn')list=list.filter(s=>s.rag==='r');
+  if(FILTER==='nolog')list=list.filter(s=>!s.todayLog);
+  const ov=`<div class="mrow ${SEL==='overview'?'sel':''}" onclick="selectItem('overview')">
+      <div class="ava n" style="background:var(--brand-tint);color:var(--brand-d)"><i class="ti ti-layout-dashboard"></i></div>
+      <div class="mr-mid"><div class="mr-name">${T('Overview','ઝાંખી')}</div><div class="mr-sub">${T('KPIs & all open items','KPI અને બધા આઇટમ')}</div></div>
+    </div>`;
+  const ins=`<div class="mrow ${SEL==='insights'?'sel':''}" onclick="selectItem('insights')">
+      <div class="ava a"><i class="ti ti-bulb"></i></div>
+      <div class="mr-mid"><div class="mr-name">AI Insights</div><div class="mr-sub">Gemini reads the remarks</div></div>
+    </div>`;
+  const rows=list.map(s=>{
+    const sub=!s.todayLog?T('No log today','આજે લોગ નથી'):s.aOver+s.tkOver>0?`${s.aOver+s.tkOver} ${T('overdue','મુદત વીતી')}`:s.aOpen+s.tkOpen.length>0?`${s.aOpen+s.tkOpen.length} ${T('open items','ખુલ્લા આઇટમ')}`:T('All clear','બધું બરાબર');
+    const right=(s.aOver+s.tkOver)>0?`<span class="pill r">${s.aOver+s.tkOver}</span>`:!s.todayLog?`<span class="dot r"></span>`:`<span class="dot ${s.rag}"></span>`;
+    return `<div class="mrow ${SEL===s.tlid?'sel':''}" onclick="selectItem('${s.tlid}')">
+      <div class="ava ${s.rag}">${initials(s.name)}</div>
+      <div class="mr-mid"><div class="mr-name">${s.name}</div><div class="mr-sub">${sub}</div></div>
+      <div class="mr-right">${right}</div>
+    </div>`;}).join('')||`<div class="empty">${T('No team leaders match.','કોઈ TL મળ્યા નથી.')}</div>`;
+  return `<input id="search" class="msearch" placeholder="${T('Search team leaders…','ટીમ લીડર શોધો…')}" value="${q}" oninput="onSearch()">
+    <div class="chips">
+      <span class="chip ${FILTER==='all'?'on':''}" onclick="setFilter('all')">${T('All','બધા')}</span>
+      <span class="chip ${FILTER==='attn'?'on':''}" onclick="setFilter('attn')">${T('Needs attention','ધ્યાન')}</span>
+      <span class="chip ${FILTER==='nolog'?'on':''}" onclick="setFilter('nolog')">${T('No log today','લોગ નથી')}</span>
+    </div>
+    ${ov}
+    ${ins}
+    <div class="mlabel">${T('Team leaders','ટીમ લીડર')} · ${all.length}</div>
+    ${rows}`;
+}
+function onSearch(){const v=document.getElementById('search').value;renderMaster();const s=document.getElementById('search');if(s){s.value=v;s.focus();s.setSelectionRange(v.length,v.length);}}
+function setFilter(f){FILTER=f;renderMaster();}
+
+function masterNav(role){
+  const user=u(CUR);const e=myToday();
+  const punch=!e?`<span class="pill n">${T('Not punched in','પંચ-ઇન નથી')}</span>`:!e.punchOut?`<span class="pill g">${T('In','ઇન')} ${e.punchIn}</span>`:`<span class="pill g">${e.punchIn}</span><span class="pill b">${e.punchOut}</span>`;
+  let openTk=0,openAc=0;
+  DB.tasks.filter(t=>t.tlid===CUR&&t.status==='open').forEach(()=>openTk++);
+  DB.entries.filter(x=>x.userId===CUR).forEach(x=>(x.actions||[]).forEach(a=>{if(a.status==='open')openAc++;}));
+  const items=[['diary','ti-clipboard-text',T('Punch & Diary','પંચ અને ડાયરી'),'']];
+  if(role==='TL'){items.push(['tasks','ti-checklist',T('Tasks from PM','PM તરફથી કાર્ય'),openTk]);
+    items.push(['teachers','ti-users',T('My teachers','મારા શિક્ષકો'),'']);}
+  items.push(['logs','ti-history',T('My logs','મારા લોગ'),'']);
+  const nav=items.map(it=>`<div class="navrow ${SEL===it[0]?'sel':''}" onclick="selectItem('${it[0]}')"><i class="ti ${it[1]}"></i>${it[2]}${it[3]!==''&&it[3]>0?`<span class="ct ${it[0]==='tasks'||it[0]==='actions'?'':''}">${it[3]}</span>`:''}</div>`).join('');
+  return `<div class="mrow" style="cursor:default">
+      <div class="ava g">${initials(user.name)}</div>
+      <div class="mr-mid"><div class="mr-name">${user.name}</div><div class="mr-sub">${user.role==='TL'?(user.org||T('Team Leader','ટીમ લીડર')):T('Teacher','શિક્ષક')}</div></div>
+    </div>
+    <div class="punchstat" style="margin:8px 4px 14px">${punch}</div>
+    <div class="mlabel">${T('Menu','મેનુ')}</div>${nav}`;
+}
+
+/* ----- DETAIL ----- */
+function renderDetail(){
+  const role=u(CUR).role;const d=document.getElementById('detail');
+  if(role==='PM'){d.innerHTML=SEL==='overview'?detailOverview():SEL==='insights'?detailInsights():detailTL(SEL);if(SEL==='insights')aiGenerate();}
+  else d.innerHTML=detailRole(role,SEL);
+}
+
+/* ---- AI Insights (live, via Gemini Apps Script endpoint) ---- */
+const AI_ENDPOINT='https://script.google.com/macros/s/AKfycbwGOADpqegWi610G928fuli5QGZU8vuYMFzsrbz8hoAyLG_D5v5znO4gHVaybfsz-zTpA/exec';
+function detailInsights(){
+  return `<div class="dhead"><div><div class="dh-name">AI Insights</div><div class="dh-sub">Powered by Gemini · reads your logs & Gujarati remarks</div></div><button class="btn sm" style="margin-left:auto" onclick="aiGenerate()">Regenerate</button></div>
+  <div class="card"><h3><i class="ti ti-message-2"></i> ${T('Ask the data','ડેટાને પૂછો')}</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input id="aiQ" placeholder="${T('Ask anything from the logs — visits, trainings conducted, content delivered, meetings, repeat issues…','લોગમાંથી કંઈપણ પૂછો — મુલાકાત, તાલીમ, કન્ટેન્ટ, મીટિંગ…')}" style="flex:1;min-width:220px" onkeydown="if(event.key==='Enter')askAI()">
+      <button class="btn" style="width:auto" onclick="askAI()"><i class="ti ti-send"></i> ${T('Ask','પૂછો')}</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">${T('Free-text — these are just examples:','મુક્ત-ટેક્સ્ટ — આ માત્ર ઉદાહરણ:')}</div>
+    <div id="aiAns" style="margin-top:10px"></div>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn sm" style="width:auto" onclick="askQuick('How many times did each team leader visit each school in this period?')">${T('Visit counts','મુલાકાત ગણતરી')}</button>
+      <button class="btn sm" style="width:auto" onclick="askQuick('Which team leaders met the BRC, and on which dates?')">${T('Who met BRC','BRC ને કોણ મળ્યું')}</button>
+      <button class="btn sm" style="width:auto" onclick="askQuick('Which schools have not been visited recently and who covers them?')">${T('Skipped schools','છૂટેલી શાળાઓ')}</button>
+    </div>
+  </div>
+  <div class="dhead" style="margin-top:6px"><div><div class="dh-name" style="font-size:15px">${T('Auto report','સ્વયં અહેવાલ')}</div></div></div>
+  <div id="aiOut"><div class="card" style="text-align:center;color:var(--muted)">Asking Gemini to read the logs & remarks…</div></div>`;
+}
+function escA(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function buildBlocksFull(q){
+  q=(q||'').toLowerCase();
+  const tls=DB.users.filter(x=>x.role==='TL');
+  const today=DB.days[DB.days.length-1];
+  const inToday=tls.filter(t=>DB.entries.some(e=>e.userId===t.id&&e.date===today&&e.punchIn));
+  const absentToday=tls.filter(t=>!inToday.includes(t));
+  const out=[];
+  out.push('CONTEXT | today='+today+' | all team leaders ('+tls.length+'): '+tls.map(t=>t.name+(t.org?' ['+t.org+']':'')).join(', '));
+  out.push('ATTENDANCE today | PUNCHED IN: '+(inToday.map(t=>t.name).join(', ')||'none')+' | ABSENT / NOT PUNCHED IN: '+(absentToday.map(t=>t.name).join(', ')||'none'));
+  const named=tls.filter(t=>q&&t.name.toLowerCase().split(/\s+/).some(w=>w.length>2&&q.indexOf(w)>-1));
+  const BUDGET=4800;
+  const entriesOf=tl=>DB.entries.filter(e=>e.userId===tl.id&&e.role==='TL').sort((a,b)=>b.date.localeCompare(a.date));
+  const lineFor=(name,e)=>'TL '+name+' | '+e.date+' | schools: '+(e.visited||'-')+' | purpose: '+(e.purpose||'-')+' | met: '+((e.met||[]).join(',')||'-')+' | work: '+String(e.summary||'-').slice(0,160)+' | remark: '+String(e.observation||'-').slice(0,170);
+  const tryAdd=line=>{ if(encodeURIComponent(JSON.stringify(out.concat([line]))).length<=BUDGET){ out.push(line); return true; } return false; };
+  let stop=false;
+  named.forEach(t=>{const es=entriesOf(t);for(let i=0;i<Math.min(15,es.length)&&!stop;i++){if(!tryAdd(lineFor(t.name,es[i])))stop=true;}});
+  const rest=tls.filter(t=>!named.includes(t)).map(t=>({name:t.name,es:entriesOf(t)}));
+  for(let round=0;round<8&&!stop;round++){
+    for(const p of rest){ if(p.es[round]){ if(!tryAdd(lineFor(p.name,p.es[round]))){stop=true;break;} } }
+  }
+  return out;
+}
+function askAI(){
+  const qi=document.getElementById('aiQ');const ans=document.getElementById('aiAns');if(!ans)return;
+  const q=qi?qi.value:'';if(!q||!q.trim()){ans.innerHTML='<span class="muted">'+T('Type a question first.','પહેલા પ્રશ્ન લખો.')+'</span>';return;}
+  ans.innerHTML='<div class="muted">'+T('Asking Gemini…','જેમિનીને પૂછી રહ્યા…')+'</div>';
+  const blocks=buildBlocksFull(q);const cb='krsfQ'+Date.now();let s=null,done=false;
+  function cleanup(){try{delete window[cb];}catch(e){}if(s&&s.parentNode)s.parentNode.removeChild(s);}
+  window[cb]=function(res){done=true;cleanup();
+    if(!res||res.error){ans.innerHTML='<div class="warnline">'+((res&&res.error)||'No response from the AI endpoint.')+'</div>';return;}
+    ans.innerHTML='<div class="card" style="background:#f4f8f4;border:1px solid #d8e6d8;border-left:3px solid #2e7d32"><div style="white-space:pre-wrap;font-size:14px;line-height:1.6;color:#1f2937">'+escA(res.answer||'(no answer)')+'</div></div>';};
+  s=document.createElement('script');
+  s.src=AI_ENDPOINT+'?callback='+cb+'&q='+encodeURIComponent(q)+'&data='+encodeURIComponent(JSON.stringify(blocks));
+  s.onerror=function(){if(done)return;cleanup();ans.innerHTML='<div class="warnline">'+T('Could not reach the AI endpoint. Make sure the Apps Script web app is deployed (access: Anyone).','AI એન્ડપોઇન્ટ સુધી પહોંચાયું નહીં.')+'</div>';};
+  document.body.appendChild(s);
+  setTimeout(function(){if(!done){cleanup();ans.innerHTML='<div class="warnline">'+T('Timed out. Tap Ask to retry.','સમય સમાપ્ત. ફરી પૂછો.')+'</div>';}},25000);
+}
+function askQuick(q){const i=document.getElementById('aiQ');if(i)i.value=q;askAI();}
+function buildBlocks(){
+  const tls=DB.users.filter(x=>x.role==='TL');
+  const today=DB.days[DB.days.length-1];
+  const blocks=tls.map(tl=>{
+    const es=DB.entries.filter(e=>e.userId===tl.id&&e.role==='TL').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
+    let b='TEAM LEADER: '+tl.name+(tl.org?' ('+tl.org+')':'')+'. Days logged: '+es.length+'. Logged today: '+(es.some(e=>e.date===today)?'yes':'NO')+'. ';
+    es.forEach(e=>{b+='['+e.date+' schools: '+String(e.visited||'-').slice(0,70)+' purpose: '+(e.purpose||'-')+' met: '+((e.met||[]).join(',')||'-')+' remark: '+String(e.observation||'(none)').slice(0,90)+'] ';});
+    const oa=[];es.forEach(e=>(e.actions||[]).forEach(a=>{if(a.status==='open')oa.push(a.text);}));
+    if(oa.length)b+='Open actions: '+oa.slice(0,3).join('; ')+'. ';
+    const tk=DB.tasks.filter(t=>t.tlid===tl.id&&t.status==='open').map(t=>t.text);
+    if(tk.length)b+='Tasks from PM: '+tk.slice(0,3).join('; ')+'. ';
+    return b;
+  });
+  while(blocks.length>1 && encodeURIComponent(JSON.stringify(blocks)).length>4800){ blocks.pop(); }
+  return blocks;
+}
+function aiGenerate(){
+  const out=document.getElementById('aiOut');if(!out)return;
+  out.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Asking Gemini to read the logs & remarks…</div>';
+  const blocks=buildBlocks();
+  const cb='krsfCb'+Date.now();
+  let s=null,done=false;
+  function cleanup(){try{delete window[cb];}catch(e){}if(s&&s.parentNode)s.parentNode.removeChild(s);}
+  window[cb]=function(res){done=true;cleanup();
+    if(!res||res.error){out.innerHTML='<div class="card"><b>Could not generate insights.</b><br><span class="muted">'+((res&&res.error)||'No response from the AI endpoint.')+'</span></div>';return;}
+    renderAI(res.insights||res);};
+  s=document.createElement('script');
+  s.src=AI_ENDPOINT+'?callback='+cb+'&data='+encodeURIComponent(JSON.stringify(blocks));
+  s.onerror=function(){if(done)return;cleanup();out.innerHTML='<div class="card"><b>Could not reach the AI endpoint.</b><br><span class="muted">Check your internet and that the Apps Script web app is deployed (access: Anyone).</span></div>';};
+  document.body.appendChild(s);
+  setTimeout(function(){if(!done){cleanup();out.innerHTML='<div class="card"><b>Timed out.</b><br><span class="muted">The AI endpoint did not respond. Tap Regenerate to retry.</span></div>';}},25000);
+}
+function renderAI(I){
+  const out=document.getElementById('aiOut');if(!out)return;
+  if(!I){out.innerHTML='<div class="empty">No insights.</div>';return;}
+  if(I.raw){out.innerHTML='<div class="card"><h3>Insights</h3><div style="white-space:pre-wrap;font-size:14px">'+I.raw+'</div></div>';return;}
+  let h='';
+  if(I.summary)h+='<div class="card"><h3>Summary</h3><div style="font-size:15px;line-height:1.6">'+I.summary+'</div></div>';
+  if(I.risks&&I.risks.length)h+='<div class="card"><h3>Risks & red flags</h3>'+I.risks.map(r=>`<div class="item ${r.level==='high'?'r':''}"><span>${r.text}</span></div>`).join('')+'</div>';
+  if(I.themes&&I.themes.length)h+='<div class="card"><h3>Themes in the remarks</h3>'+I.themes.map(t=>insTheme(t.label,t.sentiment==='negative'?'r':t.sentiment==='positive'?'g':'n',t.note||'',t.example_gujarati||'')).join('')+'</div>';
+  if(I.perTL&&I.perTL.length)h+='<div class="card"><h3>Per-TL highlights & concerns</h3>'+I.perTL.map(p=>insTL(p.name,p.status==='attention'?'r':p.status==='watch'?'a':'g',p.highlights||[],p.concerns||[])).join('')+'</div>';
+  out.innerHTML=h||'<div class="empty">No insights returned.</div>';
+}
+function insTheme(label,sent,note,quote){return `<div style="margin-bottom:13px"><span class="pill ${sent}">${label}</span><div style="font-size:13.5px;color:var(--muted);margin:6px 0 4px">${note}</div><div class="gu-rem" style="font-size:13.5px;color:var(--muted);border-left:2px solid var(--line2);padding-left:11px">${quote}</div></div>`;}
+function insTL(name,rag,hi,co){return `<div class="entry"><div style="font-weight:700;margin-bottom:5px"><span class="pill ${rag}">${rag==='r'?'Needs attention':rag==='a'?'Watch':'On track'}</span> ${name}</div>${hi.map(x=>`<div style="margin-top:3px"><span style="color:var(--gI-tx);font-weight:800">+</span> ${x}</div>`).join('')}${co.map(x=>`<div style="margin-top:3px"><span style="color:var(--gA-tx);font-weight:800">!</span> ${x}</div>`).join('')}</div>`;}
+
+/* ---- PM overview ---- */
+function detailOverview(){
+  const all=allTL();
+  const logged=all.filter(s=>s.todayLog).length;
+  const need=all.filter(s=>s.rag==='r').length;
+  const open=all.reduce((s,x)=>s+x.aOpen+x.tkOpen.length,0);
+  const over=all.reduce((s,x)=>s+x.aOver+x.tkOver,0);
+  const rows=[];
+  all.forEach(s=>{s.openActs.forEach(a=>rows.push({tl:s.name,id:s.tlid,type:T('Action','એક્શન'),cls:'n',text:a.text,due:a.due,over:overdue(a.due,'open')}));
+    s.tkOpen.forEach(t=>rows.push({tl:s.name,id:s.tlid,type:T('Task','કાર્ય'),cls:'b',text:t.text,due:t.due,over:overdue(t.due,'open')}));});
+  rows.sort((a,b)=>(b.over-a.over)||a.due.localeCompare(b.due));
+  const attn=all.filter(s=>s.rag==='r');
+  return `<div class="dhead"><div><div class="dh-name">${T('Overview','ઝાંખી')}</div><div class="dh-sub">${T('Across','—')} ${all.length} ${T('team leaders · last 7 days','ટીમ લીડર · છેલ્લા 7 દિવસ')}</div></div></div>
+    <div class="kpis">
+      <div class="kpi ${logged===all.length?'g':'a'}"><div class="n">${logged}/${all.length}</div><div class="l">${T('Logged today','આજે લોગ')}</div></div>
+      <div class="kpi r"><div class="n">${need}</div><div class="l">${T('Need attention','ધ્યાન જરૂરી')}</div></div>
+      <div class="kpi b"><div class="n">${open}</div><div class="l">${T('Open action items + tasks','ખુલ્લા આઇટમ + કાર્ય')}</div></div>
+      <div class="kpi a"><div class="n">${over}</div><div class="l">${T('Overdue items','મુદત વીતી આઇટમ')}</div></div>
+    </div>
+    <div class="card"><h3><i class="ti ti-alert-triangle"></i>${T('Needs attention now','હાલ ધ્યાન જરૂરી')}</h3>
+      ${attn.length?attn.map(s=>`<div class="mrow" style="border:1px solid var(--line);margin-bottom:8px" onclick="selectItem('${s.tlid}')"><div class="ava ${s.rag}">${initials(s.name)}</div><div class="mr-mid"><div class="mr-name">${s.name}</div><div class="mr-sub">${!s.todayLog?T('No log today','આજે લોગ નથી'):''}${s.aOver+s.tkOver>0?` ${s.aOver+s.tkOver} ${T('overdue','મુદત વીતી')}`:''}</div></div><i class="ti ti-chevron-right muted"></i></div>`).join(''):`<div class="empty">${T('Everyone on track today.','આજે બધા ઠીક.')}</div>`}
+    </div>
+    <div class="card"><h3><i class="ti ti-clipboard-list"></i>${T('All open action items & tasks','બધા ખુલ્લા આઇટમ અને કાર્ય')} · ${rows.length}</h3>
+      ${rows.length?`<table><thead><tr><th>${T('Team Leader','ટીમ લીડર')}</th><th>${T('Type','પ્રકાર')}</th><th>${T('Item','આઇટમ')}</th><th>${T('Due','મુદત')}</th></tr></thead><tbody>${rows.map(r=>`<tr><td><a style="color:var(--gB-tx);cursor:pointer;font-weight:600" onclick="selectItem('${r.id}')">${r.tl}</a></td><td><span class="pill ${r.cls}">${r.type}</span></td><td>${r.text}</td><td>${r.over?`<span class="pill r">${T('Overdue','મુદત વીતી')} ${r.due}</span>`:r.due}</td></tr>`).join('')}</tbody></table>`:`<div class="empty">${T('Nothing open. All clear.','કંઈ બાકી નથી.')}</div>`}
+    </div>`;
+}
+
+/* ---- PM per-TL detail ---- */
+function detailTL(tlid){
+  const s=tlInfo(tlid);if(!s)return '';
+  const e=s.todayLog;
+  return `<div class="dhead">
+      <div class="ava ${s.rag}">${initials(s.name)}</div>
+      <div style="flex:1;min-width:0"><div class="dh-name">${s.name}</div><div class="dh-sub">${T('Team Leader','ટીમ લીડર')} · ${s.teachers.length} ${T('teachers','શિક્ષક')} · ${T('last log','છેલ્લો લોગ')} ${s.lastLog||'—'}</div></div>
+      <span class="pill ${s.rag}">${ragWord(s.rag)}</span>
+    </div>
+    <div class="card"><div class="tiles">
+      <div class="tile ${e?'g':'r'}"><div class="v">${e?'✓':'✗'}</div><div class="l">${T('Logged today','આજે લોગ')}</div></div>
+      <div class="tile"><div class="v">${s.logs7}</div><div class="l">${T('Logs last 7 days','7 દિવસ લોગ')}</div></div>
+      <div class="tile ${s.aOver?'r':s.aOpen?'a':'g'}"><div class="v">${s.aOpen}</div><div class="l">${T('Open actions','ખુલ્લા એક્શન')}</div></div>
+      <div class="tile ${s.tkOver?'r':s.tkOpen.length?'a':'g'}"><div class="v">${s.tkOpen.length}</div><div class="l">${T('My tasks open','મારા કાર્ય')}</div></div>
+      <div class="tile"><div class="v">${s.activeDays}<span style="font-size:13px;color:var(--muted)">/${s.workdays}</span></div><div class="l">${T('Days active','સક્રિય દિવસ')}</div></div>
+    </div></div>
+    <div class="card"><h3><i class="ti ti-calendar-event"></i>${T("Today's log",'આજનો લોગ')}</h3>${logBlock(e)}</div>
+    <div class="card"><h3><i class="ti ti-list-check"></i>${T('Open action items (their own)','ખુલ્લા એક્શન આઇટમ')}</h3>
+      ${s.openActs.length?s.openActs.sort((a,b)=>a.due.localeCompare(b.due)).map(a=>`<div class="item ${overdue(a.due,'open')?'r':''}"><span>${a.text}</span><span class="x">${overdue(a.due,'open')?T('overdue','મુદત વીતી')+' ':''}${a.due}</span></div>`).join(''):`<div class="empty">${T('None open.','કોઈ બાકી નથી.')}</div>`}</div>
+    <div class="card"><h3><i class="ti ti-checklist"></i>${T('Tasks I assigned','મેં સોંપેલા કાર્ય')}</h3>
+      ${s.tks.length?s.tks.sort((a,b)=>(a.status>b.status?1:-1)).map(t=>taskItem(t)).join(''):`<div class="empty">${T('No tasks assigned yet.','હજુ કોઈ કાર્ય નથી.')}</div>`}
+      <button class="btn sm" style="margin-top:12px" onclick="openModal('${s.tlid}')"><i class="ti ti-plus"></i> ${T('Assign task','કાર્ય સોંપો')}</button></div>
+    <div class="card"><h3><i class="ti ti-history"></i>${T('Recent daily logs','તાજેતરના લોગ')}</h3>
+      ${s.es.slice(0,6).map(en=>`<div class="entry"><div class="top"><span>${en.date} · ${en.visited}</span><span>${en.punchIn} → ${en.punchOut||'…'}</span></div><div class="body">${en.observation?`<span class="gu-rem">${en.observation}</span>`:`<span class="warnline">${T('No remark logged','અવલોકન નથી')}</span>`}${(en.purpose||(en.met&&en.met.length))?`<div class="muted" style="font-size:12.5px;margin-top:4px">${en.purpose?`${T('Purpose','હેતુ')}: ${en.purpose}`:''}${en.purpose&&en.met&&en.met.length?' · ':''}${en.met&&en.met.length?`${T('Met','મળ્યા')}: ${en.met.join(', ')}`:''}</div>`:''}</div></div>`).join('')||`<div class="empty">${T('No logs.','કોઈ લોગ નથી.')}</div>`}</div>
+    <div class="card"><h3><i class="ti ti-users"></i>${T('Teachers under this TL','આ TL હેઠળ શિક્ષકો')} · ${s.teachers.length}</h3>
+      ${s.teachers.map(t=>{const te=DB.entries.find(x=>x.userId===t.id&&x.date===today());return `<div class="entry"><div class="top"><span style="color:var(--ink);font-weight:700">${t.name}</span><span>${te?`<span class="pill g">${T('active today','આજે સક્રિય')}</span>`:`<span class="pill n">${T('inactive','નિષ્ક્રિય')}</span>`}</span></div>${te&&te.present!==''?`<div class="body"><span class="pill b">${T('Att','હાજરી')} ${te.present}/${te.total}</span> ${te.topic||''}</div>`:''}</div>`;}).join('')||`<div class="empty">${T('No teachers mapped.','કોઈ શિક્ષક નથી.')}</div>`}</div>`;
+}
+function logBlock(e){if(!e)return `<div class="empty">${T('No log submitted today.','આજે કોઈ લોગ નથી.')}</div>`;
+  return `<div class="entry"><div class="top"><span>⏱ ${e.punchIn} → ${e.punchOut||T('still in','ચાલુ')} · <a href="https://maps.google.com/?q=${e.gps.lat},${e.gps.lng}" target="_blank" style="color:var(--gB-tx)"><i class="ti ti-map-pin"></i> ${T('map','નકશો')}</a></span><span>${e.visitedCount} ${T('school(s)','શાળા')}</span></div>
+    <div class="body"><b>${T('Schools','શાળાઓ')}:</b> ${e.visited||'—'}${(e.purpose||(e.met&&e.met.length))?`<div class="muted" style="font-size:12.5px;margin-top:4px">${e.purpose?`${T('Purpose','હેતુ')}: ${e.purpose}`:''}${e.purpose&&e.met&&e.met.length?' · ':''}${e.met&&e.met.length?`${T('Met','મળ્યા')}: ${e.met.join(', ')}`:''}</div>`:''}${e.observation?`<div style="margin-top:6px"><b>${T('Remark','અવલોકન')}:</b> <span class="gu-rem">${e.observation}</span></div>`:`<div class="warnline" style="margin-top:6px">${T('No remark logged','અવલોકન નથી')}</div>`}</div></div>`;}
+function taskItem(t){const od=overdue(t.due,t.status);const cls=t.status==='done'?'done':od?'r':'b';
+  return `<div class="item ${cls}"><span>${t.status==='done'?'✓ ':''}${t.text}</span><span class="x">${t.status==='done'?T('done','પૂર્ણ')+' '+t.closedOn:(od?T('overdue','મુદત વીતી')+' ':T('due','મુદત')+' ')+t.due}</span></div>`;}
+
+/* ---- TL / Teacher detail ---- */
+function myToday(){return DB.entries.find(e=>e.userId===CUR&&e.date===today());}
+function detailRole(role,sec){
+  if(sec==='diary')return detailDiary(role);
+  if(sec==='tasks')return detailTasks();
+  if(sec==='actions')return detailMyActions();
+  if(sec==='teachers')return detailMyTeachers();
+  if(sec==='logs')return detailMyLogs();
+  return detailDiary(role);
+}
+function detailDiary(role){
+  const e=myToday();const user=u(CUR);
+  let punch;
+  if(!e)punch=`<button class="btn block" onclick="punchIn()"><i class="ti ti-clock-play"></i> ${T('Punch In','પંચ ઇન')}</button>`;
+  else if(!e.punchOut)punch=`<div class="punchstat"><span class="pill g">✓ ${T('Punched in','પંચ-ઇન')} ${e.punchIn}</span></div><button class="btn out block" onclick="punchOut()"><i class="ti ti-clock-stop"></i> ${T('Punch Out','પંચ આઉટ')}</button>`;
+  else punch=`<div class="punchstat"><span class="pill g">✓ ${T('In','ઇન')} ${e.punchIn}</span><span class="pill b">${T('Out','આઉટ')} ${e.punchOut}</span></div>`;
+  const gps=e&&e.gps?`<div class="gps"><i class="ti ti-map-pin"></i> ${T('Location','સ્થાન')}: ${(+e.gps.lat).toFixed(4)}, ${(+e.gps.lng).toFixed(4)} <span class="pill b">±${e.gps.acc}m</span> <a href="https://maps.google.com/?q=${e.gps.lat},${e.gps.lng}" target="_blank" style="margin-left:auto;color:var(--gB-tx);font-weight:700">${T('Map','નકશો')}</a></div>`:`<div class="gps" id="gpsBox"><i class="ti ti-map-pin"></i> ${T('Tap Punch In to capture GPS','GPS માટે પંચ-ઇન દબાવો')}</div>`;
+  let form;
+  if(role==='TL'){
+    const chk=(e&&e.schools&&e.schools.length)?e.schools:(e&&e.visited?e.visited.split('; ').map(s=>s.trim()).filter(Boolean):[]);
+    const schoolCbs=DB.schools.map(x=>`<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500;margin:0 14px 6px 0;cursor:pointer"><input type="checkbox" class="d_school_cb" value="${x}" ${chk.includes(x)?'checked':''} style="width:auto;padding:0">${x}</label>`).join('');
+    const purpOpts=PURPOSES.map(p=>`<option ${e&&e.purpose===p?'selected':''}>${p}</option>`).join('');
+    const metChk=(e&&e.met)||[];
+    const metCbs=PEOPLE_MET.map(p=>`<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500;margin:0 14px 6px 0;cursor:pointer"><input type="checkbox" class="d_met_cb" value="${p}" ${metChk.includes(p)?'checked':''} style="width:auto;padding:0">${p}</label>`).join('');
+    form=`
+    <label>${T('Schools visited today','આજે મુલાકાત લીધેલી શાળાઓ')}</label><div style="display:flex;flex-wrap:wrap;padding:4px 2px">${schoolCbs}</div>
+    <label>${T('Purpose of visit','મુલાકાતનો હેતુ')}</label><select id="d_purpose" class="fld">${purpOpts}</select>
+    <label>${T('People met','મળેલા લોકો')}</label><div style="display:flex;flex-wrap:wrap;padding:4px 2px">${metCbs}</div>
+    <label>${T('Daily Diary (today\'s log)','દૈનિક ડાયરી (આજનો લોગ)')}</label><textarea id="d_obs" rows="6" placeholder="${T('Write what you did today — visits, observations, meetings, issues. Gujarati is fine.','આજે શું કર્યું તે લખો — મુલાકાત, અવલોકન, મીટિંગ, સમસ્યા. ગુજરાતી ચાલશે.')}">${e&&e.observation||''}</textarea>`;}
+  else{const opts=DB.schools.map(x=>`<option ${e&&e.school===x?'selected':''}>${x}</option>`).join('');
+    form=`<label>${T('School','શાળા')}</label><select id="d_school" class="fld">${opts}</select>
+    <label>${T('Topic taught','ભણાવેલ વિષય')}</label><input id="d_topic" value="${e&&e.topic||''}">
+    <div class="row"><div><label>${T('Present','હાજર')}</label><input id="d_present" type="number" value="${e&&e.present||''}"></div><div><label>${T('Total','કુલ')}</label><input id="d_total" type="number" value="${e&&e.total||''}"></div></div>
+    <label>${T('Work summary','કાર્ય સારાંશ')}</label><textarea id="d_sum">${e&&e.summary||''}</textarea>
+    <label>${T('Challenge','પડકાર')}</label><textarea id="d_chal">${e&&e.challenge||''}</textarea>`;}
+  return `<div class="dhead"><div><div class="dh-name">${T('Punch & Daily Diary','પંચ અને દૈનિક ડાયરી')}</div><div class="dh-sub">${T('Today','આજે')} · ${today()}</div></div></div>
+    <div class="card"><h3><i class="ti ti-clock"></i>${T('Attendance','હાજરી')}</h3>${punch}${gps}</div>
+    <div class="card"><h3><i class="ti ti-pencil"></i>${T('Daily Diary','દૈનિક ડાયરી')}</h3>${form}
+      <button class="btn block" style="margin-top:16px" onclick="saveDiary()">${T('Save Diary Entry','ડાયરી સાચવો')}</button></div>`;
+}
+function detailTasks(){
+  const tks=DB.tasks.filter(t=>t.tlid===CUR);
+  return `<div class="dhead"><div><div class="dh-name">${T('Tasks from Program Manager','પ્રોગ્રામ મેનેજર તરફથી કાર્ય')}</div><div class="dh-sub">${tks.filter(t=>t.status==='open').length} ${T('open','ખુલ્લા')}</div></div></div>
+    <div class="card">${tks.length?tks.sort((a,b)=>(a.status>b.status?1:-1)).map(t=>{const od=overdue(t.due,t.status);const cls=t.status==='done'?'done':od?'r':'b';return `<div class="item ${cls}"><span>${t.status==='done'?'✓ ':''}${t.text}</span><span class="x">${t.status==='done'?T('done','પૂર્ણ'):(od?T('overdue','મુદત વીતી')+' ':T('due','મુદત')+' ')+t.due}</span>${t.status==='open'?`<button class="btn sm" style="margin-left:8px" onclick="completeTask('${t.id}')">${T('Done','થયું')}</button>`:''}</div>`;}).join(''):`<div class="empty">${T('No tasks from PM right now.','હાલ કોઈ કાર્ય નથી.')}</div>`}</div>`;
+}
+function detailMyActions(){
+  const acts=[];DB.entries.filter(e=>e.userId===CUR).forEach(e=>(e.actions||[]).forEach((a,i)=>{if(a.status==='open')acts.push({a,eid:e.id,i});}));
+  return `<div class="dhead"><div><div class="dh-name">${T('My action items','મારા એક્શન આઇટમ')}</div><div class="dh-sub">${acts.length} ${T('open','ખુલ્લા')}</div></div></div>
+    <div class="card">${acts.length?acts.sort((x,y)=>x.a.due.localeCompare(y.a.due)).map(o=>`<div class="item ${overdue(o.a.due,'open')?'r':''}"><span>${o.a.text}</span><span class="x">${overdue(o.a.due,'open')?'⚠ ':''}${o.a.due}</span><button class="btn sm" style="margin-left:8px" onclick="closeAction('${o.eid}',${o.i})">${T('Done','થયું')}</button></div>`).join(''):`<div class="empty">${T('No open action items 🎉','કોઈ ખુલ્લા એક્શન નથી')}</div>`}</div>`;
+}
+function detailMyTeachers(){
+  const teachers=DB.users.filter(x=>x.tl===CUR);
+  return `<div class="dhead"><div><div class="dh-name">${T('My teachers','મારા શિક્ષકો')}</div><div class="dh-sub">${teachers.length} ${T('teachers','શિક્ષક')}</div></div></div>
+    <div class="card">${teachers.length?teachers.map(t=>{const e=DB.entries.find(x=>x.userId===t.id&&x.date===today());let st;if(!e)st=`<span class="pill r">${T('Not punched in','પંચ-ઇન નથી')}</span>`;else if(!e.summary)st=`<span class="pill a">${T('No diary','ડાયરી નથી')}</span>`;else st=`<span class="pill g">${T('Active','સક્રિય')}</span>`;const att=e&&e.present!==''?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:'';return `<div class="entry"><div class="top"><span style="color:var(--ink);font-weight:700">${t.name} · ${e?e.school||'—':T('No activity','પ્રવૃત્તિ નથી')}</span><span>${st} ${att}</span></div>${e&&e.summary?`<div class="body">${e.summary}${e.challenge&&e.challenge!=='None.'?` · <span class="warnline">${e.challenge}</span>`:''}</div>`:''}</div>`;}).join(''):`<div class="empty">${T('No teachers assigned.','કોઈ શિક્ષક નથી.')}</div>`}</div>`;
+}
+function detailMyLogs(){
+  const list=DB.entries.filter(e=>e.userId===CUR).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12);const role=u(CUR).role;
+  return `<div class="dhead"><div><div class="dh-name">${T('My logs','મારા લોગ')}</div><div class="dh-sub">${T('Recent entries','તાજેતરની નોંધો')}</div></div></div>
+    <div class="card">${list.length?list.map(e=>{const body=role==='TL'?`${e.summary||''}${e.observation?`<div class="gu-rem muted" style="margin-top:3px">${e.observation}</div>`:''}`:`${e.topic?`<b>${e.topic}</b> `:''}${e.present!==''?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:''}`;return `<div class="entry"><div class="top"><span>${e.date} · ${e.school||e.visited||''}</span><span>${e.punchIn||'—'} → ${e.punchOut||T('open','ચાલુ')}</span></div><div class="body">${body}</div></div>`;}).join(''):`<div class="empty">${T('No entries yet.','હજુ નોંધ નથી.')}</div>`}</div>`;
+}
+
+/* ===================== ACTIONS ===================== */
+function getGPS(cb){const b=document.getElementById('gpsBox');if(b)b.innerHTML='<i class="ti ti-map-pin"></i> '+T('Getting GPS…','GPS મેળવી રહ્યા…');if(!navigator.geolocation){cb({lat:21.63,lng:73.59,acc:999});return;}navigator.geolocation.getCurrentPosition(p=>cb({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy)}),()=>{toast(T('GPS denied — approx','GPS નકાર્યું'));cb({lat:21.63,lng:73.59,acc:999});},{enableHighAccuracy:true,timeout:8000});}
+function punchIn(){getGPS(g=>{const user=u(CUR);const ne={id:CUR+'-'+today(),userId:CUR,date:today(),role:user.role,punchIn:nowHM(),punchOut:'',gps:g,visited:'',visitedCount:0,schools:[],purpose:'',met:[],observation:'',summary:'',school:'',topic:'',present:'',total:'',challenge:'',actions:[]};DB.entries.push(ne);save();pushLog(ne);toast(T('Punched in ✓','પંચ-ઇન ✓'));renderAll();});}
+function punchOut(){const e=myToday();if(e){e.punchOut=nowHM();save();pushLog(e);toast(T('Punched out ✓','પંચ-આઉટ ✓'));renderAll();}}
+const val=id=>{const el=document.getElementById(id);return el?el.value:'';};
+function saveDiary(){let e=myToday();if(!e){toast(T('Punch In first','પહેલા પંચ-ઇન'));return;}const role=u(CUR).role;
+  if(role==='TL'){const schools=Array.from(document.querySelectorAll('.d_school_cb:checked')).map(c=>c.value);
+    e.schools=schools;e.visited=schools.join('; ');e.visitedCount=schools.length;e.purpose=val('d_purpose');
+    e.met=Array.from(document.querySelectorAll('.d_met_cb:checked')).map(c=>c.value);
+    e.observation=val('d_obs');e.summary=val('d_obs');}
+  else{e.school=val('d_school');e.topic=val('d_topic');e.present=val('d_present');e.total=val('d_total');e.summary=val('d_sum');e.challenge=val('d_chal');}
+  save();pushLog(e);toast(T('Diary saved ✓','ડાયરી સાચવી ✓'));renderAll();}
+function closeAction(eid,i){const e=DB.entries.find(x=>x.id===eid);if(e&&e.actions[i]){e.actions[i].status='done';e.actions[i].closedOn=realToday();save();toast(T('Marked done ✓','થયું ✓'));renderAll();}}
+function completeTask(id){const t=DB.tasks.find(x=>x.id===id);if(t){t.status='done';t.closedOn=realToday();save();pushTask(t);toast(T('Task done ✓','કાર્ય પૂર્ણ ✓'));renderAll();}}
+function openModal(tlid){TASK_TL=tlid;document.getElementById('m_tl').textContent=u(tlid).name;document.getElementById('m_text').value='';document.getElementById('m_due').value=addDays(realToday(),5);document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+function saveTask(){const text=document.getElementById('m_text').value.trim();const due=document.getElementById('m_due').value;if(!text){toast(T('Enter a task','કાર્ય લખો'));return;}const t={id:'tk'+Date.now(),tlid:TASK_TL,text,created:realToday(),due:due||addDays(realToday(),5),status:'open',closedOn:null};DB.tasks.push(t);save();pushTask(t);closeModal();toast(T('Task assigned ✓','કાર્ય સોંપ્યું ✓'));renderAll();}
+
+/* ===================== INIT ===================== */
+(function boot(){
+  if(AUTH){
+    AUTH.onAuthStateChanged(function(user){
+      if(user){var ph=(user.email||'').split('@')[0];var usr=DB.users.find(function(x){return x.phone===ph;});
+        if(usr){var o=document.getElementById('loginOverlay');if(o)o.style.display='none';startSession(usr.id);}
+        else{AUTH.signOut();showLogin();}}
+      else{showLogin();}
+    });
+  } else { showLogin(); }
+})();
+
+</script>
+</body>
+</html>
