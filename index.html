@@ -297,7 +297,7 @@ if(!DB||!DB.seeded){DB=seed();save();}
   if(changed)save();
 })();
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
-const today=()=>DB.days[DB.days.length-1];
+const today=()=>dstr(new Date());
 const realToday=()=>dstr(new Date());
 const nowHM=()=>new Date().toTimeString().slice(0,5);
 const u=id=>DB.users.find(x=>x.id===id);
@@ -305,7 +305,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return n.replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null;
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -337,7 +337,7 @@ const ragWord=r=>r==='r'?T('Needs attention','ધ્યાન જરૂરી'):
 function buildUserSel(){const s=document.getElementById('userSel');s.innerHTML='';
   const ord=DB.users.filter(x=>x.role==='PM').concat(DB.users.filter(x=>x.role==='TL'),DB.users.filter(x=>x.role==='Teacher'));
   ord.forEach(x=>{const o=document.createElement('option');o.value=x.id;o.textContent=`${x.name} · ${x.role}`;s.appendChild(o);});s.value=CUR;}
-function switchUser(){CUR=document.getElementById('userSel').value;const r=u(CUR).role;SEL=r==='PM'?'overview':'diary';renderAll();}
+function switchUser(){CUR=document.getElementById('userSel').value;const r=u(CUR).role;SEL=r==='PM'?'overview':'diary';SELDATE=null;renderAll();}
 
 /* ===================== RENDER ROOT ===================== */
 function renderAll(){renderMaster();renderDetail();renderBell();updateNetStatus();}
@@ -374,7 +374,7 @@ function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim
   if(!AUTH){err.textContent=T('Login service unavailable — check your internet.','લોગિન સેવા ઉપલબ્ધ નથી.');return;}
   err.textContent=T('Signing in…','સાઇન ઇન થઈ રહ્યું…');
   AUTH.signInWithEmailAndPassword(ph+AUTH_DOMAIN, PWD_PREFIX+pw).catch(function(e){err.textContent=T('Wrong mobile number or password.','ખોટો મોબાઇલ નંબર અથવા પાસવર્ડ.');});}
-function startSession(id){CUR=id;const r=u(id).role;SEL=r==='PM'?'overview':'diary';buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();}}
+function startSession(id){CUR=id;const r=u(id).role;SEL=r==='PM'?'overview':'diary';SELDATE=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();}}
 function logout(){if(AUTH)AUTH.signOut();CUR=null;showLogin();}
 function selectItem(k){SEL=k;document.getElementById('detail').scrollTop=0;renderAll();}
 
@@ -414,6 +414,7 @@ function masterPM(){
     </div>
     ${ov}
     ${ins}
+    <div class="mrow ${SEL==='teachers'||(u(SEL)&&u(SEL).role==='Teacher')?'sel':''}" onclick="selectItem('teachers')"><div class="ava n" style="background:#eef1f5;color:var(--muted)"><i class="ti ti-users"></i></div><div class="mr-mid"><div class="mr-name">${T('Teachers','શિક્ષકો')}</div><div class="mr-sub">${T('All teachers daily work','બધા શિક્ષકોનું કામ')}</div></div></div>
     <div class="mlabel">${T('Team leaders','ટીમ લીડર')} · ${all.length}</div>
     ${rows}`;
 }
@@ -442,7 +443,7 @@ function masterNav(role){
 /* ----- DETAIL ----- */
 function renderDetail(){
   const role=u(CUR).role;const d=document.getElementById('detail');
-  if(role==='PM'){d.innerHTML=SEL==='overview'?detailOverview():SEL==='insights'?detailInsights():detailTL(SEL);if(SEL==='insights')aiGenerate();}
+  if(role==='PM'){d.innerHTML=SEL==='overview'?detailOverview():SEL==='insights'?detailInsights():SEL==='teachers'?detailAllTeachers():(u(SEL)&&u(SEL).role==='Teacher')?detailTeacher(SEL):detailTL(SEL);if(SEL==='insights')aiGenerate();}
   else d.innerHTML=detailRole(role,SEL);
 }
 
@@ -603,7 +604,7 @@ function detailTL(tlid){
     <div class="card"><h3><i class="ti ti-history"></i>${T('Recent daily logs','તાજેતરના લોગ')}</h3>
       ${s.es.slice(0,6).map(en=>`<div class="entry"><div class="top"><span>${en.date} · ${en.visited}</span><span>${en.punchIn} → ${en.punchOut||'…'}</span></div><div class="body">${en.observation?`<span class="gu-rem">${en.observation}</span>`:`<span class="warnline">${T('No remark logged','અવલોકન નથી')}</span>`}${(en.purpose||(en.met&&en.met.length))?`<div class="muted" style="font-size:12.5px;margin-top:4px">${en.purpose?`${T('Purpose','હેતુ')}: ${en.purpose}`:''}${en.purpose&&en.met&&en.met.length?' · ':''}${en.met&&en.met.length?`${T('Met','મળ્યા')}: ${en.met.join(', ')}`:''}</div>`:''}</div></div>`).join('')||`<div class="empty">${T('No logs.','કોઈ લોગ નથી.')}</div>`}</div>
     <div class="card"><h3><i class="ti ti-users"></i>${T('Teachers under this TL','આ TL હેઠળ શિક્ષકો')} · ${s.teachers.length}</h3>
-      ${s.teachers.map(t=>{const te=DB.entries.find(x=>x.userId===t.id&&x.date===today());return `<div class="entry"><div class="top"><span style="color:var(--ink);font-weight:700">${t.name}</span><span>${te?`<span class="pill g">${T('active today','આજે સક્રિય')}</span>`:`<span class="pill n">${T('inactive','નિષ્ક્રિય')}</span>`}</span></div>${te&&te.present!==''?`<div class="body"><span class="pill b">${T('Att','હાજરી')} ${te.present}/${te.total}</span> ${te.topic||''}</div>`:''}</div>`;}).join('')||`<div class="empty">${T('No teachers mapped.','કોઈ શિક્ષક નથી.')}</div>`}</div>`;
+      ${s.teachers.map(t=>{const te=DB.entries.find(x=>x.userId===t.id&&x.date===today());return `<div class="entry" style="cursor:pointer" onclick="selectItem('${t.id}')"><div class="top"><span style="color:var(--ink);font-weight:700">${t.name} <i class="ti ti-chevron-right muted" style="font-size:12px"></i></span><span>${te?`<span class="pill g">${T('active today','આજે સક્રિય')}</span>`:`<span class="pill n">${T('inactive','નિષ્ક્રિય')}</span>`}</span></div>${te&&te.present!==''?`<div class="body"><span class="pill b">${T('Att','હાજરી')} ${te.present}/${te.total}</span> ${te.topic||''}</div>`:''}</div>`;}).join('')||`<div class="empty">${T('No teachers mapped.','કોઈ શિક્ષક નથી.')}</div>`}</div>`;
 }
 function logBlock(e){if(!e)return `<div class="empty">${T('No log submitted today.','આજે કોઈ લોગ નથી.')}</div>`;
   return `<div class="entry"><div class="top"><span>⏱ ${e.punchIn} → ${e.punchOut||T('still in','ચાલુ')} · <a href="https://maps.google.com/?q=${e.gps.lat},${e.gps.lng}" target="_blank" style="color:var(--gB-tx)"><i class="ti ti-map-pin"></i> ${T('map','નકશો')}</a></span><span>${e.visitedCount} ${T('school(s)','શાળા')}</span></div>
@@ -611,8 +612,28 @@ function logBlock(e){if(!e)return `<div class="empty">${T('No log submitted toda
 function taskItem(t){const od=overdue(t.due,t.status);const cls=t.status==='done'?'done':od?'r':'b';
   return `<div class="item ${cls}"><span>${t.status==='done'?'✓ ':''}${t.text}</span><span class="x">${t.status==='done'?T('done','પૂર્ણ')+' '+t.closedOn:(od?T('overdue','મુદત વીતી')+' ':T('due','મુદત')+' ')+t.due}</span></div>`;}
 
+function detailAllTeachers(){
+    var teachers=DB.users.filter(function(x){return x.role==='Teacher';});
+    var td=today();
+    var rows=teachers.map(function(t){
+      var tl=u(t.tl);
+      var e=DB.entries.find(function(x){return x.userId===t.id&&x.date===td;});
+      var st=e?`<span class="pill g">${T('Logged today','આજે લોગ')}</span>`:`<span class="pill r">${T('No log today','આજે લોગ નથી')}</span>`;
+      var att=(e&&e.present!==''&&e.present!=null)?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:'';
+      return `<div class="mrow" style="border:1px solid var(--line);margin-bottom:8px;cursor:pointer" onclick="selectItem('${t.id}')"><div class="ava g">${initials(t.name)}</div><div class="mr-mid"><div class="mr-name">${t.name}</div><div class="mr-sub">${T('under','હેઠળ')} ${tl?tl.name:'-'}${e&&e.school?' · '+e.school:''}</div></div><div class="mr-right">${st} ${att}</div></div>`;
+    }).join('')||`<div class="empty">${T('No teachers yet.','હજુ કોઈ શિક્ષક નથી.')}</div>`;
+    return `<div class="dhead"><div><div class="dh-name">${T('Teachers','શિક્ષકો')}</div><div class="dh-sub">${teachers.length} ${T('teachers · tap to open diary','શિક્ષક · ડાયરી માટે ટેપ કરો')}</div></div></div><div class="card">${rows}</div>`;
+  }
+function detailTeacher(tid){
+    var t=u(tid);if(!t)return '';var tl=u(t.tl);
+    var es=DB.entries.filter(function(e){return e.userId===tid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,14);
+    var td=today();var e=es.find(function(x){return x.date===td;});
+    var tiles=`<div class="card"><div class="tiles"><div class="tile ${e?'g':'r'}"><div class="v">${e?'✓':'✗'}</div><div class="l">${T('Logged today','આજે લોગ')}</div></div><div class="tile"><div class="v">${es.length}</div><div class="l">${T('Recent entries','તાજેતરની નોંધ')}</div></div><div class="tile"><div class="v">${(e&&e.present!==''&&e.present!=null)?e.present+'/'+e.total:'-'}</div><div class="l">${T('Attendance today','આજે હાજરી')}</div></div></div></div>`;
+    var list=es.length?es.map(function(en){return `<div class="entry"><div class="top"><span>${en.date} · ${en.school||'-'}</span><span>${en.punchIn||'-'} → ${en.punchOut||T('open','ચાલુ')}</span></div><div class="body">${en.topic?'<b>'+en.topic+'</b> ':''}${(en.present!==''&&en.present!=null)?`<span class="pill b">${T('Att','હાજરી')} ${en.present}/${en.total}</span>`:''}${en.summary?'<div style="margin-top:4px">'+en.summary+'</div>':''}${(en.challenge&&en.challenge!=='None.')?'<div class="warnline" style="margin-top:3px">'+en.challenge+'</div>':''}</div></div>`;}).join(''):`<div class="empty">${T('No entries yet.','હજુ નોંધ નથી.')}</div>`;
+    return `<div class="dhead"><div class="ava g">${initials(t.name)}</div><div style="flex:1;min-width:0"><div class="dh-name">${t.name}</div><div class="dh-sub">${T('Teacher','શિક્ષક')} · ${T('under','હેઠળ')} ${tl?tl.name:'-'}</div></div><button class="btn sm ghost" style="width:auto" onclick="selectItem('teachers')">${T('All teachers','બધા શિક્ષકો')}</button></div>${tiles}<div class="card"><h3><i class="ti ti-history"></i> ${T('Daily diary entries','દૈનિક ડાયરી')}</h3>${list}</div>`;
+  }
 /* ---- TL / Teacher detail ---- */
-function myToday(){return DB.entries.find(e=>e.userId===CUR&&e.date===today());}
+function myToday(){return DB.entries.find(e=>e.userId===CUR&&e.date===selDate());}
 function detailRole(role,sec){
   if(sec==='diary')return detailDiary(role);
   if(sec==='tasks')return detailTasks();
@@ -646,7 +667,7 @@ function detailDiary(role){
     <div class="row"><div><label>${T('Present','હાજર')}</label><input id="d_present" type="number" value="${e&&e.present||''}"></div><div><label>${T('Total','કુલ')}</label><input id="d_total" type="number" value="${e&&e.total||''}"></div></div>
     <label>${T('Work summary','કાર્ય સારાંશ')}</label><textarea id="d_sum">${e&&e.summary||''}</textarea>
     <label>${T('Challenge','પડકાર')}</label><textarea id="d_chal">${e&&e.challenge||''}</textarea>`;}
-  return `<div class="dhead"><div><div class="dh-name">${T('Punch & Daily Diary','પંચ અને દૈનિક ડાયરી')}</div><div class="dh-sub">${T('Today','આજે')} · ${today()}</div></div></div>
+  return `<div class="dhead"><div><div class="dh-name">${T('Punch & Daily Diary','પંચ અને દૈનિક ડાયરી')}</div><div class="dh-sub">${selDate()===today()?T('Today','આજે'):T('Back-dated','પાછલી તારીખ')} · ${selDate()}</div></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto"><label style="margin:0;font-size:12.5px;color:var(--muted)">${T('Date','તારીખ')}</label><input type="date" id="d_date" value="${selDate()}" max="${today()}" onchange="changeDate(this.value)" style="width:auto"></div></div>
     <div class="card"><h3><i class="ti ti-clock"></i>${T('Attendance','હાજરી')}</h3>${punch}${gps}</div>
     <div class="card"><h3><i class="ti ti-pencil"></i>${T('Daily Diary','દૈનિક ડાયરી')}</h3>${form}
       <button class="btn block" style="margin-top:16px" onclick="saveDiary()">${T('Save Diary Entry','ડાયરી સાચવો')}</button></div>`;
@@ -674,7 +695,7 @@ function detailMyLogs(){
 
 /* ===================== ACTIONS ===================== */
 function getGPS(cb){const b=document.getElementById('gpsBox');if(b)b.innerHTML='<i class="ti ti-map-pin"></i> '+T('Getting GPS…','GPS મેળવી રહ્યા…');if(!navigator.geolocation){cb({lat:21.63,lng:73.59,acc:999});return;}navigator.geolocation.getCurrentPosition(p=>cb({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy)}),()=>{toast(T('GPS denied — approx','GPS નકાર્યું'));cb({lat:21.63,lng:73.59,acc:999});},{enableHighAccuracy:true,timeout:8000});}
-function punchIn(){getGPS(g=>{const user=u(CUR);const ne={id:CUR+'-'+today(),userId:CUR,date:today(),role:user.role,punchIn:nowHM(),punchOut:'',gps:g,visited:'',visitedCount:0,schools:[],purpose:'',met:[],observation:'',summary:'',school:'',topic:'',present:'',total:'',challenge:'',actions:[]};DB.entries.push(ne);save();pushLog(ne);toast(T('Punched in ✓','પંચ-ઇન ✓'));renderAll();});}
+function punchIn(){getGPS(g=>{const user=u(CUR);const ne={id:CUR+'-'+selDate(),userId:CUR,date:selDate(),role:user.role,punchIn:nowHM(),punchOut:'',gps:g,visited:'',visitedCount:0,schools:[],purpose:'',met:[],observation:'',summary:'',school:'',topic:'',present:'',total:'',challenge:'',actions:[]};DB.entries.push(ne);save();pushLog(ne);toast(T('Punched in ✓','પંચ-ઇન ✓'));renderAll();});}
 function punchOut(){const e=myToday();if(e){e.punchOut=nowHM();save();pushLog(e);toast(T('Punched out ✓','પંચ-આઉટ ✓'));renderAll();}}
 const val=id=>{const el=document.getElementById(id);return el?el.value:'';};
 function saveDiary(){let e=myToday();if(!e){toast(T('Punch In first','પહેલા પંચ-ઇન'));return;}const role=u(CUR).role;
