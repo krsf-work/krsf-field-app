@@ -657,13 +657,13 @@ function setupView(){
       var r=ttRowFor(tt,sl)||{};
       var stdOpts=`<option value="">—</option>`+STDS.map(function(o){return `<option ${r.std===o?'selected':''}>${o}</option>`;}).join('');
       var subOpts=`<option value="">—</option>`+SUBJECTS.map(function(o){return `<option ${r.subject===o?'selected':''}>${o}</option>`;}).join('');
-      return `<tr><td style="white-space:nowrap;font-weight:600">${sl}</td><td><select id="su_std_${i}" class="fld" style="padding:6px 8px">${stdOpts}</select></td><td><select id="su_sub_${i}" class="fld" style="padding:6px 8px" onchange="setupTotal()">${subOpts}</select></td></tr>`;
+      return `<tr><td style="white-space:nowrap;font-weight:600">${sl}</td><td><select id="su_sub_${i}" class="fld" style="padding:6px 8px" onchange="setupTotal()">${subOpts}</select></td><td><select id="su_std_${i}" class="fld" style="padding:6px 8px">${stdOpts}</select></td></tr>`;
     }).join('');
     return `<div class="dhead"><div><div class="dh-name">${T('Class setup','વર્ગ સેટઅપ')}</div><div class="dh-sub">${T('Set once — your school & timetable','એક વાર સેટ કરો — શાળા અને સમયપત્રક')}</div></div></div>
       <div class="card"><h3><i class="ti ti-school"></i>${T('School','શાળા')}</h3><input id="su_school" class="fld" list="su_school_dl" value="${u0.setupSchool||''}" placeholder="${T('Type your school name','તમારી શાળાનું નામ લખો')}"><datalist id="su_school_dl">${dl}</datalist></div>
       <div class="card"><h3><i class="ti ti-table"></i>${T('Timetable','સમયપત્રક')}</h3>
-        <div class="muted" style="font-size:12.5px;margin-bottom:6px">${T('For each slot you teach, pick Standard then Subject. Leave blank if free.','જે સ્લોટમાં ભણાવો ત્યાં ધોરણ અને વિષય પસંદ કરો.')}</div>
-        <table style="font-size:13px"><thead><tr><th>${T('Time','સમય')}</th><th>${T('Standard','ધોરણ')}</th><th>${T('Subject','વિષય')}</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="muted" style="font-size:12.5px;margin-bottom:6px">આ એક જ વખતનું કામ છે — દરરોજ ભરવાની જરૂર નથી. જે સમય-સ્લોટમાં તમે વર્ગ લો છો, ત્યાં વિષય અને પછી ધોરણ પસંદ કરો. બાકીના સ્લોટ ખાલી રાખો.</div>
+        <table style="font-size:13px"><thead><tr><th>${T('Time','સમય')}</th><th>${T('Subject','વિષય')}</th><th>${T('Standard','ધોરણ')}</th></tr></thead><tbody>${rows}</tbody></table>
         <div style="margin-top:10px;font-weight:700;color:var(--brand-d)">${T('Total time taught','કુલ સમય')}: <span id="suTotal">${fmtMin(tt.length*30)}</span></div></div>
       <button class="btn block" onclick="saveSetup()">${T('Save setup','સેટઅપ સાચવો')}</button>
       <button class="btn ghost block" style="margin-top:10px" onclick="selectItem('diary')">${T('Skip for now — log today','હમણાં છોડો — આજનું ભરો')}</button>`;
