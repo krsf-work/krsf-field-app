@@ -681,7 +681,7 @@ function detailRole(role,sec){
   if(sec==='setup')return setupView();if(sec==='logs')return detailMyLogs();
   return detailDiary(role);
 }
-function detailDiaryNew(role){
+function detailDiary(role){
     if(role==='Teacher'&&!hasSetup(CUR))return setupView();
     const e=myToday();const user=u(CUR);
     let punch;
@@ -735,7 +735,7 @@ function getGPS(cb){const b=document.getElementById('gpsBox');if(b)b.innerHTML='
 function punchIn(){getGPS(g=>{const user=u(CUR);const ne={id:CUR+'-'+selDate(),userId:CUR,date:selDate(),role:user.role,punchIn:nowHM(),punchOut:'',gps:g,visited:'',visitedCount:0,schools:[],purpose:'',met:[],observation:'',summary:'',school:'',topic:'',present:'',total:'',challenge:'',actions:[]};DB.entries.push(ne);save();pushLog(ne);toast(T('Punched in ✓','પંચ-ઇન ✓'));renderAll();});}
 function punchOut(){const e=myToday();if(e){e.punchOut=nowHM();save();pushLog(e);toast(T('Punched out ✓','પંચ-આઉટ ✓'));renderAll();}}
 const val=id=>{const el=document.getElementById(id);return el?el.value:'';};
-function saveDiaryNew(){let e=myToday();if(!e){toast(T('Punch In first','પહેલા પંચ-ઇન'));return;}const role=u(CUR).role;
+function saveDiary(){let e=myToday();if(!e){toast(T('Punch In first','પહેલા પંચ-ઇન'));return;}const role=u(CUR).role;
     if(role==='TL'){const schools=Array.from(document.querySelectorAll('.d_school_cb:checked')).map(c=>c.value);e.schools=schools;e.visited=schools.join('; ');e.visitedCount=schools.length;e.purpose=val('d_purpose');e.met=Array.from(document.querySelectorAll('.d_met_cb:checked')).map(c=>c.value);e.observation=val('d_obs');e.summary=val('d_obs');}
     else{var us=u(CUR);e.school=us.setupSchool||'';e.present=val('d_present');e.total=val('d_total');e.summary=val('d_sum');e.challenge=val('d_chal');e.timetable=us.setupTT||[];e.ttMinutes=ttMinFromTT(us.setupTT);}
     save();pushLog(e);toast(T('Diary saved ✓','ડાયરી સાચવી ✓'));renderAll();}
