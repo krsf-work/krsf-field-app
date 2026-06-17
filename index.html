@@ -381,7 +381,7 @@ function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim
   if(!AUTH){err.textContent=T('Login service unavailable — check your internet.','લોગિન સેવા ઉપલબ્ધ નથી.');return;}
   err.textContent=T('Signing in…','સાઇન ઇન થઈ રહ્યું…');
   AUTH.signInWithEmailAndPassword(ph+AUTH_DOMAIN, PWD_PREFIX+pw).catch(function(e){err.textContent=T('Wrong mobile number or password.','ખોટો મોબાઇલ નંબર અથવા પાસવર્ડ.');});}
-function startSession(id){CUR=id;const r=u(id).role;SEL=r==='PM'?'overview':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();}}
+function startSession(id){CUR=id;const r=u(id).role;SEL=r==='PM'?'overview':(r==='Teacher'&&!hasSetup(id))?'setup':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();}}
 function logout(){if(AUTH)AUTH.signOut();CUR=null;showLogin();}
 function selectItem(k){SETUP_TT=null;SEL=k;document.getElementById('detail').scrollTop=0;renderAll();}
 
@@ -671,7 +671,7 @@ function setupView(){
         <table style="font-size:13px"><thead><tr><th>${T('Start','શરૂ')}</th><th>${T('End','અંત')}</th><th>${T('Subject','વિષય')}</th><th>${T('Standard','ધોરણ')}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
         <button class="btn sm" style="width:auto;margin-top:10px" onclick="setupAddRow()"><i class="ti ti-plus"></i> ${T('Add period','પીરિયડ ઉમેરો')}</button>
         <div style="margin-top:10px;font-weight:700;color:var(--brand-d)">${T('Total time taught','કુલ સમય')}: <span id="suTotal">${fmtMin(ttMinFromTT(SETUP_TT))}</span></div></div>
-      <button class="btn block" onclick="saveSetup()">${T('Save setup','સેટઅપ સાચવો')}</button>`;
+      <button class="btn block" onclick="saveSetup()">${T('Save setup','સેટઅપ સાચવો')}</button><button class="btn ghost block" style="margin-top:10px" onclick="selectItem('diary')">${T('Skip for now — log today','હમણાં છોડો — આજનું ભરો')}</button>`;
   }
 function detailRole(role,sec){
   if(sec==='diary')return detailDiary(role);
