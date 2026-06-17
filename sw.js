@@ -1,4 +1,4 @@
-const CACHE='krsf-v2';
+const CACHE='krsf-v3';
 const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(CORE);}).then(function(){return self.skipWaiting();}));});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){if(k!==CACHE)return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});
@@ -10,8 +10,9 @@ self.addEventListener('fetch',function(e){
     e.respondWith(fetch(req).then(function(res){var c=res.clone();caches.open(CACHE).then(function(cc){cc.put('./index.html',c);});return res;}).catch(function(){return caches.match('./index.html');}));
     return;
   }
+  if(req.url.indexOf(self.location.origin)!==0)return;
   e.respondWith(caches.match(req).then(function(cached){
-    var net=fetch(req).then(function(res){if(res&&(res.status===200||res.type==='opaque')){var c=res.clone();caches.open(CACHE).then(function(cc){cc.put(req,c);});}return res;}).catch(function(){return cached;});
+    var net=fetch(req).then(function(res){if(res&&res.status===200&&res.type==='basic'){var c=res.clone();caches.open(CACHE).then(function(cc){cc.put(req,c);});}return res;}).catch(function(){return cached;});
     return cached||net;
   }));
 });
