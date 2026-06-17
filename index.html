@@ -642,36 +642,29 @@ function detailTeacher(tid){
 /* ---- TL / Teacher detail ---- */
 function myToday(){return DB.entries.find(e=>e.userId===CUR&&e.date===selDate());}
 var SETUP_TT=null;
-const DURATIONS=[30,35,40,45,50,60];
+const SLABS=['08:00-08:30','08:30-09:00','09:00-09:30','09:30-10:00','10:00-10:30','10:30-11:00','11:00-11:30','11:30-12:00','12:00-12:30','12:30-13:00','13:00-13:30','13:30-14:00','14:00-14:30','14:30-15:00','15:00-15:30','15:30-16:00','16:00-16:30','16:30-17:00'];
 function hasSetup(uid){var u0=u(uid);return !!(u0&&u0.setupSchool&&u0.setupTT&&u0.setupTT.length);}
-function ttDur(r){return r?(+r.dur||0):0;}
-function ttMinFromTT(tt){return (tt||[]).reduce(function(s,r){return s+ttDur(r);},0);}
+function ttMinFromTT(tt){return (tt||[]).length*30;}
+function ttRowFor(tt,time){tt=tt||[];for(var i=0;i<tt.length;i++){if(tt[i].time===time)return tt[i];}return null;}
 function pushSetup(uid){if(!FS||!uid)return;try{var u0=u(uid);FS.collection('setup').doc(String(uid)).set({school:u0.setupSchool||'',tt:u0.setupTT||[]});}catch(err){console.warn('pushSetup',err);}}
 async function loadSharedSetup(){if(!FS)return;try{var snap=await FS.collection('setup').get();snap.docs.forEach(function(d){var u0=u(d.id);if(u0){var v=d.data()||{};u0.setupSchool=v.school||u0.setupSchool||'';u0.setupTT=v.tt||u0.setupTT||[];}});save();renderAll();}catch(err){console.warn('loadSharedSetup',err);}}
-function setupInit(){var u0=u(CUR);SETUP_TT=(u0&&u0.setupTT)?JSON.parse(JSON.stringify(u0.setupTT)):[];if(!SETUP_TT.length){SETUP_TT.push({subject:'',std:'',dur:''});SETUP_TT.push({subject:'',std:'',dur:''});}}
-function setupSync(){for(var i=0;i<SETUP_TT.length;i++){var sub=val('su_sub_'+i);SETUP_TT[i]={subject:sub,std:sub==='FLN'?'':val('su_std_'+i),dur:val('su_dur_'+i)};}}
-function setupAddRow(){setupSync();SETUP_TT.push({subject:'',std:'',dur:''});renderDetail();}
-function setupDelRow(i){setupSync();SETUP_TT.splice(i,1);if(!SETUP_TT.length)SETUP_TT.push({subject:'',std:'',dur:''});renderDetail();}
-function setupTotal(){setupSync();var el=document.getElementById('suTotal');if(el)el.textContent=fmtMin(ttMinFromTT(SETUP_TT));}
-function setupSubChange(i){var sub=document.getElementById('su_sub_'+i),std=document.getElementById('su_std_'+i),na=document.getElementById('su_nostd_'+i);var fln=sub&&sub.value==='FLN';if(std)std.style.display=fln?'none':'';if(na)na.style.display=fln?'':'none';if(fln&&std)std.value='';}
-function saveSetup(){setupSync();var sc=val('su_school').trim();if(!sc){toast(T('Enter school name','શાળાનું નામ લખો'));return;}var rows=SETUP_TT.filter(function(r){return r.subject&&r.dur;});if(!rows.length){toast(T('Add at least one period','ઓછામાં ઓછો એક પીરિયડ ઉમેરો'));return;}var u0=u(CUR);u0.setupSchool=sc;u0.setupTT=rows;addSchool(sc);save();pushSetup(CUR);SETUP_TT=null;SEL='diary';toast(T('Setup saved ✓','સેટઅપ સાચવ્યું ✓'));renderAll();}
+function setupTotal(){var c=0;for(var i=0;i<SLABS.length;i++){var el=document.getElementById('su_sub_'+i);if(el&&el.value)c++;}var t=document.getElementById('suTotal');if(t)t.textContent=fmtMin(c*30);}
+function saveSetup(){var sc=val('su_school').trim();if(!sc){toast(T('Enter school name','શાળાનું નામ લખો'));return;}var rows=[];for(var i=0;i<SLABS.length;i++){var sub=val('su_sub_'+i);if(sub){rows.push({time:SLABS[i],std:val('su_std_'+i),subject:sub});}}if(!rows.length){toast(T('Pick at least one time slot','ઓછામાં ઓછો એક સ્લોટ પસંદ કરો'));return;}var u0=u(CUR);u0.setupSchool=sc;u0.setupTT=rows;addSchool(sc);save();pushSetup(CUR);SEL='diary';toast(T('Setup saved ✓','સેટઅપ સાચવ્યું ✓'));renderAll();}
 function setupView(){
-    if(SETUP_TT===null)setupInit();
-    var u0=u(CUR);
+    var u0=u(CUR);var tt=u0.setupTT||[];
     var dl=DB.schools.map(function(x){return `<option value="${x}"></option>`;}).join('');
-    var rows=SETUP_TT.map(function(r,i){
-      var subOpts=`<option value="">—</option>`+SUBJECTS.map(function(o){return `<option ${r.subject===o?'selected':''}>${o}</option>`;}).join('');
+    var rows=SLABS.map(function(sl,i){
+      var r=ttRowFor(tt,sl)||{};
       var stdOpts=`<option value="">—</option>`+STDS.map(function(o){return `<option ${r.std===o?'selected':''}>${o}</option>`;}).join('');
-      var durOpts=`<option value="">—</option>`+DURATIONS.map(function(o){return `<option value="${o}" ${(''+r.dur)===(''+o)?'selected':''}>${o} ${T('min','મિ')}</option>`;}).join('');
-      var fln=r.subject==='FLN';
-      return `<tr><td><select id="su_sub_${i}" class="fld" style="padding:7px 9px" onchange="setupSubChange(${i})">${subOpts}</select></td><td><select id="su_std_${i}" class="fld" style="padding:7px 9px;${fln?'display:none':''}">${stdOpts}</select><span id="su_nostd_${i}" class="muted" style="${fln?'':'display:none'}">${T('N/A','લાગુ નથી')}</span></td><td><select id="su_dur_${i}" class="fld" style="padding:7px 9px" onchange="setupTotal()">${durOpts}</select></td><td><button class="btn sm out" style="width:auto;padding:6px 9px" onclick="setupDelRow(${i})">✕</button></td></tr>`;
+      var subOpts=`<option value="">—</option>`+SUBJECTS.map(function(o){return `<option ${r.subject===o?'selected':''}>${o}</option>`;}).join('');
+      return `<tr><td style="white-space:nowrap;font-weight:600">${sl}</td><td><select id="su_std_${i}" class="fld" style="padding:6px 8px">${stdOpts}</select></td><td><select id="su_sub_${i}" class="fld" style="padding:6px 8px" onchange="setupTotal()">${subOpts}</select></td></tr>`;
     }).join('');
     return `<div class="dhead"><div><div class="dh-name">${T('Class setup','વર્ગ સેટઅપ')}</div><div class="dh-sub">${T('Set once — your school & timetable','એક વાર સેટ કરો — શાળા અને સમયપત્રક')}</div></div></div>
       <div class="card"><h3><i class="ti ti-school"></i>${T('School','શાળા')}</h3><input id="su_school" class="fld" list="su_school_dl" value="${u0.setupSchool||''}" placeholder="${T('Type your school name','તમારી શાળાનું નામ લખો')}"><datalist id="su_school_dl">${dl}</datalist></div>
       <div class="card"><h3><i class="ti ti-table"></i>${T('Timetable','સમયપત્રક')}</h3>
-        <table style="font-size:13px"><thead><tr><th>${T('Subject','વિષય')}</th><th>${T('Standard','ધોરણ')}</th><th>${T('Duration','સમય')}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-        <button class="btn sm" style="width:auto;margin-top:10px" onclick="setupAddRow()"><i class="ti ti-plus"></i> ${T('Add period','પીરિયડ ઉમેરો')}</button>
-        <div style="margin-top:10px;font-weight:700;color:var(--brand-d)">${T('Total time taught','કુલ સમય')}: <span id="suTotal">${fmtMin(ttMinFromTT(SETUP_TT))}</span></div></div>
+        <div class="muted" style="font-size:12.5px;margin-bottom:6px">${T('For each slot you teach, pick Standard then Subject. Leave blank if free.','જે સ્લોટમાં ભણાવો ત્યાં ધોરણ અને વિષય પસંદ કરો.')}</div>
+        <table style="font-size:13px"><thead><tr><th>${T('Time','સમય')}</th><th>${T('Standard','ધોરણ')}</th><th>${T('Subject','વિષય')}</th></tr></thead><tbody>${rows}</tbody></table>
+        <div style="margin-top:10px;font-weight:700;color:var(--brand-d)">${T('Total time taught','કુલ સમય')}: <span id="suTotal">${fmtMin(tt.length*30)}</span></div></div>
       <button class="btn block" onclick="saveSetup()">${T('Save setup','સેટઅપ સાચવો')}</button>
       <button class="btn ghost block" style="margin-top:10px" onclick="selectItem('diary')">${T('Skip for now — log today','હમણાં છોડો — આજનું ભરો')}</button>`;
   }
