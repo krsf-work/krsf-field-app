@@ -682,7 +682,7 @@ function detailRole(role,sec){
   return detailDiary(role);
 }
 function detailDiary(role){
-    if(role==='Teacher'&&!hasSetup(CUR))return setupView();
+    
     const e=myToday();const user=u(CUR);
     let punch;
     if(!e)punch=`<button class="btn block" onclick="punchIn()"><i class="ti ti-clock-play"></i> ${T('Punch In','પંચ ઇન')}</button>`;
@@ -705,7 +705,7 @@ function detailDiary(role){
     <label>${T('Work summary','આજના કામની નોંધ')}</label><textarea id="d_sum">${e&&e.summary||''}</textarea>
     <label>${T('Challenge','કોઈ સમસ્યા')}</label><textarea id="d_chal">${e&&e.challenge||''}</textarea>`;}
     return `<div class="dhead" style="flex-wrap:wrap"><div style="flex:1;min-width:0"><div class="dh-name">${T('Punch & Daily Diary','પંચ અને દૈનિક ડાયરી')}</div><div class="dh-sub">${selDate()===today()?T('Today','આજે'):T('Back-dated','પાછલી તારીખ')} · ${selDate()}</div></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto"><label style="margin:0;font-size:12.5px;color:var(--muted)">${T('Date','તારીખ')}</label><input type="date" id="d_date" value="${selDate()}" max="${today()}" onchange="changeDate(this.value)" style="width:auto"></div></div>
-    <div class="card"><h3><i class="ti ti-clock"></i>${T('Attendance','હાજરી')}</h3>${punch}${gps}</div>
+    ${(role==='Teacher'&&!hasSetup(CUR))?`<div class="card" style="background:var(--gA-bg);border:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><i class="ti ti-settings"></i><div style="flex:1;min-width:140px;font-size:13px">${T('Optional one-time: set your school & timetable.','એક વાર (વૈકલ્પિક): શાળા અને સમયપત્રક સેટ કરો.')}</div><button class="btn sm" style="width:auto" onclick="selectItem('setup')">${T('Set up','સેટઅપ')}</button></div>`:''}<div class="card"><h3><i class="ti ti-clock"></i>${T('Attendance','હાજરી')}</h3>${punch}${gps}</div>
     <div class="card"><h3><i class="ti ti-pencil"></i>${T('Daily Diary','દૈનિક ડાયરી')}</h3>${form}
       <button class="btn block" style="margin-top:16px" onclick="saveDiary()">${T('Save Diary Entry','ડાયરી સાચવો')}</button></div>`;
   }
