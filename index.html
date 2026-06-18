@@ -491,6 +491,10 @@ function buildBlocksFull(q){
   const tryAdd=line=>{ if(encodeURIComponent(JSON.stringify(out.concat([line]))).length<=BUDGET){ out.push(line); return true; } return false; };
   let stop=false;
   named.forEach(t=>{const es=entriesOf(t);for(let i=0;i<Math.min(15,es.length)&&!stop;i++){if(!tryAdd(lineFor(t.name,es[i])))stop=true;}});
+  const _tch=DB.users.filter(x=>x.role==='Teacher');
+  const _tline=(t,e)=>'TEACHER '+t.name+' (under '+((u(t.tl)&&u(t.tl).name)||'-')+') | '+e.date+' | school: '+(e.school||'-')+' | present/total: '+((e.present!==''&&e.present!=null)?e.present+'/'+e.total:'-')+' | work: '+String(e.summary||'-').slice(0,140)+' | challenge: '+String((e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?e.challenge:'-').slice(0,120);
+  if(_tch.length)tryAdd('TEACHERS ('+_tch.length+'): '+_tch.map(t=>t.name+(u(t.tl)?' /'+u(t.tl).name:'')).join(', '));
+  for(var _ti=0;_ti<_tch.length&&!stop;_ti++){var _tt=_tch[_ti];var _tes=DB.entries.filter(function(e){return e.userId===_tt.id;}).sort(function(a,b){return b.date.localeCompare(a.date);});if(_tes[0]&&!tryAdd(_tline(_tt,_tes[0])))stop=true;}
   const rest=tls.filter(t=>!named.includes(t)).map(t=>({name:t.name,es:entriesOf(t)}));
   for(let round=0;round<8&&!stop;round++){
     for(const p of rest){ if(p.es[round]){ if(!tryAdd(lineFor(p.name,p.es[round]))){stop=true;break;} } }
@@ -526,6 +530,7 @@ function buildBlocks(){
     if(tk.length)b+='Tasks from PM: '+tk.slice(0,3).join('; ')+'. ';
     return b;
   });
+  DB.users.filter(function(x){return x.role==='Teacher';}).forEach(function(tt){var es=DB.entries.filter(function(e){return e.userId===tt.id;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,2);if(!es.length)return;var b='TEACHER: '+tt.name+(u(tt.tl)?' (under '+u(tt.tl).name+')':'')+'. ';es.forEach(function(e){b+='['+e.date+' school: '+(e.school||'-')+' att: '+((e.present!==''&&e.present!=null)?e.present+'/'+e.total:'-')+' work: '+String(e.summary||'-').slice(0,80)+' challenge: '+String((e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?e.challenge:'-').slice(0,70)+'] ';});blocks.push(b);});
   while(blocks.length>1 && encodeURIComponent(JSON.stringify(blocks)).length>4800){ blocks.pop(); }
   return blocks;
 }
