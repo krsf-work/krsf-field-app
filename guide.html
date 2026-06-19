@@ -1,219 +1,113 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="gu">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>શિક્ષક માર્ગદર્શિકા — Krsf Field App</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KRSF — શિક્ષક માર્ગદર્શિકા</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Vadodara:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Hind Vadodara','Noto Sans Gujarati',sans-serif;background:#eef1f5;color:#1b2030;line-height:1.7;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:760px;margin:0 auto;padding:22px 16px 60px}
-  .head{background:#15803d;color:#fff;border-radius:16px;padding:22px 22px;margin-bottom:22px}
-  .head .logo{width:46px;height:46px;border-radius:12px;background:#fff;color:#15803d;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;margin-bottom:12px}
-  .head h1{font-size:24px;font-weight:700;line-height:1.3}
-  .head p{font-size:15px;opacity:.95;margin-top:4px}
-  .intro{background:#fff;border:1px solid #e6e9ef;border-radius:14px;padding:16px 18px;margin-bottom:24px;font-size:15.5px}
-  .intro b{color:#0f5f2e}
-  .step{background:#fff;border:1px solid #e6e9ef;border-radius:16px;padding:18px;margin-bottom:20px;display:flex;gap:16px;flex-wrap:wrap}
-  .step .num{flex-shrink:0;width:38px;height:38px;border-radius:50%;background:#15803d;color:#fff;font-weight:700;font-size:18px;display:flex;align-items:center;justify-content:center}
-  .step .body{flex:1;min-width:230px}
-  .step h2{font-size:19px;font-weight:600;color:#0f5f2e;margin-bottom:4px}
-  .step .when{display:inline-block;font-size:12.5px;font-weight:600;background:#eaf5ee;color:#0f5f2e;padding:2px 10px;border-radius:20px;margin-bottom:8px}
-  .step .when.daily{background:#fdf0dd;color:#854f0b}
-  .step .when.once{background:#e9f0fd;color:#1d4ed8}
-  .step ul{margin:6px 0 0 2px;list-style:none}
-  .step li{font-size:15.5px;margin-bottom:6px;padding-left:22px;position:relative}
-  .step li:before{content:"➜";position:absolute;left:0;color:#15803d;font-weight:700}
-  .btnname{display:inline-block;background:#15803d;color:#fff;font-weight:600;font-size:13px;padding:2px 9px;border-radius:6px;font-family:sans-serif;white-space:nowrap}
-  /* mock screen */
-  .screen{flex-shrink:0;width:228px;border:1px solid #d7dbe3;border-radius:16px;overflow:hidden;background:#eef1f5;align-self:flex-start}
-  .scr-top{background:#fff;border-bottom:1px solid #e6e9ef;padding:8px 10px;display:flex;align-items:center;gap:8px}
-  .scr-logo{width:24px;height:24px;border-radius:7px;background:#15803d;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
-  .scr-ttl{font-size:11px;font-weight:600;color:#1b2030}
-  .scr-body{padding:11px}
-  .card{background:#fff;border:1px solid #e6e9ef;border-radius:10px;padding:10px;margin-bottom:9px}
-  .lbl{font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#15803d;margin-bottom:5px}
-  .field{border:1px solid #d7dbe3;border-radius:7px;padding:7px 8px;font-size:11px;color:#1b2030;background:#fff;margin-bottom:7px}
-  .field.ph{color:#9aa1ad}
-  .bigbtn{background:#15803d;color:#fff;text-align:center;font-weight:600;font-size:12.5px;padding:10px;border-radius:8px;margin-top:2px}
-  .bigbtn.out{background:#dc2626}
-  .gps{background:#e9f0fd;color:#1d4ed8;font-size:10px;font-weight:600;padding:7px 8px;border-radius:7px;margin-top:7px}
-  .pill{display:inline-block;background:#e9f7ef;color:#15803d;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;margin-right:4px}
-  table.tt{width:100%;border-collapse:collapse;font-size:9.5px}
-  table.tt th{text-align:left;color:#9aa1ad;font-size:8.5px;text-transform:uppercase;padding:3px 4px;border-bottom:1px solid #e6e9ef}
-  table.tt td{padding:4px;border-bottom:1px solid #f1f3f6}
-  .cell{border:1px solid #d7dbe3;border-radius:5px;padding:3px 5px;display:flex;justify-content:space-between;color:#1b2030}
-  .cell.empty{color:#b4b2a9}
-  .row2{display:flex;gap:7px}.row2>div{flex:1}
-  .note{font-size:10px;color:#6b7280;line-height:1.5;background:#f7f9fb;border-radius:7px;padding:7px 8px;margin-top:2px}
-  .foot{text-align:center;color:#6b7280;font-size:13px;margin-top:14px}
-  .tip{background:#fdf0dd;border:1px solid #f5d99a;border-radius:12px;padding:14px 16px;font-size:15px;color:#7a4a08;margin-bottom:22px}
-  @media print{body{background:#fff}.wrap{max-width:100%}.step,.intro,.tip{break-inside:avoid;border-color:#ccc}}
+:root{--brand:#0f7a3d;--brand-d:#0b5e2e;--ink:#16231b;--muted:#6b7c72;--line:#e3ece6;--bg:#f4f7f5;--amber:#c97a00;--red:#b3261e;}
+*{box-sizing:border-box}
+body{font-family:'Hind Vadodara',-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:var(--bg);color:var(--ink);line-height:1.65}
+.wrap{max-width:780px;margin:0 auto;padding:0 16px 60px}
+header{background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;padding:30px 16px 26px;text-align:center}
+header .logo{width:54px;height:54px;border-radius:14px;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:8px}
+header h1{margin:6px 0 4px;font-size:24px;font-weight:700}
+header p{margin:0;opacity:.92;font-size:15px}
+.intro{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:22px 0;font-size:15.5px}
+.step{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 18px 20px;margin:18px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.step h2{display:flex;align-items:center;gap:12px;margin:0 0 10px;font-size:19px;color:var(--brand-d)}
+.num{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:17px}
+.step p{margin:8px 0;font-size:15.5px}
+.step ul{margin:8px 0;padding-right:20px;padding-left:0}
+.step li{margin:6px 0;font-size:15.5px}
+.tip{background:#eef6f0;border-right:4px solid var(--brand);border-radius:8px;padding:9px 13px;margin:10px 0;font-size:14.5px}
+.warn{background:#fff6e8;border-right:4px solid var(--amber);border-radius:8px;padding:9px 13px;margin:10px 0;font-size:14.5px}
+.mock{margin:14px 0 4px;border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:330px}
+.mtop{background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;padding:9px 12px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.mbody{padding:13px;background:#fbfdfc}
+.lbl{font-size:12.5px;color:var(--muted);font-weight:600;margin:9px 0 3px}
+.fld{border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:14px;background:#fff;color:var(--ink)}
+.btn{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:11px;font-size:14.5px;font-weight:700;text-align:center;margin-top:12px;font-family:inherit}
+.btn.amber{background:var(--amber)}
+.btn.red{background:var(--red)}
+.row2{display:flex;gap:8px}
+.row2>div{flex:1}
+.tt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tt th{text-align:right;color:var(--muted);font-weight:600;padding:4px;border-bottom:1px solid var(--line)}
+.tt td{padding:4px;border-bottom:1px solid var(--line)}
+.pill{display:inline-block;background:#eef6f0;color:var(--brand-d);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600}
+.foot{text-align:center;color:var(--muted);font-size:13.5px;margin-top:30px}
+.cardlabel{font-weight:700;color:var(--brand-d);font-size:13px;margin-bottom:6px}
 </style>
 </head>
 <body>
+<header>
+  <div class="logo">☀️</div>
+  <h1>કરસફ ફીલ્ડ એપ</h1>
+  <p>શિક્ષક માર્ગદર્શિકા — એપ કેવી રીતે વાપરવી</p>
+</header>
 <div class="wrap">
+  <div class="intro">આ માર્ગદર્શિકા તમને એપ વાપરતાં શીખવશે — <b>લોગ ઇન</b> થી શરૂ કરીને, <b>પંચ ઇન</b>, <b>એક વખતનું સમયપત્રક</b>, <b>દરરોજની નોંધ</b>, <b>સમસ્યા</b> અને છેલ્લે <b>પંચ આઉટ</b> સુધી. ક્રમ પ્રમાણે અનુસરો.</div>
 
-  <div class="head">
-    <div class="logo">K</div>
-    <h1>શિક્ષક માર્ગદર્શિકા</h1>
-    <p>Krsf Field App — દૈનિક હાજરી અને કામની નોંધ માટે</p>
-  </div>
-
-  <div class="intro">
-    આ એપ તમારા ફોનમાં જ ચાલે છે — કંઈ ડાઉનલોડ કરવાની જરૂર નથી. દરરોજ <b>પંચ ઇન</b> કરો, <b>દૈનિક નોંધ</b> ભરો, અને દિવસના અંતે <b>પંચ આઉટ</b> કરો. <b>વર્ગ સેટઅપ (સમયપત્રક) ફક્ત એક જ વાર</b> ભરવાનું છે.
-  </div>
-
-  <!-- STEP 1 LOGIN -->
   <div class="step">
-    <div class="num">1</div>
-    <div class="body">
-      <h2>એપ ખોલો અને લોગિન કરો</h2>
-      <span class="when">શરૂઆતમાં એક વાર</span>
-      <ul>
-        <li>એપ ખોલો.</li>
-        <li>યુઝરનેમમાં તમારો <b>ફોન નંબર</b> નાખો.</li>
-        <li>પાસવર્ડમાં તમારા નંબરના <b>છેલ્લા 4 આંકડા</b> નાખો.</li>
-        <li><span class="btnname">Log in</span> દબાવો.</li>
-      </ul>
-    </div>
-    <div class="screen">
-      <div class="scr-top"><div class="scr-logo">K</div><div class="scr-ttl">Krsf Field App</div></div>
-      <div class="scr-body">
-        <div class="card">
-          <div class="lbl">Login / લોગિન</div>
-          <div class="field">9876543210</div>
-          <div class="field">••••</div>
-          <div class="bigbtn">Log in</div>
-        </div>
-        <div class="note">ઉદા: નંબર 9876543210 → પાસવર્ડ 3210</div>
-      </div>
-    </div>
+    <h2><span class="num">1</span> લોગ ઇન કરો</h2>
+    <p>એપ ખોલો. તમારો <b>મોબાઇલ નંબર</b> અને <b>પાસવર્ડ</b> નાખો.</p>
+    <ul><li>યુઝરનેમ = તમારો <b>10 અંકનો મોબાઇલ નંબર</b></li><li>પાસવર્ડ = તમારા નંબરના <b>છેલ્લા 4 અંક</b></li></ul>
+    <div class="tip">ઉદાહરણ: નંબર <b>9876543210</b> હોય તો પાસવર્ડ <b>3210</b>.</div>
+    <div class="mock"><div class="mtop"><span>કરસફ ફીલ્ડ એપ</span></div><div class="mbody"><div class="lbl">મોબાઇલ નંબર</div><div class="fld">9876543210</div><div class="lbl">પાસવર્ડ</div><div class="fld">••••</div><div class="btn">લોગ ઇન</div></div></div>
   </div>
 
-  <!-- STEP 2 PUNCH IN -->
   <div class="step">
-    <div class="num">2</div>
-    <div class="body">
-      <h2>પંચ ઇન કરો</h2>
-      <span class="when daily">દરરોજ સવારે</span>
-      <ul>
-        <li>લીલા રંગનું <span class="btnname">Punch In</span> બટન દબાવો.</li>
-        <li>તમારો <b>સમય અને સ્થાન (GPS)</b> આપમેળે નોંધાઈ જશે.</li>
-        <li>એક વાર દબાવ્યા પછી "Punched in" દેખાશે.</li>
-      </ul>
-    </div>
-    <div class="screen">
-      <div class="scr-top"><div class="scr-logo">K</div><div class="scr-ttl">Punch &amp; Daily Diary</div></div>
-      <div class="scr-body">
-        <div class="card">
-          <div class="lbl">Attendance / હાજરી</div>
-          <div class="bigbtn">Punch In</div>
-          <div class="gps">📍 Tap Punch In to capture GPS</div>
-        </div>
-      </div>
-    </div>
+    <h2><span class="num">2</span> પંચ ઇન કરો</h2>
+    <p>દિવસની શરૂઆતમાં, કામ શરૂ કરતી વખતે <b>"પંચ ઇન"</b> બટન દબાવો. આથી તમારો હાજરી-સમય નોંધાય છે.</p>
+    <div class="tip">પંચ ઇન એક વાર જ — દિવસની શરૂઆતમાં.</div>
+    <div class="mock"><div class="mtop"><span>નમસ્તે 🙏</span><span>બહાર નીકળો</span></div><div class="mbody"><div class="cardlabel">આજનો દિવસ</div><div class="btn amber">⏱️ પંચ ઇન</div></div></div>
   </div>
 
-  <!-- STEP 3 SETUP -->
   <div class="step">
-    <div class="num">3</div>
-    <div class="body">
-      <h2>વર્ગ સેટઅપ — શાળા અને સમયપત્રક</h2>
-      <span class="when once">ફક્ત એક જ વાર</span>
-      <ul>
-        <li>મેનુમાંથી <span class="btnname">Class setup</span> ખોલો.</li>
-        <li>તમારી <b>શાળાનું નામ</b> લખો.</li>
-        <li>સમયપત્રકમાં, જે અડધા-કલાકના સ્લોટમાં તમે વર્ગ લો છો ત્યાં પહેલા <b>વિષય</b> અને પછી <b>ધોરણ</b> પસંદ કરો. બાકીના સ્લોટ ખાલી રાખો.</li>
-        <li><b>FLN</b> પસંદ કરો તો ધોરણ જરૂરી નથી. <b>Bridge English</b> માટે એક કરતાં વધુ ધોરણ પસંદ કરી શકાય.</li>
-        <li><span class="btnname">Save setup</span> દબાવો. આ દરરોજ ભરવાનું નથી.</li>
-      </ul>
-    </div>
-    <div class="screen">
-      <div class="scr-top"><div class="scr-logo">K</div><div class="scr-ttl">Class setup / વર્ગ સેટઅપ</div></div>
-      <div class="scr-body">
-        <div class="card">
-          <div class="lbl">School / શાળા</div>
-          <div class="field">Delsar Prathmik School</div>
-        </div>
-        <div class="card">
-          <div class="lbl">Timetable / સમયપત્રક</div>
-          <table class="tt">
-            <tr><th>Time</th><th>Subject</th><th>Standard</th></tr>
-            <tr><td>10:30‑11:00</td><td><div class="cell">Math ▾</div></td><td><div class="cell">Std 4 ▾</div></td></tr>
-            <tr><td>11:00‑11:30</td><td><div class="cell">FLN ▾</div></td><td><div class="cell empty">—</div></td></tr>
-            <tr><td>11:30‑12:00</td><td><div class="cell empty">— ▾</div></td><td><div class="cell empty">—</div></td></tr>
-          </table>
-          <div class="bigbtn" style="margin-top:8px">Save setup</div>
-        </div>
-      </div>
-    </div>
+    <h2><span class="num">3</span> એક વખતનું સેટઅપ — શાળા અને સમયપત્રક</h2>
+    <p>પહેલી વાર લોગ ઇન કરો ત્યારે એપ તમને <b>શાળા</b> અને <b>સમયપત્રક</b> ભરવા કહેશે. <b>આ એક જ વખતનું કામ છે</b> — દરરોજ ભરવાની જરૂર નથી.</p>
+    <p style="font-weight:600;color:var(--brand-d);margin-top:14px">અ) શાળા પસંદ કરો</p>
+    <ul><li>તમારી શાળાનું નામ લખો.</li><li><b>એક કરતાં વધુ શાળામાં જાઓ છો?</b> બીજી/ત્રીજી શાળા પણ ઉમેરો.</li></ul>
+    <p style="font-weight:600;color:var(--brand-d);margin-top:14px">બ) સમયપત્રક ભરો</p>
+    <ul><li>દરેક અડધા-કલાકના સમય-સ્લોટ સામે — <b>વિષય</b> પસંદ કરો, પછી <b>ધોરણ</b>.</li><li>જે સ્લોટમાં તમે વર્ગ <b>નથી</b> લેતા, તે <b>ખાલી</b> રાખો.</li><li>વિષય: Math, English, EVS, FLN, Bridge English.</li></ul>
+    <div class="warn"><b>FLN</b> પસંદ કરો તો ધોરણ પસંદ કરવાની જરૂર નથી. <b>Bridge English</b> માટે એકથી વધુ ધોરણ પસંદ કરી શકાય.</div>
+    <div class="tip"><b>બે શાળા હોય તો:</b> દરેક શાળા માટે <b>અલગ સમયપત્રક</b> નીચે દેખાશે — દરેક માટે અલગ ભરો.</div>
+    <div class="mock"><div class="mtop"><span>એક વખતનું સેટઅપ</span></div><div class="mbody"><div class="cardlabel">શાળા</div><div class="fld">પ્રાથમિક શાળા — દાભડિયા</div><div class="fld" style="margin-top:6px">પ્રાથમિક શાળા — બેડ્ડા</div><div class="cardlabel" style="margin-top:14px">સમયપત્રક — દાભડિયા</div><table class="tt"><tr><th>સમય</th><th>વિષય</th><th>ધોરણ</th></tr><tr><td>10:00-10:30</td><td>Math</td><td>ધોરણ 5</td></tr><tr><td>10:30-11:00</td><td>FLN</td><td>—</td></tr><tr><td>11:00-11:30</td><td>Bridge English</td><td>3,4</td></tr></table><div class="btn">સેટઅપ સાચવો</div></div></div>
+    <div class="tip">સમયપત્રક પછી બદલવું હોય તો ડાબી બાજુ <b>"વર્ગ સેટઅપ"</b> માંથી બદલી શકાય.</div>
   </div>
 
-  <!-- STEP 4 DAILY LOG -->
   <div class="step">
-    <div class="num">4</div>
-    <div class="body">
-      <h2>દૈનિક નોંધ ભરો</h2>
-      <span class="when daily">દરરોજ</span>
-      <ul>
-        <li><b>કુલ સંખ્યા</b> અને <b>હાજર સંખ્યા</b> નાખો.</li>
-        <li><b>આજના કામની નોંધ</b> લખો (શું ભણાવ્યું, શું થયું).</li>
-        <li>કોઈ <b>સમસ્યા</b> હોય તો લખો (ન હોય તો ખાલી રાખો).</li>
-        <li><span class="btnname">Save Diary Entry</span> દબાવો.</li>
-      </ul>
-    </div>
-    <div class="screen">
-      <div class="scr-top"><div class="scr-logo">K</div><div class="scr-ttl">Daily Diary</div></div>
-      <div class="scr-body">
-        <div class="card">
-          <div class="lbl">Daily Diary / દૈનિક ડાયરી</div>
-          <div class="row2">
-            <div><div class="note" style="margin:0 0 3px">કુલ સંખ્યા</div><div class="field">30</div></div>
-            <div><div class="note" style="margin:0 0 3px">હાજર સંખ્યા</div><div class="field">27</div></div>
-          </div>
-          <div class="note" style="margin:2px 0 3px">આજના કામની નોંધ</div>
-          <div class="field" style="height:30px">ધોરણ 4 — ગણિત, અપૂર્ણાંક…</div>
-          <div class="note" style="margin:2px 0 3px">કોઈ સમસ્યા</div>
-          <div class="field ph" style="height:24px">—</div>
-          <div class="bigbtn">Save Diary Entry</div>
-        </div>
-      </div>
-    </div>
+    <h2><span class="num">4</span> દરરોજની નોંધ ભરો</h2>
+    <p>સેટઅપ પછી, દરરોજ ફક્ત <b>આટલું જ</b> ભરવાનું:</p>
+    <ul><li><b>બે શાળા હોય તો</b> — પહેલા આજે કઈ શાળા તે પસંદ કરો.</li><li><b>કુલ સંખ્યા</b> અને <b>હાજર સંખ્યા</b> (વિદ્યાર્થીઓ).</li><li><b>આજના કામની નોંધ</b> — આજે શું ભણાવ્યું / શું કર્યું.</li></ul>
+    <div class="tip">જે દિવસે ભરવાનું રહી જાય, તે માટે ઉપર <b>તારીખ</b> પસંદ કરીને પાછલા દિવસની નોંધ પણ ભરી શકાય.</div>
+    <div class="mock"><div class="mtop"><span>આજની નોંધ</span><span>📅 18-06</span></div><div class="mbody"><div class="lbl">શાળા (આજે)</div><div class="fld">પ્રાથમિક શાળા — દાભડિયા</div><div class="row2" style="margin-top:6px"><div><div class="lbl">કુલ સંખ્યા</div><div class="fld">30</div></div><div><div class="lbl">હાજર સંખ્યા</div><div class="fld">27</div></div></div><div class="lbl">આજના કામની નોંધ</div><div class="fld" style="min-height:46px">આજે ધોરણ 5 માં ગણિત — ભાગાકાર શીખવ્યો.</div></div></div>
   </div>
 
-  <!-- STEP 5 PUNCH OUT -->
   <div class="step">
-    <div class="num">5</div>
-    <div class="body">
-      <h2>પંચ આઉટ કરો</h2>
-      <span class="when daily">દિવસના અંતે</span>
-      <ul>
-        <li>દિવસ પૂરો થાય ત્યારે <span class="btnname" style="background:#dc2626">Punch Out</span> દબાવો.</li>
-        <li>આટલું જ — તમારી દિવસની નોંધ પૂરી!</li>
-      </ul>
-    </div>
-    <div class="screen">
-      <div class="scr-top"><div class="scr-logo">K</div><div class="scr-ttl">Punch &amp; Daily Diary</div></div>
-      <div class="scr-body">
-        <div class="card">
-          <div class="lbl">Attendance / હાજરી</div>
-          <div style="margin-bottom:8px"><span class="pill">✓ Punched in 09:05</span></div>
-          <div class="bigbtn out">Punch Out</div>
-        </div>
-      </div>
-    </div>
+    <h2><span class="num">5</span> સમસ્યા (Challenge) લખો</h2>
+    <p>જો આજે કોઈ <b>સમસ્યા</b> હોય — તો <b>"કોઈ સમસ્યા"</b> ખાનામાં લખો. ન હોય તો ખાલી રાખો.</p>
+    <ul><li>દા.ત. પ્રોજેક્ટર ચાલતું નથી, પુસ્તકો ઓછા છે, વિદ્યાર્થીઓની ગેરહાજરી, વગેરે.</li><li>તમે લખેલી દરેક સમસ્યા સીધી <b>મેનેજર અને ટીમ લીડર</b> ને દેખાય છે.</li></ul>
+    <div class="mock"><div class="mtop"><span>આજની નોંધ</span></div><div class="mbody"><div class="lbl">કોઈ સમસ્યા</div><div class="fld" style="min-height:42px;border-right:3px solid var(--red)">વર્ગમાં પ્રોજેક્ટર ચાલતું નથી.</div><div class="btn">નોંધ સાચવો</div></div></div>
   </div>
 
-  <div class="tip">
-    <b>યાદ રાખો:</b> સ્ટેપ 3 (વર્ગ સેટઅપ) ફક્ત એક જ વાર. સ્ટેપ 2, 4, 5 (પંચ ઇન, નોંધ, પંચ આઉટ) દરરોજ.
+  <div class="step">
+    <h2><span class="num">6</span> પંચ આઉટ કરો</h2>
+    <p>દિવસના અંતે, કામ પૂરું થાય ત્યારે <b>"પંચ આઉટ"</b> દબાવો. આથી તમારો દિવસ પૂરો થયેલો નોંધાય છે.</p>
+    <div class="tip">નોંધ સાચવ્યા પછી જ પંચ આઉટ કરો.</div>
+    <div class="mock"><div class="mtop"><span>આજનો દિવસ</span></div><div class="mbody"><div class="cardlabel">આજનું કામ પૂરું</div><div class="btn red">⏹️ પંચ આઉટ</div></div></div>
   </div>
 
-  <div class="foot">Krsf Field App · krsf-work.github.io/krsf-field-app</div>
+  <div class="step" style="background:#eef6f0;border-color:#cfe6d8">
+    <h2 style="font-size:18px"><span class="num">✓</span> ટૂંકમાં યાદ રાખો</h2>
+    <ul><li><span class="pill">દરરોજ</span> પંચ ઇન → નોંધ ભરો (સંખ્યા + કામ + સમસ્યા) → પંચ આઉટ.</li><li><span class="pill">એક વાર</span> શાળા + સમયપત્રક સેટઅપ.</li><li>નંબરથી લોગ ઇન, પાસવર્ડ = છેલ્લા 4 અંક.</li></ul>
+  </div>
 
+  <div class="foot">કરસફ ફીલ્ડ એપ · શિક્ષક માર્ગદર્શિકા<br>કોઈ મુશ્કેલી હોય તો તમારા ટીમ લીડરનો સંપર્ક કરો.</div>
 </div>
 </body>
-</html>
+                       </html>
