@@ -224,7 +224,7 @@ function ttRecount(){var c=0;for(var i=0;i<TIME_SLOTS.length;i++){var el=documen
 function ttTable(e){var rows=TIME_SLOTS.map(function(sl,i){var r=(e&&e.timetable&&e.timetable[i])||{};return `<tr><td><select id="tt_time_${i}" class="fld" style="padding:7px 9px"><option value="">—</option>${TIME_SLOTS.map(function(o){return `<option ${r.time===o?'selected':''}>${o}</option>`;}).join('')}</select></td><td><select id="tt_sub_${i}" class="fld" style="padding:7px 9px" onchange="ttSubChange(${i})"><option value="">—</option>${SUBJECTS.map(function(o){return `<option ${r.subject===o?'selected':''}>${o}</option>`;}).join('')}</select></td><td><select id="tt_std_${i}" class="fld" style="padding:7px 9px;${r.subject==='FLN'?'display:none':''}"><option value="">—</option>${STDS.map(function(s){return `<option ${r.std===s?'selected':''}>${s}</option>`;}).join('')}</select><span id="tt_nostd_${i}" class="muted" style="${r.subject==='FLN'?'':'display:none'}">${T('N/A','લાગુ નથી')}</span></td></tr>`;}).join('');return `<label>${T('Timetable (periods taught)','સમયપત્રક')}</label><table style="font-size:13px"><thead><tr><th>${T('Time','સમય')}</th><th>${T('Subject','વિષય')}</th><th>${T('Standard','ધોરણ')}</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:10px;font-weight:700;color:var(--brand-d)">${T('Total time taught','કુલ સમય')}: <span id="ttTotal">${fmtTT(e)}</span></div>`;}
 function detailChallenges(){var es=DB.entries.filter(function(e){return e.challenge&&String(e.challenge).trim()&&e.challenge!=='None.'&&e.challenge!=='None';}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,40);var rows=es.map(function(e){var us=u(e.userId);return `<div class="entry"><div class="top"><span style="color:var(--ink);font-weight:700">${us?us.name:'-'} · ${e.school||e.visited||'-'}</span><span>${fmtD(e.date)}</span></div><div class="body"><span class="warnline">${e.challenge}</span></div></div>`;}).join('')||`<div class="empty">${T('No challenges reported.','કોઈ પડકાર નથી.')}</div>`;return `<div class="dhead"><div><div class="dh-name">${T('Challenges','પડકાર')}</div><div class="dh-sub">${es.length} ${T('reported · most recent first','નોંધાયેલ')}</div></div></div><div class="card">${rows}</div>`;}
 const ACTION_SLA=5;
-function dstr(d){var m=('0'+(d.getMonth()+1)).slice(-2),da=('0'+d.getDate()).slice(-2);return d.getFullYear()+'-'+m+'-'+da;}function fmtD(s){if(!s)return '';var p=String(s).split('-');return p.length===3?(p[2]+'-'+p[1]+'-'+p[0]):String(s);}
+function dstr(d){var m=('0'+(d.getMonth()+1)).slice(-2),da=('0'+d.getDate()).slice(-2);return d.getFullYear()+'-'+m+'-'+da;}function fmtD(s){if(!s)return '';var p=String(s).split('-');return p.length===3?(p[2]+'-'+p[1]+'-'+p[0]):String(s);}var HOLIDAYS=['2026-01-26','2026-08-15','2026-10-02'];function isWorkday(ds){if(!ds)return true;var d=new Date(ds+'T00:00:00');if(isNaN(d.getTime()))return true;if(d.getDay()===0)return false;return HOLIDAYS.indexOf(ds)<0;}function workdaysGap(a,b){if(!a||!b)return 99;var s=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00');if(isNaN(s.getTime())||isNaN(e.getTime()))return 99;var n=0,g=0;s.setDate(s.getDate()+1);while(s<=e&&g<400){if(isWorkday(dstr(s)))n++;s.setDate(s.getDate()+1);g++;}return n;}
 function lastWeekdays(n){const out=[];let d=new Date();while(out.length<n){const wd=d.getDay();if(wd!==0&&wd!==6)out.unshift(dstr(d));d=new Date(d.getTime()-864e5);}return out;}
 function addDays(s,n){return dstr(new Date(new Date(s).getTime()+n*864e5));}
 function rnd(){return Math.random();}
@@ -330,9 +330,9 @@ function tlInfo(tlid){
   const tkOpen=tks.filter(t=>t.status==='open');
   const tkOver=tkOpen.filter(t=>overdue(t.due,t.status)).length;
   const tkDone=tks.filter(t=>t.status==='done').length;
-  const daysSinceLog=lastLog?Math.round((new Date(realToday())-new Date(lastLog))/864e5):99;
+  const daysSinceLog=lastLog?workdaysGap(lastLog,realToday()):99;
   let rag='g';
-  if(!todayLog||tkOver>0||aOver>=2||daysSinceLog>3)rag='r';
+  if((isWorkday(realToday())&&!todayLog)||tkOver>0||aOver>=2||daysSinceLog>3)rag='r';
   else if(aOpen||tkOpen.length||aOver>=1)rag='a';
   const teachers=DB.users.filter(x=>tlSees(x,tlid));
   return {tlid,name:u(tlid).name,es,todayLog,lastLog,logs7,aOpen,aOver,aDone,openActs,tks,tkOpen,tkOver,tkDone,rag,teachers,activeDays:es.length,workdays:DB.days.length};
@@ -406,7 +406,7 @@ function masterPM(){
       <div class="mr-mid"><div class="mr-name">AI Insights</div><div class="mr-sub">Gemini reads the remarks</div></div>
     </div>`;
   const rows=list.map(s=>{
-    const sub=!s.todayLog?T('No log today','આજે લોગ નથી'):s.aOver+s.tkOver>0?`${s.aOver+s.tkOver} ${T('overdue','મુદત વીતી')}`:s.aOpen+s.tkOpen.length>0?`${s.aOpen+s.tkOpen.length} ${T('open items','ખુલ્લા આઇટમ')}`:T('All clear','બધું બરાબર');
+    const sub=!s.todayLog?(isWorkday(realToday())?T('No log today','આજે લોગ નથી'):T('Holiday','રજા')):s.aOver+s.tkOver>0?`${s.aOver+s.tkOver} ${T('overdue','મુદત વીતી')}`:s.aOpen+s.tkOpen.length>0?`${s.aOpen+s.tkOpen.length} ${T('open items','ખુલ્લા આઇટમ')}`:T('All clear','બધું બરાબર');
     const right=(s.aOver+s.tkOver)>0?`<span class="pill r">${s.aOver+s.tkOver}</span>`:!s.todayLog?`<span class="dot r"></span>`:`<span class="dot ${s.rag}"></span>`;
     return `<div class="mrow ${SEL===s.tlid?'sel':''}" onclick="selectItem('${s.tlid}')">
       <div class="ava ${s.rag}">${initials(s.name)}</div>
@@ -578,7 +578,7 @@ function detailOverview(){
   const attn=all.filter(s=>s.rag==='r');
   return `<div class="dhead"><div><div class="dh-name">${T('Overview','ઝાંખી')}</div><div class="dh-sub">${T('Across','—')} ${all.length} ${T('team leaders · last 7 days','ટીમ લીડર · છેલ્લા 7 દિવસ')}</div></div></div>
     <div class="kpis">
-      <div class="kpi ${logged===all.length?'g':'a'}"><div class="n">${logged}/${all.length}</div><div class="l">${T('TLs logged today','TL લોગ')}</div></div>
+      <div class="kpi ${(!isWorkday(realToday())||logged===all.length)?'g':'a'}"><div class="n">${logged}/${all.length}</div><div class="l">${T('TLs logged today','TL લોગ')}</div></div>
       <div class="kpi ${_tchLogged===_tch.length?'g':'a'}"><div class="n">${_tchLogged}/${_tch.length}</div><div class="l">${T('Teachers logged today','શિક્ષક લોગ')}</div></div>
       <div class="kpi ${_ch?'a':'g'}" style="cursor:pointer" onclick="selectItem('challenges')"><div class="n">${_ch}</div><div class="l">${T('Challenges today','આજે પડકાર')}</div></div>
       <div class="kpi r" style="cursor:pointer" onclick="selectItem('insights')"><div class="n">${_air}</div><div class="l">${T('AI red flags','AI લાલ ફ્લેગ')}</div></div>
