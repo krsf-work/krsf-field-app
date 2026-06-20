@@ -40,7 +40,7 @@
   /* shell */
   #shell{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 60px)}
   #master{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:14px}
-  #detail{overflow:auto;padding:20px 22px}
+  #detail{overflow:auto;padding:20px 22px}#bottomNav{display:none}
   /* master pieces */
   .msearch{width:100%;padding:9px 12px;border:1px solid var(--line2);border-radius:10px;font-size:14px;margin-bottom:10px;font-family:inherit}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
@@ -131,8 +131,9 @@
   .toast.show{opacity:1}
   @media(max-width:880px){
     #shell{grid-template-columns:1fr;height:auto}
-    #master{border-right:none;border-bottom:1px solid var(--line)}
-    #detail{padding:16px}
+    #master{display:none}
+    #detail{padding:16px 16px 82px;height:auto}
+    #bottomNav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:8000;justify-content:space-around;padding:6px 2px}
     select#userSel{max-width:38vw}
   }
 @media(max-width:880px){#topbar{height:auto;min-height:54px;padding:8px 12px;gap:10px}.brand .s{display:none}#identName{display:none}.ctrls{gap:8px}}
@@ -161,6 +162,7 @@
   <aside id="master"></aside>
   <main id="detail"></main>
 </div>
+<nav id="bottomNav"></nav>
 
 <div class="modal-bg" id="modal">
   <div class="modal">
@@ -347,7 +349,7 @@ function buildUserSel(){const s=document.getElementById('userSel');if(!s)return;
 function switchUser(){CUR=document.getElementById('userSel').value;const r=u(CUR).role;SEL=r==='PM'?'overview':'diary';SELDATE=null;renderAll();}
 
 /* ===================== RENDER ROOT ===================== */
-function renderAll(){renderMaster();renderDetail();renderBell();updateNetStatus();}
+function renderAll(){renderMaster();renderDetail();renderBell();updateNetStatus();renderBottomNav();}
 function updateNetStatus(){var d=document.getElementById('netDot');if(!d)return;var on=navigator.onLine;d.style.background=on?'#16a34a':'#9ca3af';var b=document.getElementById('syncBtn');if(b)b.title=on?'Online — tap to sync now':'Offline — changes are saved on this device and will sync when online';var l=document.getElementById('syncLbl');if(l)l.textContent=on?'Sync':'Offline';}
 function syncNow(manual){updateNetStatus();
   if(!FS){if(manual)toast(T('Cloud not set up','ક્લાઉડ સેટ નથી'));return;}
@@ -638,7 +640,7 @@ function detailAllTeachers(){
   }
 function detailTeacher(tid){
     var t=u(tid);if(!t)return '';var tl=u(t.tl);
-    var es=DB.entries.filter(function(e){return e.userId===tid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,14);
+    var es=DB.entries.filter(function(e){return e.userId===tid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,60);
     var td=today();var e=es.find(function(x){return x.date===td;});
     var tiles=`<div class="card"><div class="tiles"><div class="tile ${e?'g':'r'}"><div class="v">${e?'✓':'✗'}</div><div class="l">${T('Logged today','આજે લોગ')}</div></div><div class="tile"><div class="v">${es.length}</div><div class="l">${T('Recent entries','તાજેતરની નોંધ')}</div></div><div class="tile"><div class="v">${(e&&e.present!==''&&e.present!=null)?e.present+'/'+e.total:'-'}</div><div class="l">${T('Attendance today','આજે હાજરી')}</div></div><div class="tile"><div class="v">${fmtMin((e&&e.ttMinutes)||0)}</div><div class="l">${T('Taught today','આજે ભણાવ્યું')}</div></div></div></div>`;
     var list=es.length?es.map(function(en){return `<div class="entry"><div class="top"><span>${fmtD(en.date)} · ${en.school||'-'}</span><span>${en.punchIn||'-'} → ${en.punchOut||T('open','ચાલુ')}</span></div><div class="body">${en.topic?'<b>'+en.topic+'</b> ':''}${(en.present!==''&&en.present!=null)?`<span class="pill b">${T('Att','હાજરી')} ${en.present}/${en.total}</span>`:''}${en.summary?'<div style="margin-top:4px">'+en.summary+'</div>':''}${(en.challenge&&en.challenge!=='None.')?'<div class="warnline" style="margin-top:3px">'+en.challenge+'</div>':''}</div></div>`;}).join(''):`<div class="empty">${T('No entries yet.','હજુ નોંધ નથી.')}</div>`;
@@ -670,12 +672,15 @@ function muAdd(){var name=(val('mu_name')||'').trim();var phone=(val('mu_phone')
 function muReassign(id,tlid){var x=u(id);if(!x)return;x.tl=tlid;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:tlid,cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:x.role,tl:tlid},{merge:true});}toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
 function muSetRole(id,role){var x=u(id);if(!x)return;x.role=role;if(role==='TL'&&!x.cluster){x.cluster=(prompt('Cluster code (SVT / KCT / JCT / Dahod)')||'').trim();}save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:role,tl:x.tl||''},{merge:true});}toast(T('Role updated','ભૂમિકા બદલી')+' ✓');renderAll();}
 function muSetActive(id,act){var x=u(id);if(!x)return;x.active=act;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:act},{merge:true});}toast(act?(T('Activated','ચાલુ')+' ✓'):(T('Deactivated','બંધ')+' ✓'));renderAll();}
+function renderBottomNav(){var el=document.getElementById('bottomNav');if(!el)return;var u0=u(CUR);if(!u0){el.innerHTML='';return;}var role=u0.role;var tabs;if(role==='PM'){tabs=[['overview','ti-layout-dashboard',T('Overview','ઝલક')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['insights','ti-sparkles',T('AI','AI')],['users','ti-user-cog',T('Manage','મેનેજ')]];}else if(role==='TL'){tabs=[['diary','ti-clipboard-text',T('Today','આજે')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['tasks','ti-checklist',T('Tasks','કાર્ય')],['logs','ti-history',T('Logs','લોગ')]];}else{tabs=[['diary','ti-clipboard-text',T('Today','આજે')],['logs','ti-history',T('My logs','લોગ')],['setup','ti-table',T('Class','વર્ગ')],['profile','ti-user',T('Profile','પ્રોફાઇલ')]];}el.innerHTML=tabs.map(function(t){var on=(SEL===t[0])?'color:var(--brand-d);font-weight:700':'color:var(--muted)';return '<div data-k="'+t[0]+'" onclick="selectItem(this.dataset.k)" style="flex:1;text-align:center;cursor:pointer;padding:2px 0;'+on+'"><i class="ti '+t[1]+'" style="font-size:21px"></i><div style="font-size:10.5px;margin-top:1px">'+t[2]+'</div></div>';}).join('');}
+function detailProfile(){var x=u(CUR);if(!x)return '';var cl=clusterOf(x);return '<div class="dhead"><div class="dh-title">'+T('Profile','પ્રોફાઇલ')+'</div></div><div class="card"><div style="font-weight:700;font-size:16px">'+x.name+'</div><div class="muted" style="margin-top:3px">'+x.role+(cl?(' · '+cl):'')+'</div><div class="muted" style="font-size:12.5px;margin-top:2px">'+(x.phone||'')+'</div></div><a class="btn ghost block" href="guide.html" target="_blank" style="margin-top:10px;text-decoration:none;display:block;text-align:center">'+T('Teacher guide','શિક્ષક માર્ગદર્શિકા')+'</a><button class="btn block" style="margin-top:10px;background:#b3261e" onclick="logout()">'+T('Logout','લોગઆઉટ')+'</button>';}
+function openLogDate(d){SELDATE=d;SEL='diary';renderAll();}
 function detailRole(role,sec){
   if(sec==='diary')return detailDiary(role);
   if(sec==='tasks')return detailTasks();
   if(sec==='actions')return detailMyActions();
   if(sec==='teachers')return detailMyTeachers();
-  if(sec==='setup')return setupView();if(sec==='logs')return detailMyLogs();
+  if(sec==='setup')return setupView();if(sec==='logs')return detailMyLogs();if(sec==='profile')return detailProfile();if(u(sec)&&u(sec).role==='Teacher')return detailTeacher(sec);
   return detailDiary(role);
 }
 function detailDiary(role){
@@ -719,12 +724,12 @@ function detailMyActions(){
 function detailMyTeachers(){
   const teachers=DB.users.filter(x=>tlSees(x,CUR));
   return `<div class="dhead"><div><div class="dh-name">${T('My teachers','મારા શિક્ષકો')}</div><div class="dh-sub">${teachers.length} ${T('teachers','શિક્ષક')}</div></div></div>
-    <div class="card">${teachers.length?teachers.map(t=>{const e=DB.entries.find(x=>x.userId===t.id&&x.date===today());let st;if(!e)st=`<span class="pill r">${T('Not punched in','પંચ-ઇન નથી')}</span>`;else if(!e.summary)st=`<span class="pill a">${T('No diary','ડાયરી નથી')}</span>`;else st=`<span class="pill g">${T('Active','સક્રિય')}</span>`;const att=e&&e.present!==''?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:'';return `<div class="entry"><div class="top"><span style="color:var(--ink);font-weight:700">${t.name} · ${e?e.school||'—':T('No activity','પ્રવૃત્તિ નથી')}</span><span>${st} ${att}</span></div>${e&&e.summary?`<div class="body">${e.summary}${e.challenge&&e.challenge!=='None.'?` · <span class="warnline">${e.challenge}</span>`:''}</div>`:''}</div>`;}).join(''):`<div class="empty">${T('No teachers assigned.','કોઈ શિક્ષક નથી.')}</div>`}</div>`;
+    <div class="card">${teachers.length?teachers.map(t=>{const e=DB.entries.find(x=>x.userId===t.id&&x.date===today());let st;if(!e)st=`<span class="pill r">${T('Not punched in','પંચ-ઇન નથી')}</span>`;else if(!e.summary)st=`<span class="pill a">${T('No diary','ડાયરી નથી')}</span>`;else st=`<span class="pill g">${T('Active','સક્રિય')}</span>`;const att=e&&e.present!==''?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:'';return `<div class="entry" data-k="${t.id}" onclick="selectItem(this.dataset.k)" style="cursor:pointer"><div class="top"><span style="color:var(--ink);font-weight:700">${t.name} · ${e?e.school||'—':T('No activity','પ્રવૃત્તિ નથી')}</span><span>${st} ${att}</span></div>${e&&e.summary?`<div class="body">${e.summary}${e.challenge&&e.challenge!=='None.'?` · <span class="warnline">${e.challenge}</span>`:''}</div>`:''}</div>`;}).join(''):`<div class="empty">${T('No teachers assigned.','કોઈ શિક્ષક નથી.')}</div>`}</div>`;
 }
 function detailMyLogs(){
-  const list=DB.entries.filter(e=>e.userId===CUR).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12);const role=u(CUR).role;
+  const list=DB.entries.filter(e=>e.userId===CUR).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,60);const role=u(CUR).role;
   return `<div class="dhead"><div><div class="dh-name">${T('My logs','મારા લોગ')}</div><div class="dh-sub">${T('Recent entries','તાજેતરની નોંધો')}</div></div></div>
-    <div class="card">${list.length?list.map(e=>{const body=role==='TL'?`${e.summary||''}${e.observation?`<div class="gu-rem muted" style="margin-top:3px">${e.observation}</div>`:''}`:`${e.topic?`<b>${e.topic}</b> `:''}${e.present!==''?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:''}`;return `<div class="entry"><div class="top"><span>${fmtD(e.date)} · ${e.school||e.visited||''}</span><span>${e.punchIn||'—'} → ${e.punchOut||T('open','ચાલુ')}</span></div><div class="body">${body}</div></div>`;}).join(''):`<div class="empty">${T('No entries yet.','હજુ નોંધ નથી.')}</div>`}</div>`;
+    <div class="card">${list.length?list.map(e=>{const body=role==='TL'?`${e.summary||''}${e.observation?`<div class="gu-rem muted" style="margin-top:3px">${e.observation}</div>`:''}`:`${e.topic?`<b>${e.topic}</b> `:''}${e.present!==''?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:''}`;return `<div class="entry" data-d="${e.date}" onclick="openLogDate(this.dataset.d)" style="cursor:pointer"><div class="top"><span>${fmtD(e.date)} · ${e.school||e.visited||''}</span><span>${e.punchIn||'—'} → ${e.punchOut||T('open','ચાલુ')}</span></div><div class="body">${body}</div></div>`;}).join(''):`<div class="empty">${T('No entries yet.','હજુ નોંધ નથી.')}</div>`}</div>`;
 }
 
 /* ===================== ACTIONS ===================== */
