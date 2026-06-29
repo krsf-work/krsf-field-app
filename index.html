@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='2.3'; /* v2.3 — Flag button prominent red styling */
+const APP_VERSION='2.4'; /* v2.4 — Under observation respects cluster filter */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -694,7 +694,7 @@ function detailAllTeachers(){
         +'<div class="mr-sub">'+T('under','હેઠળ')+' '+(tl?escA(tl.name):'-')+(e&&e.school?' · '+escA(e.school):'')+'</div></div>'
         +'<div class="mr-right">'+st+' '+att+'</div></div>';
     }).join('')||'<div class="empty">'+T('No teachers yet.','હજુ કોઈ શિક્ષક નથી.')+'</div>';
-    var flaggedAll=allT.filter(function(t){return t.flagged;});
+    var flaggedAll=teachers.filter(function(t){return t.flagged;});
     var obsSection='';
     if(flaggedAll.length){
       var obsItems=flaggedAll.map(function(t){
