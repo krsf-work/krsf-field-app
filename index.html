@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='1.7'; /* v1.7 — home-screen punch-in/out button for teachers */
+const APP_VERSION='1.8'; /* v1.8 — bulk assign cluster chips fix (single-quote JSON in onclick) */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -730,9 +730,9 @@ if(BULK_OPEN){
   var allAssignable=allTLs.concat(allTeachers);
   var selCount=Object.keys(BULK_SEL).length;
   var filterChips='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
-    +'<button class="btn sm '+(allTLs.every(function(x){return BULK_SEL[x.id];})?'':'ghost')+'" style="width:auto;font-size:12px" onclick="bulkSelectGroup('+JSON.stringify(allTLs.map(function(x){return x.id;}))+','+(!allTLs.every(function(x){return BULK_SEL[x.id];}))+')">'+T('All TLs','બધા TL')+'</button>'
-    +'<button class="btn sm '+(allTeachers.every(function(x){return BULK_SEL[x.id];})?'':'ghost')+'" style="width:auto;font-size:12px" onclick="bulkSelectGroup('+JSON.stringify(allTeachers.map(function(x){return x.id;}))+','+(!allTeachers.every(function(x){return BULK_SEL[x.id];}))+')">'+T('All teachers','બધા શિક્ષક')+'</button>'
-    +clusters.map(function(c){var cids=allAssignable.filter(function(x){return clusterOf(x)===c;}).map(function(x){return x.id;});var allOn=cids.length&&cids.every(function(id){return BULK_SEL[id];});return '<button class="btn sm '+(allOn?'':'ghost')+'" style="width:auto;font-size:12px" onclick="bulkSelectGroup('+JSON.stringify(cids)+','+(!allOn)+')">'+escA(c)+'</button>';}).join('')
+    +'<button class="btn sm '+(allTLs.every(function(x){return BULK_SEL[x.id];})?'':'ghost')+'" style="width:auto;font-size:12px" onclick="bulkSelectGroup('+JSON.stringify(allTLs.map(function(x){return x.id;})).replace(/"/g,"'")+','+(!allTLs.every(function(x){return BULK_SEL[x.id];}))+')">'+T('All TLs','બધા TL')+'</button>'
+    +'<button class="btn sm '+(allTeachers.every(function(x){return BULK_SEL[x.id];})?'':'ghost')+'" style="width:auto;font-size:12px" onclick="bulkSelectGroup('+JSON.stringify(allTeachers.map(function(x){return x.id;})).replace(/"/g,"'")+','+(!allTeachers.every(function(x){return BULK_SEL[x.id];}))+')">'+T('All teachers','બધા શિક્ષક')+'</button>'
+    +clusters.map(function(c){var cids=allAssignable.filter(function(x){return clusterOf(x)===c;}).map(function(x){return x.id;});var allOn=cids.length&&cids.every(function(id){return BULK_SEL[id];});return '<button class="btn sm '+(allOn?'':'ghost')+'" style="width:auto;font-size:12px" onclick="bulkSelectGroup('+JSON.stringify(cids).replace(/"/g,"'")+','+(!allOn)+')">'+escA(c)+'</button>';}).join('')
     +'</div>';
   var userList=allAssignable.map(function(x){var cl=clusterOf(x);return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="toggleBulkSel(\''+x.id+'\')">'
     +'<input type="checkbox" '+(BULK_SEL[x.id]?'checked':'')+' onclick="event.stopPropagation();toggleBulkSel(\''+x.id+'\')" style="width:18px;height:18px;flex-shrink:0">'
