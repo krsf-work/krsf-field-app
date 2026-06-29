@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='2.0'; /* v2.0 — Flag teacher + Under observation section */
+const APP_VERSION='2.1'; /* v2.1 — Flag + Under observation in PM Teachers tab */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -684,13 +684,36 @@ function detailAllTeachers(){
     var rows=teachers.map(function(t){
       var tl=u(t.tl);
       var e=DB.entries.find(function(x){return x.userId===t.id&&x.date===td;});
-      var st=hasDiary(e)?`<span class="pill g">${T('Logged today','આજે લોગ')}</span>`:`<span class="pill r">${T('No log today','આજે લોગ નથી')}</span>`;
-      var att=(e&&e.present!==''&&e.present!=null)?`<span class="pill b">${T('Att','હાજરી')} ${e.present}/${e.total}</span>`:'';
-      return `<div class="mrow" style="border:1px solid var(--line);margin-bottom:8px;cursor:pointer" onclick="selectItem('${t.id}')"><div class="ava g">${initials(t.name)}</div><div class="mr-mid"><div class="mr-name">${escA(t.name)}${clTag(t)}</div><div class="mr-sub">${T('under','હેઠળ')} ${tl?escA(tl.name):'-'}${e&&e.school?' · '+escA(e.school):''}</div></div><div class="mr-right">${st} ${att}</div></div>`;
-    }).join('')||`<div class="empty">${T('No teachers yet.','હજુ કોઈ શિક્ષક નથી.')}</div>`;
+      var punched=!!(e&&e.punchIn);
+      var st=hasDiary(e)?'<span class="pill g">'+T('Logged today','આજે લોગ')+'</span>':punched?'<span class="pill" style="background:#ea580c;color:#fff;font-size:10px">⏱ '+T('In','ઇન')+' '+e.punchIn+'</span>':'<span class="pill r">'+T('No log today','આજે લોગ નથી')+'</span>';
+      var att=(e&&e.present!==''&&e.present!=null)?'<span class="pill b">'+T('Att','હાજરી')+' '+e.present+'/'+e.total+'</span>':'';
+      var flagBtn='<button onclick="event.stopPropagation();flagTeacher(\''+t.id+'\')" style="background:none;border:none;cursor:pointer;padding:2px 5px;font-size:15px;color:'+(t.flagged?'#dc2626':'var(--muted)')+'" title="'+(t.flagged?T('Remove flag','ફ્લેગ હટાવો'):T('Flag teacher','ફ્લેગ કરો'))+'"><i class="ti '+(t.flagged?'ti-flag-filled':'ti-flag')+'"></i></button>';
+      return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:8px;cursor:pointer'+(t.flagged?';background:#fef2f2':'')+'" onclick="selectItem(\''+t.id+'\')">'
+        +'<div class="ava g">'+initials(t.name)+'</div>'
+        +'<div class="mr-mid"><div class="mr-name">'+escA(t.name)+clTag(t)+flagBtn+'</div>'
+        +'<div class="mr-sub">'+T('under','હેઠળ')+' '+(tl?escA(tl.name):'-')+(e&&e.school?' · '+escA(e.school):'')+'</div></div>'
+        +'<div class="mr-right">'+st+' '+att+'</div></div>';
+    }).join('')||'<div class="empty">'+T('No teachers yet.','હજુ કોઈ શિક્ષક નથી.')+'</div>';
+    var flaggedAll=allT.filter(function(t){return t.flagged;});
+    var obsSection='';
+    if(flaggedAll.length){
+      var obsItems=flaggedAll.map(function(t){
+        var cl=clusterOf(t);
+        var ef=DB.entries.find(function(x){return x.userId===t.id&&x.date===td;});
+        var lf=hasDiary(ef),pf=!!(ef&&ef.punchIn);
+        var sp=lf?'<span class="pill g">'+T('Logged','લોગ')+'</span>':pf?'<span class="pill" style="background:#ea580c;color:#fff;font-size:10px">⏱ '+T('In','ઇન')+' '+ef.punchIn+'</span>':'<span class="pill r">'+T('Not logged','લોગ નથી')+'</span>';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #fca5a5;cursor:pointer" onclick="selectItem(\''+t.id+'\')">'
+          +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px"><i class="ti ti-flag-filled" style="color:#dc2626;font-size:12px"></i> '+escA(t.name)+'</div>'+(cl?'<div style="font-size:11px;color:#dc2626">'+escA(cl)+'</div>':'')+'</div>'
+          +sp+'</div>';
+      }).join('');
+      obsSection='<div class="card" style="background:#fef2f2;border:1px solid #fca5a5;padding:10px 14px">'
+        +'<div style="font-weight:700;font-size:13px;color:#dc2626;border-bottom:1px solid #fca5a5;padding-bottom:8px;margin-bottom:4px"><i class="ti ti-flag-filled"></i> '+T('Under observation','અવલોકન હેઠળ')+' ('+flaggedAll.length+')</div>'
+        +obsItems+'</div>';
+    }
     var chips=clusters.length>1?('<div class="chips"><span class="chip '+(TEACHER_CLUS==='all'?'on':'')+'" onclick="setTeacherClus(\'all\')">'+T('All','બધા')+'</span>'+clusters.map(function(c){return '<span class="chip '+(TEACHER_CLUS===c?'on':'')+'" onclick="setTeacherClus(\''+c+'\')">'+escA(c)+'</span>';}).join('')+'</div>'):'';
-    var sub=(TEACHER_CLUS==='all')?(allT.length+' '+T('teachers · tap to open diary','શિક્ષક · ડાયરી માટે ટેપ કરો')):(teachers.length+' / '+allT.length+' '+T('teachers · '+TEACHER_CLUS,'શિક્ષક · '+TEACHER_CLUS));
-    return `<div class="dhead"><div><div class="dh-name">${T('Teachers','શિક્ષકો')}</div><div class="dh-sub">${sub}</div></div></div>${chips}<div class="card">${rows}</div>`;
+    var flagN=flaggedAll.length?(' · '+flaggedAll.length+' '+T('flagged','ફ્લેગ')):'';
+    var sub=(TEACHER_CLUS==='all')?(allT.length+' '+T('teachers','શિક્ષક')+flagN):(teachers.length+' / '+allT.length+' '+T('teachers · '+TEACHER_CLUS,'શિક્ષક · '+TEACHER_CLUS));
+    return '<div class="dhead"><div><div class="dh-name">'+T('Teachers','શિક્ષકો')+'</div><div class="dh-sub">'+sub+'</div></div></div>'+chips+obsSection+'<div class="card">'+rows+'</div>';
   }
 function detailTeacher(tid){
     var t=u(tid);if(!t)return '';var tl=u(t.tl);
