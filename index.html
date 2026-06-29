@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='1.8'; /* v1.8 — bulk assign cluster chips fix (single-quote JSON in onclick) */
+const APP_VERSION='1.9'; /* v1.9 — TL sees teacher punch-in status (orange pill + count in header) */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -860,11 +860,13 @@ function detailMyActions(){
 function detailMyTeachers(){
   const teachers=DB.users.filter(x=>tlSees(x,CUR));
   var loggedN=teachers.filter(function(z){return DB.entries.some(function(x){return x.userId===z.id&&x.date===today()&&hasDiary(x);});}).length;
+  var punchedN=teachers.filter(function(z){return DB.entries.some(function(x){return x.userId===z.id&&x.date===today()&&x.punchIn&&!hasDiary(x);});}).length;
   if(!teachers.length)return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div></div></div><div class="empty">'+T('No teachers assigned.','કોઈ શિક્ષક નથી.')+'</div>';
   var rows=teachers.map(function(t){
     var e=DB.entries.find(function(x){return x.userId===t.id&&x.date===today();});
     var logged=hasDiary(e);
-    var stPill=logged?'<span class="pill g">'+T('Logged','લોગ')+'</span>':'<span class="pill r">'+T('Not logged','લોગ નથી')+'</span>';
+    var punched=!!(e&&e.punchIn);
+    var stPill=logged?'<span class="pill g">'+T('Logged','લોગ')+'</span>':punched?'<span class="pill" style="background:#ea580c;color:#fff;font-size:10px">⏱ '+T('In','ઇન')+' '+e.punchIn+'</span>':'<span class="pill r">'+T('Not logged','લોગ નથી')+'</span>';
     var openTk=DB.tasks.filter(function(k){return k.tlid===t.id&&k.status==='open';}).length;
     var tkPill='<span class="pill b" style="font-size:10px">'+openTk+' '+T('open','ઓપન')+'</span>';
     var isExpanded=(TEACHER_OPEN===t.id);
@@ -874,9 +876,10 @@ function detailMyTeachers(){
     /* expanded panel */
     var logText=e?(e.summary||e.observation||'').trim():'';
     var logChallenge=(e&&e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?e.challenge:'';
+    var punchLine=(e&&e.punchIn)?('<div style="font-size:12px;margin-bottom:6px"><span class="pill" style="background:#ea580c;color:#fff">⏱ '+T('In','ઇન')+' '+e.punchIn+(e.punchOut?(' → '+T('Out','આઉટ')+' '+e.punchOut):'')+'</span></div>'):'';
     var logHtml=logText
-      ?('<div class="log-box">'+escA(logText)+(logChallenge?'<div class="challenge-line"><i class="ti ti-alert-triangle"></i> '+escA(logChallenge)+'</div>':'')+'</div>')
-      :('<div class="log-empty muted">'+T('No log entry today.','આજે કોઈ નોંધ નથી.')+'</div>');
+      ?('<div class="log-box">'+punchLine+escA(logText)+(logChallenge?'<div class="challenge-line"><i class="ti ti-alert-triangle"></i> '+escA(logChallenge)+'</div>':'')+'</div>')
+      :(punchLine?('<div class="log-box">'+punchLine+'<div class="muted" style="font-size:13px">'+T('No diary entry yet.','ડાઈરી ભરાઈ નથી.')+'</div></div>'):('<div class="log-empty muted">'+T('No log entry today.','આજે કોઈ નોંધ નથી.')+'</div>'));
     var seeAllLink='<div style="text-align:right;margin-top:5px"><a onclick="selectItem(\'teacherLogs\',\''+t.id+'\')" style="font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline">'+T('See all logs →','બધા લોગ →')+'</a></div>';
     /* open tasks */
     var td=realToday();
@@ -900,7 +903,8 @@ function detailMyTeachers(){
       +'</div>';
     return '<div class="entry" style="padding:0 12px;border:1px solid var(--brand)">'+header+panel+'</div>';
   }).join('');
-  return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div><div class="dh-sub">'+loggedN+'/'+teachers.length+' '+T('logged today','આજે લોગ')+'</div></div></div><div class="card" style="padding:0">'+rows+'</div>';
+  var punchedStr=punchedN?(' · '+punchedN+' '+T('punched in','પંચ-ઇન')):'';
+  return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div><div class="dh-sub">'+loggedN+'/'+teachers.length+' '+T('logged today','આજે લોગ')+punchedStr+'</div></div></div><div class="card" style="padding:0">'+rows+'</div>';
 }
 function toggleTeacherTask(id){TASK_OPEN_FOR=(TASK_OPEN_FOR===id)?null:id;renderDetail();}
 function toggleTeacherRow(id){if(TEACHER_OPEN===id){TEACHER_OPEN=null;}else{TEACHER_OPEN=id;TASK_OPEN_FOR=null;}renderDetail();}
