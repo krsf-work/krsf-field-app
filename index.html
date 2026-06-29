@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='2.1'; /* v2.1 — Flag + Under observation in PM Teachers tab */
+const APP_VERSION='2.2'; /* v2.2 — Flag button on individual teacher page */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -721,7 +721,9 @@ function detailTeacher(tid){
     var td=today();var e=es.find(function(x){return x.date===td;});
     var tiles=`<div class="card"><div class="tiles"><div class="tile ${hasDiary(e)?'g':'r'}"><div class="v">${hasDiary(e)?'✓':'✗'}</div><div class="l">${T('Logged today','આજે લોગ')}</div></div><div class="tile"><div class="v">${es.length}</div><div class="l">${T('Recent entries','તાજેતરની નોંધ')}</div></div><div class="tile"><div class="v">${(e&&e.present!==''&&e.present!=null)?e.present+'/'+e.total:'-'}</div><div class="l">${T('Attendance today','આજે હાજરી')}</div></div><div class="tile"><div class="v">${fmtMin((e&&e.ttMinutes)||0)}</div><div class="l">${T('Taught today','આજે ભણાવ્યું')}</div></div></div></div>`;
     var list=es.length?es.map(function(en){return `<div class="entry"><div class="top"><span>${fmtD(en.date)} · ${escA(en.school||'-')}</span><span>${en.punchIn||'-'} → ${en.punchOut||T('open','ચાલુ')}</span></div><div class="body">${en.topic?'<b>'+escA(en.topic)+'</b> ':''}${(en.present!==''&&en.present!=null)?`<span class="pill b">${T('Att','હાજરી')} ${en.present}/${en.total}</span>`:''}${en.summary?'<div style="margin-top:4px">'+escA(en.summary)+'</div>':''}${(en.challenge&&en.challenge!=='None.')?'<div class="warnline" style="margin-top:3px">'+escA(en.challenge)+'</div>':''}</div></div>`;}).join(''):`<div class="empty">${T('No entries yet.','હજુ નોંધ નથી.')}</div>`;
-    return `<div class="dhead"><div class="ava g">${initials(t.name)}</div><div style="flex:1;min-width:0"><div class="dh-name">${escA(t.name)}</div><div class="dh-sub">${T('Teacher','શિક્ષક')} · ${T('under','હેઠળ')} ${tl?escA(tl.name):'-'}</div></div><button class="btn sm ghost" style="width:auto" onclick="selectItem('teachers')">${T('All teachers','બધા શિક્ષકો')}</button></div>${tiles}<div class="card"><h3><i class="ti ti-history"></i> ${T('Daily diary entries','દૈનિક ડાયરી')}</h3>${list}</div>`;
+    var cl=clusterOf(t);
+    var flagBtnD='<button onclick="flagTeacher(\''+tid+'\')" style="background:none;border:1px solid '+(t.flagged?'#dc2626':'var(--line)')+';border-radius:6px;cursor:pointer;padding:5px 10px;font-size:13px;color:'+(t.flagged?'#dc2626':'var(--muted)')+';display:flex;align-items:center;gap:5px"><i class="ti '+(t.flagged?'ti-flag-filled':'ti-flag')+'"></i>'+(t.flagged?T('Flagged','ફ્લેગ'):T('Flag','ફ્લેગ'))+'</button>';
+    return '<div class="dhead"><div class="ava g">'+initials(t.name)+'</div><div style="flex:1;min-width:0"><div class="dh-name">'+escA(t.name)+(t.flagged?'<i class="ti ti-flag-filled" style="color:#dc2626;font-size:14px;margin-left:6px"></i>':'')+'</div><div class="dh-sub">'+T('Teacher','શિક્ષક')+' · '+(cl?escA(cl)+' · ':'')+T('under','હેઠળ')+' '+(tl?escA(tl.name):'-')+'</div></div>'+flagBtnD+'</div>'+tiles+'<div class="card"><h3><i class="ti ti-history"></i> '+T('Daily diary entries','દૈનિક ડાયરી')+'</h3>'+list+'</div>';
   }
 /* ---- TL / Teacher detail ---- */
 function myToday(){return DB.entries.find(e=>e.userId===CUR&&e.date===selDate());}
