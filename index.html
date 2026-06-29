@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='1.9'; /* v1.9 — TL sees teacher punch-in status (orange pill + count in header) */
+const APP_VERSION='2.0'; /* v2.0 — Flag teacher + Under observation section */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -871,7 +871,9 @@ function detailMyTeachers(){
     var tkPill='<span class="pill b" style="font-size:10px">'+openTk+' '+T('open','ઓપન')+'</span>';
     var isExpanded=(TEACHER_OPEN===t.id);
     var chev='<i class="ti '+(isExpanded?'ti-chevron-up':'ti-chevron-down')+'" style="font-size:16px;color:var(--muted)"></i>';
-    var header='<div onclick="toggleTeacherRow(\''+t.id+'\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0;-webkit-tap-highlight-color:transparent"><div style="flex:1;min-width:0"><span style="font-weight:700">'+escA(t.name)+'</span>'+clTag(t)+'</div><div style="display:flex;gap:5px;align-items:center;flex-shrink:0">'+stPill+tkPill+chev+'</div></div>';
+    var cl=clusterOf(t);
+    var flagBtn='<button onclick="event.stopPropagation();flagTeacher(\''+t.id+'\')" style="background:none;border:none;cursor:pointer;padding:2px 6px;font-size:15px;color:'+(t.flagged?'#dc2626':'var(--muted)')+'" title="'+(t.flagged?T('Remove flag','ફ્લેગ હટાવો'):T('Flag teacher','ફ્લેગ કરો'))+'"><i class="ti '+(t.flagged?'ti-flag-filled':'ti-flag')+'"></i></button>';
+    var header='<div onclick="toggleTeacherRow(\''+t.id+'\')" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0;-webkit-tap-highlight-color:transparent"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:2px"><span style="font-weight:700">'+escA(t.name)+'</span>'+flagBtn+'</div>'+(cl?'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+escA(cl)+'</div>':'')+'</div><div style="display:flex;gap:5px;align-items:center;flex-shrink:0">'+stPill+tkPill+chev+'</div></div>';
     if(!isExpanded)return '<div class="entry" style="padding:0 12px">'+header+'</div>';
     /* expanded panel */
     var logText=e?(e.summary||e.observation||'').trim():'';
@@ -904,11 +906,28 @@ function detailMyTeachers(){
     return '<div class="entry" style="padding:0 12px;border:1px solid var(--brand)">'+header+panel+'</div>';
   }).join('');
   var punchedStr=punchedN?(' · '+punchedN+' '+T('punched in','પંચ-ઇન')):'';
-  return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div><div class="dh-sub">'+loggedN+'/'+teachers.length+' '+T('logged today','આજે લોગ')+punchedStr+'</div></div></div><div class="card" style="padding:0">'+rows+'</div>';
+  var flaggedList=teachers.filter(function(t){return t.flagged;});
+  var obsSection='';
+  if(flaggedList.length){
+    var obsItems=flaggedList.map(function(t){
+      var cl=clusterOf(t);
+      var e=DB.entries.find(function(x){return x.userId===t.id&&x.date===today();});
+      var lg=hasDiary(e),pu=!!(e&&e.punchIn);
+      var sp=lg?'<span class="pill g">'+T('Logged','લોગ')+'</span>':pu?'<span class="pill" style="background:#ea580c;color:#fff;font-size:10px">⏱ '+T('In','ઇન')+' '+e.punchIn+'</span>':'<span class="pill r">'+T('Not logged','લોગ નથી')+'</span>';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #fca5a5;cursor:pointer" onclick="toggleTeacherRow(\''+t.id+'\')">'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px"><i class="ti ti-flag-filled" style="color:#dc2626;font-size:12px"></i> '+escA(t.name)+'</div>'+(cl?'<div style="font-size:11px;color:#dc2626">'+escA(cl)+'</div>':'')+'</div>'
+        +sp+'</div>';
+    }).join('');
+    obsSection='<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;margin-bottom:10px;overflow:hidden">'
+      +'<div style="padding:8px 12px;font-weight:700;font-size:13px;color:#dc2626;border-bottom:1px solid #fca5a5"><i class="ti ti-flag-filled"></i> '+T('Under observation','અવલોકન હેઠળ')+' ('+flaggedList.length+')</div>'
+      +obsItems+'</div>';
+  }
+  return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div><div class="dh-sub">'+loggedN+'/'+teachers.length+' '+T('logged today','આજે લોગ')+punchedStr+'</div></div></div>'+obsSection+'<div class="card" style="padding:0">'+rows+'</div>';
 }
 function toggleTeacherTask(id){TASK_OPEN_FOR=(TASK_OPEN_FOR===id)?null:id;renderDetail();}
 function toggleTeacherRow(id){if(TEACHER_OPEN===id){TEACHER_OPEN=null;}else{TEACHER_OPEN=id;TASK_OPEN_FOR=null;}renderDetail();}
 function toggleBulkAssign(){BULK_OPEN=!BULK_OPEN;BULK_SEL={};renderDetail();}
+function flagTeacher(id){var x=u(id);if(!x)return;x.flagged=!x.flagged;save();if(FS)FS.collection('appusers').doc(id).set({flagged:x.flagged},{merge:true});toast(x.flagged?T('Teacher flagged','ફ્લેગ કર્યું ✓'):T('Flag removed','ફ્લેગ હટાવ્યું'));renderAll();}
 function toggleBulkSel(id){if(BULK_SEL[id]){delete BULK_SEL[id];}else{BULK_SEL[id]=true;}renderDetail();}
 function bulkSelectGroup(ids,on){ids.forEach(function(id){if(on){BULK_SEL[id]=true;}else{delete BULK_SEL[id];}});renderDetail();}
 function assignTeacherTask(id,_text,_due){var text=_text!==undefined?String(_text).trim():(function(){var ta=document.getElementById('tt_text_'+id);return ta?(ta.value||'').trim():'';})();if(!text){toast(T('Enter a task','કાર્ય લખો'));return;}var due=_due!==undefined?_due:((document.getElementById('tt_due_'+id)||{}).value||addDays(realToday(),5));var byRole=(u(CUR)&&u(CUR).role==='PM')?'PM':'TL';var tk={id:'tk'+Date.now(),tlid:id,text:text,created:realToday(),due:due,status:'open',closedOn:null,assignedBy:CUR,byRole:byRole};DB.tasks.push(tk);save();pushTask(tk);TASK_OPEN_FOR=null;toast(T('Task assigned','કાર્ય સોંપ્યું')+' ✓');renderAll();}
