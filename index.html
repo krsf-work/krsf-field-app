@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='2.8'; /* v2.8 — Teachers tab stays active on teacherLogs; full escA in activity/challenges */
+const APP_VERSION='2.9'; /* v2.9 — task due/closedOn formatted via fmtD() (was raw ISO) */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -699,7 +699,7 @@ function logBlock(e){if(!e)return `<div class="empty">${T('No log submitted toda
   return `<div class="entry"><div class="top"><span>⏱ ${e.punchIn||'—'} → ${e.punchOut||T('still in','ચાલુ')}${_g}</span><span>${e.visitedCount||0} ${T('school(s)','શાળા')}</span></div>
     <div class="body"><b>${T('Schools','શાળાઓ')}:</b> ${escA(e.visited||'—')}${(e.purpose||(e.met&&e.met.length))?`<div class="muted" style="font-size:12.5px;margin-top:4px">${e.purpose?`${T('Purpose','હેતુ')}: ${escA(e.purpose)}`:''}${e.purpose&&e.met&&e.met.length?' · ':''}${e.met&&e.met.length?`${T('Met','મળ્યા')}: ${escA(e.met.join(', '))}`:''}</div>`:''}${e.observation?`<div style="margin-top:6px"><b>${T('Remark','અવલોકન')}:</b> <span class="gu-rem">${escA(e.observation)}</span></div>`:`<div class="warnline" style="margin-top:6px">${T('No remark logged','અવલોકન નથી')}</div>`}</div></div>`;}
 function taskItem(t){const od=overdue(t.due,t.status);const cls=t.status==='done'?'done':od?'r':'b';
-  return `<div class="item ${cls}"><span>${t.status==='done'?'✓ ':''}${escA(t.text)}</span><span class="x">${t.status==='done'?T('done','પૂર્ણ')+' '+t.closedOn:(od?T('overdue','મુદત વીતી')+' ':T('due','મુદત')+' ')+t.due}</span></div>`;}
+  return `<div class="item ${cls}"><span>${t.status==='done'?'✓ ':''}${escA(t.text)}</span><span class="x">${t.status==='done'?T('done','પૂર્ણ')+' '+fmtD(t.closedOn):(od?T('overdue','મુદત વીતી')+' ':T('due','મુદત')+' ')+fmtD(t.due)}</span></div>`;}
 
 function setTeacherClus(c){TEACHER_CLUS=c;renderDetail();renderBottomNav();}
 function detailAllTeachers(){
@@ -903,7 +903,7 @@ function detailTasks(){
   const tks=DB.tasks.filter(t=>t.tlid===CUR);
   const _tkTitle=u(CUR)&&u(CUR).role==='Teacher'?T('Tasks from my Team Leader','ટીમ લીડર તરફથી કાર્ય'):T('Tasks from Program Manager','પ્રોગ્રામ મેનેજર તરફથી કાર્ય');
   return `${u(CUR)&&u(CUR).role==='Teacher'?tHero(_tkTitle,tks.filter(t=>t.status==='open').length+' '+T('open','ખુલ્લા')):`<div class="dhead"><div><div class="dh-name">${_tkTitle}</div><div class="dh-sub">${tks.filter(t=>t.status==='open').length} ${T('open','ખુલ્લા')}</div></div></div>`}
-    <div class="card">${tks.length?tks.sort((a,b)=>(a.status>b.status?1:-1)).map(t=>{const od=overdue(t.due,t.status);const cls=t.status==='done'?'done':od?'r':'b';return `<div class="item ${cls}"><span>${t.status==='done'?'✓ ':''}${escA(t.text)}</span><span class="x">${t.status==='done'?T('done','પૂર્ણ'):(od?T('overdue','મુદત વીતી')+' ':T('due','મુદત')+' ')+t.due}</span>${t.status==='open'?`<button class="btn sm" style="margin-left:8px" onclick="completeTask('${t.id}')">${T('Done','થયું')}</button>`:''}</div>`;}).join(''):`<div class="empty">${T('No tasks from PM right now.','હાલ કોઈ કાર્ય નથી.')}</div>`}</div>`;
+    <div class="card">${tks.length?tks.sort((a,b)=>(a.status>b.status?1:-1)).map(t=>{const od=overdue(t.due,t.status);const cls=t.status==='done'?'done':od?'r':'b';return `<div class="item ${cls}"><span>${t.status==='done'?'✓ ':''}${escA(t.text)}</span><span class="x">${t.status==='done'?T('done','પૂર્ણ'):(od?T('overdue','મુદત વીતી')+' ':T('due','મુદત')+' ')+fmtD(t.due)}</span>${t.status==='open'?`<button class="btn sm" style="margin-left:8px" onclick="completeTask('${t.id}')">${T('Done','થયું')}</button>`:''}</div>`;}).join(''):`<div class="empty">${T('No tasks from PM right now.','હાલ કોઈ કાર્ય નથી.')}</div>`}</div>`;
 }
 function detailMyActions(){
   const acts=[];DB.entries.filter(e=>e.userId===CUR).forEach(e=>(e.actions||[]).forEach((a,i)=>{if(a.status==='open')acts.push({a,eid:e.id,i});}));
