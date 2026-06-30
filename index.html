@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='2.9'; /* v2.9 — task due/closedOn formatted via fmtD() (was raw ISO) */
+const APP_VERSION='3.0'; /* v3.0 — notification panel due/closedOn also formatted via fmtD() */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -386,8 +386,8 @@ window.addEventListener('offline',updateNetStatus);
 function myNotifications(){
   if(!CUR||!u(CUR))return [];
   const role=u(CUR).role, out=[];
-  DB.tasks.filter(t=>t.tlid===CUR&&t.status==='open').forEach(t=>{var from=t.byRole==='TL'?T('your Team Leader','તમારા ટીમ લીડર'):T('the PM','PM');out.push({key:t.id+':open',icon:'ti-checklist',title:T('New task from','નવું કાર્ય —')+' '+from,detail:t.text,sub:T('Due ','મુદત ')+t.due});});
-  DB.tasks.filter(t=>t.status==='done'&&t.assignedBy===CUR).forEach(t=>{const who=u(t.tlid);out.push({key:t.id+':done',icon:'ti-check',title:(who?who.name:'')+' '+T('completed a task','એ કાર્ય પૂર્ણ કર્યું'),detail:t.text,sub:t.closedOn||''});});
+  DB.tasks.filter(t=>t.tlid===CUR&&t.status==='open').forEach(t=>{var from=t.byRole==='TL'?T('your Team Leader','તમારા ટીમ લીડર'):T('the PM','PM');out.push({key:t.id+':open',icon:'ti-checklist',title:T('New task from','નવું કાર્ય —')+' '+from,detail:t.text,sub:T('Due ','મુદત ')+fmtD(t.due)});});
+  DB.tasks.filter(t=>t.status==='done'&&t.assignedBy===CUR).forEach(t=>{const who=u(t.tlid);out.push({key:t.id+':done',icon:'ti-check',title:(who?who.name:'')+' '+T('completed a task','એ કાર્ય પૂર્ણ કર્યું'),detail:t.text,sub:fmtD(t.closedOn)||''});});
   return out;
 }
 function notifSeen(){try{return JSON.parse(localStorage.getItem('krsf_seen_'+CUR)||'[]');}catch(e){return [];}}
