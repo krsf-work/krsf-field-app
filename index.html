@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='2.4'; /* v2.4 — Under observation respects cluster filter */
+const APP_VERSION='2.5'; /* v2.5 — Trust-wise team breakdown card on Overview */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -615,6 +615,38 @@ function overviewInsights(){
     +mod(T('CLUSTER LEADERBOARD','ક્લસ્ટર ક્રમ'),clusRows||'<span class="muted" style="font-size:12px">—</span>')
     +'</div>';
 }
+function overviewTeamBreakdown(){
+  var tls=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
+  var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+  var cset={};
+  tls.forEach(function(t){if(t.cluster)cset[t.cluster]=1;});
+  teachers.forEach(function(t){var c=clusterOf(t);if(c)cset[c]=1;});
+  var clusters=Object.keys(cset).sort();
+  if(!clusters.length)return '';
+  function tlCluster(tl){
+    if(tl.cluster)return tl.cluster;
+    var t=teachers.find(function(x){return x.tl===tl.id;});
+    return t?clusterOf(t):'';
+  }
+  var rows=clusters.map(function(c){
+    var cTLs=tls.filter(function(x){return tlCluster(x)===c;}).length;
+    var cTchs=teachers.filter(function(x){return clusterOf(x)===c;}).length;
+    return '<tr><td style="font-weight:600">'+escA(c)+'</td><td style="text-align:center">'+cTLs+'</td><td style="text-align:center">'+cTchs+'</td><td style="text-align:center;font-weight:700">'+(cTLs+cTchs)+'</td></tr>';
+  }).join('');
+  return '<div class="card"><h3><i class="ti ti-users-group"></i> '+T('Team breakdown','ટીમ વિભાગ')+'</h3>'
+    +'<table><thead><tr>'
+    +'<th>'+T('Trust','ટ્રસ્ટ')+'</th>'
+    +'<th style="text-align:center">'+T('TLs','TL')+'</th>'
+    +'<th style="text-align:center">'+T('Teachers','શિક્ષક')+'</th>'
+    +'<th style="text-align:center">'+T('Total','કુલ')+'</th>'
+    +'</tr></thead><tbody>'
+    +rows
+    +'<tr style="border-top:2px solid var(--line);font-weight:700"><td>'+T('Total','કુલ')+'</td>'
+    +'<td style="text-align:center">'+tls.length+'</td>'
+    +'<td style="text-align:center">'+teachers.length+'</td>'
+    +'<td style="text-align:center">'+(tls.length+teachers.length)+'</td></tr>'
+    +'</tbody></table></div>';
+}
 function detailOverview(){
   const all=allTL();
   const logged=all.filter(s=>s.todayLog).length;
@@ -633,6 +665,7 @@ function detailOverview(){
       <div class="kpi" style="background:${_ch?'#dc2626':'#6b7280'};cursor:pointer" onclick="selectItem('challenges')"><div class="n">${_ch}</div><div class="l">${T('Challenges today','આજે પડકાર')}</div></div>
       
     </div>
+    ${overviewTeamBreakdown()}
     ${overviewInsights()}
     ${overviewActivity()}${overviewChallenges()}<div class="card"><h3><i class="ti ti-clipboard-list"></i>${T('All open action items & tasks','બધા ખુલ્લા આઇટમ અને કાર્ય')} · ${rows.length}</h3>
       ${rows.length?`<table><thead><tr><th>${T('Team Leader','ટીમ લીડર')}</th><th>${T('Type','પ્રકાર')}</th><th>${T('Item','આઇટમ')}</th><th>${T('Due','મુદત')}</th></tr></thead><tbody>${rows.map(r=>`<tr><td><a style="color:var(--gB-tx);cursor:pointer;font-weight:600" onclick="selectItem('${r.id}')">${r.tl}</a></td><td><span class="pill ${r.cls}">${r.type}</span></td><td>${r.text}</td><td>${r.over?`<span class="pill r">${T('Overdue','મુદત વીતી')} ${r.due}</span>`:r.due}</td></tr>`).join('')}</tbody></table>`:`<div class="empty">${T('Nothing open. All clear.','કંઈ બાકી નથી.')}</div>`}
