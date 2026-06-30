@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='2.5'; /* v2.5 — Trust-wise team breakdown card on Overview */
+const APP_VERSION='2.6'; /* v2.6 — Fix TL cluster count in breakdown; flag icon always visible in list */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -619,17 +619,12 @@ function overviewTeamBreakdown(){
   var tls=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
   var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
   var cset={};
-  tls.forEach(function(t){if(t.cluster)cset[t.cluster]=1;});
+  tls.forEach(function(t){var c=clusterOf(t);if(c)cset[c]=1;});
   teachers.forEach(function(t){var c=clusterOf(t);if(c)cset[c]=1;});
   var clusters=Object.keys(cset).sort();
   if(!clusters.length)return '';
-  function tlCluster(tl){
-    if(tl.cluster)return tl.cluster;
-    var t=teachers.find(function(x){return x.tl===tl.id;});
-    return t?clusterOf(t):'';
-  }
   var rows=clusters.map(function(c){
-    var cTLs=tls.filter(function(x){return tlCluster(x)===c;}).length;
+    var cTLs=tls.filter(function(x){return clusterOf(x)===c;}).length;
     var cTchs=teachers.filter(function(x){return clusterOf(x)===c;}).length;
     return '<tr><td style="font-weight:600">'+escA(c)+'</td><td style="text-align:center">'+cTLs+'</td><td style="text-align:center">'+cTchs+'</td><td style="text-align:center;font-weight:700">'+(cTLs+cTchs)+'</td></tr>';
   }).join('');
@@ -720,7 +715,7 @@ function detailAllTeachers(){
       var punched=!!(e&&e.punchIn);
       var st=hasDiary(e)?'<span class="pill g">'+T('Logged today','આજે લોગ')+'</span>':punched?'<span class="pill" style="background:#ea580c;color:#fff;font-size:10px">⏱ '+T('In','ઇન')+' '+e.punchIn+'</span>':'<span class="pill r">'+T('No log today','આજે લોગ નથી')+'</span>';
       var att=(e&&e.present!==''&&e.present!=null)?'<span class="pill b">'+T('Att','હાજરી')+' '+e.present+'/'+e.total+'</span>':'';
-      var flagBtn='<button onclick="event.stopPropagation();flagTeacher(\''+t.id+'\')" style="background:none;border:none;cursor:pointer;padding:2px 5px;font-size:15px;color:'+(t.flagged?'#dc2626':'var(--muted)')+'" title="'+(t.flagged?T('Remove flag','ફ્લેગ હટાવો'):T('Flag teacher','ફ્લેગ કરો'))+'"><i class="ti '+(t.flagged?'ti-flag-filled':'ti-flag')+'"></i></button>';
+      var flagBtn='<button onclick="event.stopPropagation();flagTeacher(\''+t.id+'\')" style="background:none;border:none;cursor:pointer;padding:2px 5px;font-size:15px;color:'+(t.flagged?'#dc2626':'#fca5a5')+'" title="'+(t.flagged?T('Remove flag','ફ્લેગ હટાવો'):T('Flag teacher','ફ્લેગ કરો'))+'"><i class="ti '+(t.flagged?'ti-flag-filled':'ti-flag')+'"></i></button>';
       return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:8px;cursor:pointer'+(t.flagged?';background:#fef2f2':'')+'" onclick="selectItem(\''+t.id+'\')">'
         +'<div class="ava g">'+initials(t.name)+'</div>'
         +'<div class="mr-mid"><div class="mr-name">'+escA(t.name)+clTag(t)+flagBtn+'</div>'
