@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='3.4'; /* v3.4 — Challenges shows trust pill; sidebar uses clean emoji icons */
+const APP_VERSION='3.5'; /* v3.5 — AI Insights auto-retries on Gemini 503/429 (transient overload/rate-limit) */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -527,20 +527,38 @@ function buildBlocksFull(q){
   for(let round=1;round<8;round++){ for(const p of rest){ if(p.es[round]) tryAdd(lineFor(p.name,p.es[round])); } }   /* then depth, skip-don't-stop */
   return out;
 }
+/* Gemini's free tier returns 503 (overloaded) / 429 (rate-limit) intermittently — these are transient and worth retrying */
+function isTransientAIError(msg){return /(^|\D)(429|500|502|503|504)(\D|$)|overload|unavailable|rate.?limit|timeout|try again|busy/i.test(String(msg||''));}
+/* One JSONP call to AI_ENDPOINT with automatic retry + backoff on transient errors. cbs: {onResult, onFail, onRetry} */
+function aiCall(qs,cbs,attempt){
+  attempt=attempt||1;var MAX_TRIES=4;var cb='krsfAI'+Date.now()+'_'+attempt;var s=null,done=false;
+  function cleanup(){try{delete window[cb];}catch(e){}if(s&&s.parentNode)s.parentNode.removeChild(s);}
+  function fail(msg,forceRetry){
+    if(attempt<MAX_TRIES&&(forceRetry||isTransientAIError(msg))){
+      if(cbs.onRetry)cbs.onRetry(attempt,MAX_TRIES-1);
+      setTimeout(function(){aiCall(qs,cbs,attempt+1);},700*attempt);return;
+    }
+    if(cbs.onFail)cbs.onFail(msg);
+  }
+  window[cb]=function(res){done=true;cleanup();
+    if(!res||res.error){fail((res&&res.error)||'No response from the AI endpoint.',false);return;}
+    if(cbs.onResult)cbs.onResult(res);};
+  s=document.createElement('script');
+  s.src=AI_ENDPOINT+'?callback='+cb+qs;
+  s.onerror=function(){if(done)return;done=true;cleanup();fail('Could not reach the AI endpoint.',true);};
+  document.body.appendChild(s);
+  setTimeout(function(){if(!done){done=true;cleanup();fail('The AI endpoint timed out.',true);}},25000);
+}
 function askAI(){
   const qi=document.getElementById('aiQ');const ans=document.getElementById('aiAns');if(!ans)return;
   const q=qi?qi.value:'';if(!q||!q.trim()){ans.innerHTML='<span class="muted">'+T('Type a question first.','પહેલા પ્રશ્ન લખો.')+'</span>';return;}
   ans.innerHTML='<div class="muted">'+T('Asking Gemini…','જેમિનીને પૂછી રહ્યા…')+'</div>';
-  const blocks=buildBlocksFull(q);const cb='krsfQ'+Date.now();let s=null,done=false;
-  function cleanup(){try{delete window[cb];}catch(e){}if(s&&s.parentNode)s.parentNode.removeChild(s);}
-  window[cb]=function(res){done=true;cleanup();
-    if(!res||res.error){ans.innerHTML='<div class="warnline">'+((res&&res.error)||'No response from the AI endpoint.')+'</div>';return;}
-    ans.innerHTML='<div class="card" style="background:#f4f8f4;border:1px solid #d8e6d8;border-left:3px solid #2e7d32"><div style="white-space:pre-wrap;font-size:14px;line-height:1.6;color:#1f2937">'+escA(res.answer||'(no answer)')+'</div></div>';};
-  s=document.createElement('script');
-  s.src=AI_ENDPOINT+'?callback='+cb+'&q='+encodeURIComponent(q)+'&data='+encodeURIComponent(JSON.stringify(blocks));
-  s.onerror=function(){if(done)return;cleanup();ans.innerHTML='<div class="warnline">'+T('Could not reach the AI endpoint. Make sure the Apps Script web app is deployed (access: Anyone).','AI એન્ડપોઇન્ટ સુધી પહોંચાયું નહીં.')+'</div>';};
-  document.body.appendChild(s);
-  setTimeout(function(){if(!done){cleanup();ans.innerHTML='<div class="warnline">'+T('Timed out. Tap Ask to retry.','સમય સમાપ્ત. ફરી પૂછો.')+'</div>';}},25000);
+  const blocks=buildBlocksFull(q);
+  aiCall('&q='+encodeURIComponent(q)+'&data='+encodeURIComponent(JSON.stringify(blocks)),{
+    onResult:function(res){ans.innerHTML='<div class="card" style="background:#f4f8f4;border:1px solid #d8e6d8;border-left:3px solid #2e7d32"><div style="white-space:pre-wrap;font-size:14px;line-height:1.6;color:#1f2937">'+escA(res.answer||'(no answer)')+'</div></div>';},
+    onRetry:function(n,max){ans.innerHTML='<div class="muted">'+T('Gemini is busy — retrying','જેમિની વ્યસ્ત — ફરી પ્રયાસ')+'… ('+n+'/'+max+')</div>';},
+    onFail:function(msg){ans.innerHTML='<div class="warnline">'+escA(msg)+' — '+T('tap Ask to retry.','ફરી પૂછો.')+'</div>';}
+  });
 }
 function askQuick(q){const i=document.getElementById('aiQ');if(i)i.value=q;askAI();}
 function buildBlocks(){
@@ -564,17 +582,11 @@ function aiGenerate(){
   const out=document.getElementById('aiOut');if(!out)return;
   out.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Asking Gemini to read the logs & remarks…</div>';
   const blocks=buildBlocks();
-  const cb='krsfCb'+Date.now();
-  let s=null,done=false;
-  function cleanup(){try{delete window[cb];}catch(e){}if(s&&s.parentNode)s.parentNode.removeChild(s);}
-  window[cb]=function(res){done=true;cleanup();
-    if(!res||res.error){out.innerHTML='<div class="card"><b>Could not generate insights.</b><br><span class="muted">'+((res&&res.error)||'No response from the AI endpoint.')+'</span></div>';return;}
-    renderAI(res.insights||res);};
-  s=document.createElement('script');
-  s.src=AI_ENDPOINT+'?callback='+cb+'&data='+encodeURIComponent(JSON.stringify(blocks));
-  s.onerror=function(){if(done)return;cleanup();out.innerHTML='<div class="card"><b>Could not reach the AI endpoint.</b><br><span class="muted">Check your internet and that the Apps Script web app is deployed (access: Anyone).</span></div>';};
-  document.body.appendChild(s);
-  setTimeout(function(){if(!done){cleanup();out.innerHTML='<div class="card"><b>Timed out.</b><br><span class="muted">The AI endpoint did not respond. Tap Regenerate to retry.</span></div>';}},25000);
+  aiCall('&data='+encodeURIComponent(JSON.stringify(blocks)),{
+    onResult:function(res){renderAI(res.insights||res);},
+    onRetry:function(n,max){out.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">Gemini is busy — retrying… ('+n+'/'+max+')</div>';},
+    onFail:function(msg){out.innerHTML='<div class="card"><b>Could not generate insights.</b><br><span class="muted">'+escA(msg)+'</span><br><button class="btn sm" style="margin-top:10px;width:auto" onclick="aiGenerate()">Try again</button></div>';}
+  });
 }
 function renderAI(I){
   const out=document.getElementById('aiOut');if(!out)return;
