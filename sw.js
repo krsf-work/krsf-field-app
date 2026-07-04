@@ -1,5 +1,5 @@
-const CACHE='krsf-v10';
-const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE='krsf-v11';
+const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./pragati-logo.png'];
 /* Static asset CDNs whose responses we cache so the icon font & web fonts keep working offline / on poor networks */
 function isAssetCDN(u){return u.indexOf('cdnjs.cloudflare.com')>-1||u.indexOf('fonts.googleapis.com')>-1||u.indexOf('fonts.gstatic.com')>-1;}
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(CORE);}).then(function(){return self.skipWaiting();}));});

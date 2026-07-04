@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="પ્રગતિ Pragati">
-<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAKHElEQVR4nO3d6XOV5R3G8QuSnOwJCUkgAmELOwKyyFbE0tKilkIohCXLOSPtTN9ABAOCDIsg+xISrdURNCckJIQlKaIsCsgiUvZFJGGLLLIvgRCyQ19QxnYcR0bPfT/Pc37X5w/Idb/4fXkYGIZa4TP6PAKRULWNfgCRkRgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASLR/AVlXtBDV1Nf8AAAAAElFTkSuQmCC">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('sw',e);});});}(function(){var base=null,busy=false;function sig(cb){fetch('index.html',{method:'HEAD',cache:'no-store'}).then(function(r){cb(r.headers.get('etag')||r.headers.get('content-length')||null);}).catch(function(){cb(null);});}function check(){if(busy)return;busy=true;sig(function(s){busy=false;if(!s)return;if(base===null){base=s;return;}if(s===base)return;var dirty=false;try{dirty=[].some.call(document.querySelectorAll('#detail textarea,#detail input'),function(el){return el.value&&(''+el.value).trim();});}catch(_e){}if(dirty)return;base=s;location.reload();});}window.addEventListener('load',function(){setTimeout(check,2000);});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')check();});})();</script>
 <title>પ્રગતિ Pragati — Daily Diary</title>
@@ -146,7 +145,7 @@
 <body>
 <div id="topbar">
   <div class="brand">
-    <div class="logo">પ</div>
+    <div class="logo" style="padding:0;overflow:hidden"><img src="pragati-logo.png" alt="પ્રગતિ" style="width:100%;height:100%;object-fit:cover;display:block"></div>
     <div style="min-width:0">
       <div class="t bilingual"><span class="en">પ્રગતિ · Pragati</span><span class="gu">પ્રગતિ</span></div>
       <div class="s bilingual"><span class="en">Daily diary & monitoring · Gujarat</span><span class="gu">દૈનિક ડાયરી અને મોનિટરિંગ</span></div>
@@ -188,7 +187,7 @@
 <div id="loginOverlay" style="position:fixed;inset:0;background:#2a2200;display:none;align-items:center;justify-content:center;z-index:99999;padding:20px">
   <div style="background:#fff;border-radius:18px;max-width:340px;width:100%;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.3)">
     <div style="background:#ffc700;color:#3a2e00;text-align:center;padding:30px 22px 26px;border-radius:0 0 26px 26px">
-      <div style="width:62px;height:62px;border-radius:18px;background:rgba(58,46,0,.12);border:1.5px solid rgba(58,46,0,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="ti ti-school" style="font-size:32px"></i></div>
+      <div style="width:88px;height:88px;border-radius:20px;overflow:hidden;margin:0 auto 12px;box-shadow:0 4px 14px rgba(0,0,0,.18);border:2px solid rgba(255,255,255,.6)"><img src="pragati-logo.png" alt="પ્રગતિ" style="width:100%;height:100%;object-fit:cover;display:block"></div>
       <div style="font-size:22px;font-weight:800;letter-spacing:.5px">પ્રગતિ</div>
       <div style="font-size:12.5px;opacity:.85;margin-top:3px">Your daily diary · દૈનિક ડાયરી</div>
     </div>
@@ -212,7 +211,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='3.6'; /* v3.6 — Yellow theme (પ્રગતિ rebrand); TL list on Overview; SW caches icon font offline */
+const APP_VERSION='3.7'; /* v3.7 — Pragati Warli logo (topbar, login, PWA icons) */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
