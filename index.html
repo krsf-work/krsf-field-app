@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#15803d">
+<meta name="theme-color" content="#ffc700">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="KRSF">
+<meta name="apple-mobile-web-app-title" content="પ્રગતિ Pragati">
 <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAKHElEQVR4nO3d6XOV5R3G8QuSnOwJCUkgAmELOwKyyFbE0tKilkIohCXLOSPtTN9ABAOCDIsg+xISrdURNCckJIQlKaIsCsgiUvZFJGGLLLIvgRCyQ19QxnYcR0bPfT/Pc37X5w/Idb/4fXkYGIZa4TP6PAKRULWNfgCRkRgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASDQGQKIxABKNAZBoDIBEYwAkGgMg0RgAicYASLR/AVlXtBDV1Nf8AAAAAElFTkSuQmCC">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('sw',e);});});}(function(){var base=null,busy=false;function sig(cb){fetch('index.html',{method:'HEAD',cache:'no-store'}).then(function(r){cb(r.headers.get('etag')||r.headers.get('content-length')||null);}).catch(function(){cb(null);});}function check(){if(busy)return;busy=true;sig(function(s){busy=false;if(!s)return;if(base===null){base=s;return;}if(s===base)return;var dirty=false;try{dirty=[].some.call(document.querySelectorAll('#detail textarea,#detail input'),function(el){return el.value&&(''+el.value).trim();});}catch(_e){}if(dirty)return;base=s;location.reload();});}window.addEventListener('load',function(){setTimeout(check,2000);});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')check();});})();</script>
-<title>KRSF Field App — TL Monitoring & Daily Diary</title>
+<title>પ્રગતિ Pragati — Daily Diary</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Vadodara:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
   :root{
     --bg:#eef1f5;--panel:#ffffff;--ink:#1b2030;--muted:#6b7280;--soft:#9aa1ad;
     --line:#e6e9ef;--line2:#d7dbe3;
-    --brand:#15803d;--brand-d:#0f5f2e;--brand-tint:#eaf5ee;
+    --brand:#ffc700;--brand-d:#a16207;--brand-tint:#fff8e1;--brand-ink:#3a2e00;
     --gI:#16a34a;--gA:#d97706;--gR:#dc2626;--gB:#2563eb;
     --gI-bg:#e9f7ef;--gA-bg:#fdf0dd;--gR-bg:#fbe9e9;--gB-bg:#e9f0fd;
     --gI-tx:#15803d;--gA-tx:#b45309;--gR-tx:#b91c1c;--gB-tx:#1d4ed8;
@@ -31,7 +31,7 @@
   /* topbar */
   #topbar{height:60px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 18px;gap:12px;position:sticky;top:0;z-index:30}
   .brand{display:flex;align-items:center;gap:11px;min-width:0}
-  .logo{width:38px;height:38px;border-radius:11px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0}
+  .logo{width:38px;height:38px;border-radius:11px;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0}
   .brand .t{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .brand .s{font-size:11.5px;color:var(--muted)}
   .ctrls{display:flex;align-items:center;gap:8px}
@@ -45,7 +45,7 @@
   .msearch{width:100%;padding:9px 12px;border:1px solid var(--line2);border-radius:10px;font-size:14px;margin-bottom:10px;font-family:inherit}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .chip{font-size:12px;font-weight:600;padding:6px 11px;border-radius:20px;border:1px solid var(--line2);background:var(--panel);color:var(--muted);cursor:pointer;white-space:nowrap}
-  .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
   .mlabel{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--soft);margin:10px 4px 7px}
   .mrow{display:flex;align-items:center;gap:11px;padding:10px;border-radius:11px;cursor:pointer;margin-bottom:3px}
   .mrow:hover{background:#f4f6f9}
@@ -107,9 +107,9 @@
   input,textarea,select.fld{width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:10px;font-size:14.5px;font-family:inherit;background:var(--panel);color:var(--ink)}
   textarea{min-height:78px;resize:vertical}
   .row{display:flex;gap:11px;flex-wrap:wrap}.row>*{flex:1;min-width:130px}
-  .btn{background:var(--brand);color:#fff;border:none;padding:12px 17px;border-radius:10px;font-size:14.5px;font-weight:700;cursor:pointer}
+  .btn{background:var(--brand);color:var(--brand-ink);border:none;padding:12px 17px;border-radius:10px;font-size:14.5px;font-weight:700;cursor:pointer}
   .btn:active{transform:translateY(1px)}.btn.block{width:100%}
-  .btn.out{background:var(--gR)}.btn.sec{background:var(--gB)}
+  .btn.out{background:var(--gR);color:#fff}.btn.sec{background:var(--gB);color:#fff}
   .btn.sm{padding:8px 13px;font-size:13px;border-radius:9px}
   .btn.ghost{background:var(--panel);color:var(--brand-d);border:1px solid var(--line2)}
   .gps{font-size:13px;background:var(--gB-bg);color:var(--gB-tx);padding:10px 13px;border-radius:10px;margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600}
@@ -146,10 +146,10 @@
 <body>
 <div id="topbar">
   <div class="brand">
-    <div class="logo">K</div>
+    <div class="logo">પ</div>
     <div style="min-width:0">
-      <div class="t bilingual"><span class="en">KRSF Field App</span><span class="gu">ક્રસફ ફિલ્ડ એપ</span></div>
-      <div class="s bilingual"><span class="en">TL monitoring & daily diary · Gujarat</span><span class="gu">TL મોનિટરિંગ અને દૈનિક ડાયરી</span></div>
+      <div class="t bilingual"><span class="en">પ્રગતિ · Pragati</span><span class="gu">પ્રગતિ</span></div>
+      <div class="s bilingual"><span class="en">Daily diary & monitoring · Gujarat</span><span class="gu">દૈનિક ડાયરી અને મોનિટરિંગ</span></div>
     </div>
   </div>
   <div class="ctrls">
@@ -185,12 +185,12 @@
 
 <div class="toast" id="toast"></div>
 
-<div id="loginOverlay" style="position:fixed;inset:0;background:#0e3a2f;display:none;align-items:center;justify-content:center;z-index:99999;padding:20px">
+<div id="loginOverlay" style="position:fixed;inset:0;background:#2a2200;display:none;align-items:center;justify-content:center;z-index:99999;padding:20px">
   <div style="background:#fff;border-radius:18px;max-width:340px;width:100%;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.3)">
-    <div style="background:#15803d;color:#fff;text-align:center;padding:30px 22px 26px;border-radius:0 0 26px 26px">
-      <div style="width:62px;height:62px;border-radius:18px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="ti ti-school" style="font-size:32px"></i></div>
-      <div style="font-size:19px;font-weight:700">KRSF Field App</div>
-      <div style="font-size:12.5px;opacity:.92;margin-top:3px">Your daily diary · દૈનિક ડાયરી</div>
+    <div style="background:#ffc700;color:#3a2e00;text-align:center;padding:30px 22px 26px;border-radius:0 0 26px 26px">
+      <div style="width:62px;height:62px;border-radius:18px;background:rgba(58,46,0,.12);border:1.5px solid rgba(58,46,0,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="ti ti-school" style="font-size:32px"></i></div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:.5px">પ્રગતિ</div>
+      <div style="font-size:12.5px;opacity:.85;margin-top:3px">Your daily diary · દૈનિક ડાયરી</div>
     </div>
     <div style="padding:22px">
       <label for="lg_phone" style="font-size:12.5px;color:#374151;font-weight:600">Mobile number · મોબાઇલ નંબર</label>
@@ -199,7 +199,7 @@
       <div style="display:flex;align-items:center;gap:8px;background:#f3f4f6;border-radius:11px;padding:0 12px;margin:6px 0 5px"><i class="ti ti-lock" style="color:#9ca3af"></i><input id="lg_pwd" type="password" autocomplete="current-password" placeholder="last 4 digits" style="flex:1;border:none;outline:none;background:transparent;padding:12px 0;font-size:14.5px" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="lg_show" onclick="lgToggle()" aria-label="Show password" style="background:none;border:none;color:#6b7280;cursor:pointer;padding:4px;display:flex;align-items:center"><i id="lg_show_ic" class="ti ti-eye" style="font-size:19px"></i></button></div>
       <div style="font-size:11.5px;color:#6b7280;margin-bottom:13px">છેલ્લા 4 અંક</div>
       <div id="lg_err" style="color:#b91c1c;font-size:13px;min-height:18px;margin:0 0 6px"></div>
-      <button id="lg_btn" onclick="doLogin()" style="width:100%;padding:13px;background:#16a34a;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">Log in · લોગિન</button>
+      <button id="lg_btn" onclick="doLogin()" style="width:100%;padding:13px;background:#ffc700;color:#3a2e00;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">Log in · લોગિન</button>
       <div style="text-align:center;font-size:11.5px;color:#6b7280;margin-top:14px;line-height:1.5">Forgot password? Ask your Team Leader.<br>પાસવર્ડ ભૂલી ગયા? તમારા ટીમ લીડરનો સંપર્ક કરો.</div>
     </div>
   </div>
@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='3.5'; /* v3.5 — AI Insights auto-retries on Gemini 503/429 (transient overload/rate-limit) */
+const APP_VERSION='3.6'; /* v3.6 — Yellow theme (પ્રગતિ rebrand); TL list on Overview; SW caches icon font offline */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -659,6 +659,20 @@ function overviewTeamBreakdown(){
     +'<td style="text-align:center">'+(tls.length+teachers.length)+'</td></tr>'
     +'</tbody></table></div>';
 }
+/* Clickable TL list for the Overview — the only reliable way to open a TL page on mobile (sidebar is hidden) */
+function overviewTLList(){
+  var all=allTL();
+  if(!all.length)return '';
+  var rows=all.map(function(s){
+    var tl=u(s.tlid);var cl=tl?clusterOf(tl):'';
+    var sub=!s.todayLog?(isWorkday(realToday())?T('No log today','આજે લોગ નથી'):T('Holiday','રજા')):(s.aOver+s.tkOver>0?(s.aOver+s.tkOver)+' '+T('overdue','મુદત વીતી'):(s.aOpen+s.tkOpen.length>0?(s.aOpen+s.tkOpen.length)+' '+T('open','ઓપન'):T('On track','ઠીક')));
+    return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;cursor:pointer" onclick="selectItem(\''+s.tlid+'\')">'
+      +'<div class="ava '+s.rag+'">'+initials(s.name)+'</div>'
+      +'<div class="mr-mid"><div class="mr-name">'+escA(s.name)+(cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':'')+'</div><div class="mr-sub">'+s.teachers.length+' '+T('teachers','શિક્ષક')+' · '+sub+'</div></div>'
+      +'<div class="mr-right"><span class="dot '+s.rag+'"></span> <i class="ti ti-chevron-right" style="color:var(--muted);font-size:15px"></i></div></div>';
+  }).join('');
+  return '<div class="card"><h3><i class="ti ti-user-star"></i> '+T('Team leaders — tap to open','ટીમ લીડર — ખોલવા દબાવો')+' · '+all.length+'</h3>'+rows+'</div>';
+}
 function detailOverview(){
   const all=allTL();
   const logged=all.filter(s=>s.todayLog).length;
@@ -677,6 +691,7 @@ function detailOverview(){
       <div class="kpi" style="background:${_ch?'#dc2626':'#6b7280'};cursor:pointer" onclick="selectItem('challenges')"><div class="n">${_ch}</div><div class="l">${T('Challenges today','આજે પડકાર')}</div></div>
       
     </div>
+    ${overviewTLList()}
     ${overviewTeamBreakdown()}
     ${overviewInsights()}
     ${overviewActivity()}${overviewChallenges()}<div class="card"><h3><i class="ti ti-clipboard-list"></i>${T('All open action items & tasks','બધા ખુલ્લા આઇટમ અને કાર્ય')} · ${rows.length}</h3>
@@ -876,7 +891,7 @@ function dlCSV(fn,rows){var csv=rows.map(function(r){return r.map(csvEsc).join('
 function fmtUpd(v){if(!v)return '';var d=(typeof v==='number')?new Date(v):new Date(String(v));return isNaN(d.getTime())?'':fmtD(dstr(d));}
 function expLogs(){var from=val('exp_from')||'';var to=val('exp_to')||'';if(from&&to&&from>to){var t=from;from=to;to=t;}var es=DB.entries.filter(function(e){if(!(hasDiary(e)||e.punchIn||e.punchOut))return false;var d=e.date||'';if(from&&d<from)return false;if(to&&d>to)return false;return true;});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String((u(a.userId)&&u(a.userId).name)||'').localeCompare(String((u(b.userId)&&u(b.userId).name)||''));});if(!es.length){toast(T('No logs in that range','આ શ્રેણીમાં લોગ નથી'));return;}var head=['Date','Name','Role','Cluster','Under TL','School(s)','Present','Total','Work done','Challenge','Purpose','Met','Observation','Topic','Punch in','Punch out','Updated'];var rows=[head];es.forEach(function(e){var x=u(e.userId);var tl=(x&&x.tl)?u(x.tl):null;var sch=e.school||e.visited||((e.schools&&e.schools.join)?e.schools.join('; '):'')||'';rows.push([fmtD(e.date),(x&&x.name)||e.userId||'',e.role||(x&&x.role)||'',x?clusterOf(x):'',tl?tl.name:'',sch,(e.present!=null?e.present:''),(e.total!=null?e.total:''),e.summary||'',(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?e.challenge:'',e.purpose||'',(e.met&&e.met.join)?e.met.join('; '):'',e.observation||'',e.topic||'',e.punchIn||'',e.punchOut||'',fmtUpd(e.updatedAt)]);});dlCSV('krsf-logs-'+(from||'all')+'_to_'+(to||'all')+'.csv',rows);toast(es.length+' '+T('records exported','રેકોર્ડ એક્સપોર્ટ')+' ✓');}
 function expUsers(){var ord={PM:0,TL:1,Teacher:2};var us=DB.users.slice().sort(function(a,b){return ((ord[a.role]==null?9:ord[a.role])-(ord[b.role]==null?9:ord[b.role]))||String(a.name||'').localeCompare(String(b.name||''));});var head=['Name','Role','Cluster','Phone','Under TL','Active'];var rows=[head];us.forEach(function(x){var tl=x.tl?u(x.tl):null;rows.push([x.name||'',x.role||'',clusterOf(x),x.phone||'',tl?tl.name:'',x.active===false?'No':'Yes']);});dlCSV('krsf-staff.csv',rows);toast(us.length+' '+T('users exported','યુઝર એક્સપોર્ટ')+' ✓');}
-function renderBottomNav(){var el=document.getElementById('bottomNav');if(!el)return;var u0=u(CUR);if(!u0){el.innerHTML='';return;}var role=u0.role;var tabs;if(role==='PM'){tabs=[['overview','ti-layout-dashboard',T('Overview','ઝલક')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['insights','ti-sparkles',T('AI','AI')],['users','ti-user-cog',T('Manage','મેનેજ')]];}else if(role==='TL'){tabs=[['diary','ti-clipboard-text',T('Today','આજે')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['tasks','ti-checklist',T('Tasks','કાર્ય')],['logs','ti-history',T('Logs','લોગ')]];}else{el.innerHTML='<div style="flex:1;display:flex;justify-content:center;align-items:center;padding:6px 0 2px"><div onclick="selectItem(\'home\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent"><span style="display:flex;align-items:center;justify-content:center;width:60px;height:34px;border-radius:18px;background:#15803d"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12L3 12L12 3L21 12L19 12"/><path d="M5 12V19a1 1 0 0 0 1 1h3v-5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5h3a1 1 0 0 0 1-1V12"/></svg></span><span style="font-size:11px;font-weight:700;color:#15803d">હોમ</span></div></div>';return;}el.innerHTML=tabs.map(function(t){var sel=((SEL===t[0])||(t[0]==='home'&&SEL==='diary')||(t[0]==='teachers'&&(SEL==='teacherLogs'||(u(SEL)&&u(SEL).role==='Teacher'))));return '<div data-k="'+t[0]+'" onclick="selectItem(this.dataset.k)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:3px 0;color:'+(sel?'#15803d':'#9aa1ad')+';font-weight:'+(sel?'700':'500')+'"><span style="display:flex;align-items:center;justify-content:center;width:48px;height:30px;border-radius:16px;background:'+(sel?'var(--brand-tint)':'transparent')+'"><i class="ti '+t[1]+'" style="font-size:22px"></i></span><div style="font-size:11px">'+t[2]+'</div></div>';}).join('');}
+function renderBottomNav(){var el=document.getElementById('bottomNav');if(!el)return;var u0=u(CUR);if(!u0){el.innerHTML='';return;}var role=u0.role;var tabs;if(role==='PM'){tabs=[['overview','ti-layout-dashboard',T('Overview','ઝલક')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['insights','ti-sparkles',T('AI','AI')],['users','ti-user-cog',T('Manage','મેનેજ')]];}else if(role==='TL'){tabs=[['diary','ti-clipboard-text',T('Today','આજે')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['tasks','ti-checklist',T('Tasks','કાર્ય')],['logs','ti-history',T('Logs','લોગ')]];}else{el.innerHTML='<div style="flex:1;display:flex;justify-content:center;align-items:center;padding:6px 0 2px"><div onclick="selectItem(\'home\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent"><span style="display:flex;align-items:center;justify-content:center;width:60px;height:34px;border-radius:18px;background:#ffc700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3a2e00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12L3 12L12 3L21 12L19 12"/><path d="M5 12V19a1 1 0 0 0 1 1h3v-5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5h3a1 1 0 0 0 1-1V12"/></svg></span><span style="font-size:11px;font-weight:700;color:#a16207">હોમ</span></div></div>';return;}el.innerHTML=tabs.map(function(t){var sel=((SEL===t[0])||(t[0]==='home'&&SEL==='diary')||(t[0]==='teachers'&&(SEL==='teacherLogs'||(u(SEL)&&u(SEL).role==='Teacher'))));return '<div data-k="'+t[0]+'" onclick="selectItem(this.dataset.k)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:3px 0;color:'+(sel?'#a16207':'#9aa1ad')+';font-weight:'+(sel?'700':'500')+'"><span style="display:flex;align-items:center;justify-content:center;width:48px;height:30px;border-radius:16px;background:'+(sel?'var(--brand-tint)':'transparent')+'"><i class="ti '+t[1]+'" style="font-size:22px"></i></span><div style="font-size:11px">'+t[2]+'</div></div>';}).join('');}
 function detailProfile(){var x=u(CUR);if(!x)return '';var cl=clusterOf(x);return (x.role==='Teacher'?tHero(T('Profile','પ્રોફાઇલ'),''):'<div class="dhead"><div class="dh-title">'+T('Profile','પ્રોફાઇલ')+'</div></div>')+'<div class="card"><div style="font-weight:700;font-size:16px">'+escA(x.name)+'</div><div class="muted" style="margin-top:3px">'+x.role+(cl?(' · '+cl):'')+'</div><div class="muted" style="font-size:12.5px;margin-top:2px">'+(x.phone||'')+'</div><div class="muted" style="font-size:11.5px;margin-top:8px">'+T('App version','એપ વર્ઝન')+' '+APP_VERSION+'</div></div><a class="btn ghost block" href="guide.html" target="_blank" style="margin-top:10px;text-decoration:none;display:block;text-align:center">'+T('Teacher guide','શિક્ષક માર્ગદર્શિકા')+'</a><button class="btn block" style="margin-top:10px;background:#b3261e" onclick="logout()">'+T('Logout','લોગઆઉટ')+'</button>';}
 function openLogDate(d){SELDATE=d;SEL='diary';renderAll();}
 function overviewByCluster(){var td=today();var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});var g={};teachers.forEach(function(t){var c=clusterOf(t)||'—';if(!g[c])g[c]={total:0,logged:0,ch:0};g[c].total++;var e=DB.entries.find(function(x){return x.userId===t.id&&x.date===td;});if(hasDiary(e))g[c].logged++;if(e&&e.challenge&&String(e.challenge).trim())g[c].ch++;});var keys=Object.keys(g).sort();if(!keys.length)return '';var rows=keys.map(function(c){var x=g[c];var pct=x.total?Math.round(x.logged/x.total*100):0;var col=pct>=80?'var(--brand)':(pct>=40?'#c97a00':'#b3261e');return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)"><div style="font-weight:700;min-width:60px">'+c+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--muted)">'+x.logged+'/'+x.total+' '+T('logged today','આજે લોગ')+(x.ch?(' · '+x.ch+' '+T('challenges','સમસ્યા')):'')+'</div><div style="height:6px;background:var(--line);border-radius:4px;margin-top:4px;overflow:hidden"><div style="height:6px;width:'+pct+'%;background:'+col+'"></div></div></div><div style="font-weight:700;color:'+col+';min-width:40px;text-align:right">'+pct+'%</div></div>';}).join('');return '<div class="card"><h3><i class="ti ti-building-community"></i> '+T('By NGO / cluster','NGO / ક્લસ્ટર પ્રમાણે')+'</h3>'+rows+'</div>';}
@@ -903,14 +918,14 @@ function detailHome(){
     return '<div style="text-align:center;flex:1"><div style="display:flex;justify-content:center">'+box+'</div><div style="font-size:10px;color:'+(isT?'#b45309':'#6b7280')+';margin-top:3px">'+(isT?T('Today','આજે'):wd)+'</div></div>';
   }).join('');
   var recents=DB.entries.filter(function(x){return x.userId===CUR;}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,3);
-  var recHtml=recents.length?recents.map(function(en){var att=(en.present!=null&&en.present!=='')?(en.present+'/'+en.total):'';return '<div data-d="'+en.date+'" onclick="openLogDate(this.dataset.d)" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #eef1f5;cursor:pointer"><i class="ti ti-point-filled" style="color:#15803d"></i><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fmtD(en.date)+' · '+escA(en.topic||en.school||'-')+'</div></div>'+(att?'<span style="color:#6b7280;font-size:11px;white-space:nowrap">'+att+'</span>':'')+'</div>';}).join(''):'<div style="color:#9aa1ad;font-size:12px;padding:6px 0">'+T('No entries yet','હજુ નોંધ નથી')+'</div>';
+  var recHtml=recents.length?recents.map(function(en){var att=(en.present!=null&&en.present!=='')?(en.present+'/'+en.total):'';return '<div data-d="'+en.date+'" onclick="openLogDate(this.dataset.d)" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #eef1f5;cursor:pointer"><i class="ti ti-point-filled" style="color:#a16207"></i><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fmtD(en.date)+' · '+escA(en.topic||en.school||'-')+'</div></div>'+(att?'<span style="color:#6b7280;font-size:11px;white-space:nowrap">'+att+'</span>':'')+'</div>';}).join(''):'<div style="color:#9aa1ad;font-size:12px;padding:6px 0">'+T('No entries yet','હજુ નોંધ નથી')+'</div>';
   var nudge=hasSetup(CUR)?'':'<div style="background:#fdf0dd;border-radius:10px;padding:9px 11px;margin-top:11px;font-size:12px;color:#b45309;display:flex;align-items:center;gap:8px"><i class="ti ti-info-circle" style="font-size:15px"></i><div style="flex:1">'+T('Set up your class & timetable (one time)','તમારો વર્ગ અને સમયપત્રક સેટ કરો (એક વાર)')+'</div><span onclick="selectItem(\'setup\')" style="background:#b45309;color:#fff;border-radius:7px;padding:5px 10px;cursor:pointer;white-space:nowrap">'+T('Set up','સેટઅપ')+'</span></div>';
-  var chip='background:rgba(255,255,255,.18);border-radius:8px;padding:4px 9px;font-size:11px;display:inline-flex;align-items:center;gap:5px';
-  var chipBtn='background:rgba(255,255,255,.25);border:1.5px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 11px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;-webkit-tap-highlight-color:transparent';
+  var chip='background:rgba(58,46,0,.12);border-radius:8px;padding:4px 9px;font-size:11px;display:inline-flex;align-items:center;gap:5px';
+  var chipBtn='background:rgba(58,46,0,.15);border:1.5px solid rgba(58,46,0,.4);border-radius:8px;padding:5px 11px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;-webkit-tap-highlight-color:transparent';
   var punchChip=punched?(e.punchOut?'<span style="'+chip+'"><i class="ti ti-clock-check" style="font-size:13px"></i> '+T('In','ઇન')+' '+e.punchIn+' · '+T('Out','આઉટ')+' '+e.punchOut+'</span>':'<span onclick="punchOut()" style="'+chipBtn+'"><i class="ti ti-clock-stop" style="font-size:13px"></i> '+T('In','ઇન')+' '+e.punchIn+' — '+T('Punch Out','પંચ આઉટ')+'</span>'):'<span onclick="punchIn()" style="'+chipBtn+'"><i class="ti ti-clock-play" style="font-size:13px"></i> '+T('Punch In','પંચ ઇન')+'</span>';
-  return '<div style="background:#15803d;color:#fff;border-radius:15px;padding:14px"><div style="display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">'+initials(user.name)+'</div><div style="line-height:1.3;min-width:0"><div style="font-size:11px;opacity:.9">'+T('Welcome back','ફરી સ્વાગત')+' · '+fmtD(td)+'</div><div style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escA(user.name)+'</div></div></div><div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap">'+punchChip+(logged?'<span style="'+chip+'"><i class="ti ti-circle-check" style="font-size:13px"></i> '+T('Diary done','ડાયરી થઈ')+'</span>':'<span style="'+chip+'"><i class="ti ti-circle-dashed" style="font-size:13px"></i> '+T('Diary pending','ડાયરી બાકી')+'</span>')+'</div></div>'
-   +'<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:11px;box-shadow:0 4px 14px rgba(20,40,30,.06)"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:#6b7280;font-weight:700;letter-spacing:.3px">'+T('THIS WEEK','આ અઠવાડિયે')+'</span><span style="font-size:11px;color:#15803d;font-weight:700">'+loggedCount+' / '+days.length+' '+T('logged','લોગ')+'</span></div><div style="display:flex;gap:4px;margin-top:9px">'+strip+'</div></div>'
-   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px"><div onclick="selectItem(\'diary\')" style="background:#15803d;color:#fff;border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,80,40,.15)"><i class="ti ti-pencil" style="font-size:22px"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('Fill diary','ડેઈલી ડાઈરી')+'</div></div><div onclick="selectItem(\'logs\')" style="background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,40,30,.06)"><i class="ti ti-history" style="font-size:22px;color:#6b7280"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('My logs','જૂની નોંધ')+'</div></div><div onclick="selectItem(\'setup\')" style="background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,40,30,.06)"><i class="ti ti-table" style="font-size:22px;color:#b45309"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('My class','મારો ક્લાસ')+'</div></div><div onclick="selectItem(\'tasks\')" style="background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,40,30,.06);position:relative">'+(DB.tasks.filter(function(k){return k.tlid===CUR&&k.status==='open';}).length?'<span style="position:absolute;top:7px;right:10px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center">'+DB.tasks.filter(function(k){return k.tlid===CUR&&k.status==='open';}).length+'</span>':'')+'<i class="ti ti-checklist" style="font-size:22px;color:#1d4ed8"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('Tasks','કાર્ય')+'</div></div></div>'
+  return '<div style="background:#ffc700;color:#3a2e00;border-radius:15px;padding:14px"><div style="display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:50%;background:rgba(58,46,0,.14);border:1.5px solid rgba(58,46,0,.35);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">'+initials(user.name)+'</div><div style="line-height:1.3;min-width:0"><div style="font-size:11px;opacity:.9">'+T('Welcome back','ફરી સ્વાગત')+' · '+fmtD(td)+'</div><div style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escA(user.name)+'</div></div></div><div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap">'+punchChip+(logged?'<span style="'+chip+'"><i class="ti ti-circle-check" style="font-size:13px"></i> '+T('Diary done','ડાયરી થઈ')+'</span>':'<span style="'+chip+'"><i class="ti ti-circle-dashed" style="font-size:13px"></i> '+T('Diary pending','ડાયરી બાકી')+'</span>')+'</div></div>'
+   +'<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:11px;box-shadow:0 4px 14px rgba(20,40,30,.06)"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:#6b7280;font-weight:700;letter-spacing:.3px">'+T('THIS WEEK','આ અઠવાડિયે')+'</span><span style="font-size:11px;color:#a16207;font-weight:700">'+loggedCount+' / '+days.length+' '+T('logged','લોગ')+'</span></div><div style="display:flex;gap:4px;margin-top:9px">'+strip+'</div></div>'
+   +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px"><div onclick="selectItem(\'diary\')" style="background:#ffc700;color:#3a2e00;border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(120,90,0,.18)"><i class="ti ti-pencil" style="font-size:22px"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('Fill diary','ડેઈલી ડાઈરી')+'</div></div><div onclick="selectItem(\'logs\')" style="background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,40,30,.06)"><i class="ti ti-history" style="font-size:22px;color:#6b7280"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('My logs','જૂની નોંધ')+'</div></div><div onclick="selectItem(\'setup\')" style="background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,40,30,.06)"><i class="ti ti-table" style="font-size:22px;color:#b45309"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('My class','મારો ક્લાસ')+'</div></div><div onclick="selectItem(\'tasks\')" style="background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,40,30,.06);position:relative">'+(DB.tasks.filter(function(k){return k.tlid===CUR&&k.status==='open';}).length?'<span style="position:absolute;top:7px;right:10px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center">'+DB.tasks.filter(function(k){return k.tlid===CUR&&k.status==='open';}).length+'</span>':'')+'<i class="ti ti-checklist" style="font-size:22px;color:#1d4ed8"></i><div style="font-size:12.5px;margin-top:5px;font-weight:600">'+T('Tasks','કાર્ય')+'</div></div></div>'
    +nudge
    +'<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:11px;box-shadow:0 4px 14px rgba(20,40,30,.06)"><div style="font-size:11px;color:#6b7280;font-weight:700;letter-spacing:.3px;margin-bottom:6px">'+T('RECENT ENTRIES','તાજેતરની નોંધ')+'</div>'+recHtml+'</div>';
 }
