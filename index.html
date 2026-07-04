@@ -24,6 +24,15 @@
     --gI-tx:#a16207;--gA-tx:#b45309;--gR-tx:#b91c1c;--gB-tx:#1d4ed8;
     --r:12px;--r2:9px;
   }
+  /* animated login wordmark — solid dark-gold ink with a single warm gold light sweeping across (plays once on login) */
+  .brandmark{display:inline-block;font-size:28px;font-weight:800;letter-spacing:.5px;line-height:1.35;padding:2px 2px 4px;
+    background:linear-gradient(100deg,#3a2e00 0 38%,#e6a700 48%,#fff2c0 52%,#e6a700 56%,#3a2e00 66% 100%);
+    background-size:280% 100%;background-position:100% 0;
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    animation:bmRise .5s ease both, bmSheen 1.7s ease .3s both;}
+  @keyframes bmRise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+  @keyframes bmSheen{from{background-position:100% 0}to{background-position:0 0}}
+  @media (prefers-reduced-motion: reduce){.brandmark{animation:none;background:none;-webkit-text-fill-color:#3a2e00;color:#3a2e00}}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{font-family:'Hind Vadodara',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -188,7 +197,7 @@
   <div style="background:#fff;border-radius:18px;max-width:340px;width:100%;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.3)">
     <div style="background:#ffc700;color:#3a2e00;text-align:center;padding:30px 22px 26px;border-radius:0 0 26px 26px">
       <div style="width:88px;height:88px;border-radius:20px;overflow:hidden;margin:0 auto 12px;box-shadow:0 4px 14px rgba(0,0,0,.18);border:2px solid rgba(255,255,255,.6)"><img src="pragati-logo.png" alt="પ્રગતિ" style="width:100%;height:100%;object-fit:cover;display:block"></div>
-      <div style="font-size:22px;font-weight:800;letter-spacing:.5px">પ્રગતિ</div>
+      <div class="brandmark">પ્રગતિ</div>
       <div style="font-size:12.5px;opacity:.85;margin-top:3px">Your daily diary · દૈનિક ડાયરી</div>
     </div>
     <div style="padding:22px">
@@ -212,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='4.0'; /* v4.0 — logs auto-break numbered points (1. 2. 3.) into steps even without Enter — readable on mobile */
+const APP_VERSION='4.1'; /* v4.1 — animated login wordmark પ્રગતિ (gold shimmer sweep, plays once) */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -396,7 +405,7 @@ function toggleNotif(){const p=document.getElementById('notifPanel');if(!p)retur
   p.innerHTML='<div style="padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)">'+T('Notifications','નોટિફિકેશન')+'</div>'+(n.length?n.map(x=>'<div style="padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:flex-start"><i class="ti '+x.icon+'" style="color:var(--brand);margin-top:2px"></i><div style="min-width:0"><div style="font-weight:600;font-size:13px">'+escA(x.title)+'</div><div style="font-size:13px;color:var(--ink)">'+escA(x.detail||'')+'</div><div style="font-size:11.5px;color:var(--muted)">'+escA(x.sub||'')+'</div></div></div>').join(''):'<div style="padding:18px;color:var(--muted);font-size:13px;text-align:center">'+T('No notifications','કોઈ નોટિફિકેશન નથી')+'</div>');
   p.style.display='block';
   localStorage.setItem('krsf_seen_'+CUR,JSON.stringify(n.map(x=>x.key)));renderBell();}
-function showLogin(){const o=document.getElementById('loginOverlay');if(o)o.style.display='flex';const e=document.getElementById('lg_err');if(e)e.textContent='';const p=document.getElementById('lg_phone'),pw=document.getElementById('lg_pwd');if(p)p.value='';if(pw){pw.value='';pw.type='password';}const ic=document.getElementById('lg_show_ic');if(ic)ic.className='ti ti-eye';const btn=document.getElementById('lg_btn');if(btn){btn.disabled=false;btn.style.opacity='';}if(p)p.focus();}
+function showLogin(){const o=document.getElementById('loginOverlay');if(o)o.style.display='flex';var _bm=document.querySelector('.brandmark');if(_bm){_bm.style.animation='none';void _bm.offsetWidth;_bm.style.animation='';}const e=document.getElementById('lg_err');if(e)e.textContent='';const p=document.getElementById('lg_phone'),pw=document.getElementById('lg_pwd');if(p)p.value='';if(pw){pw.value='';pw.type='password';}const ic=document.getElementById('lg_show_ic');if(ic)ic.className='ti ti-eye';const btn=document.getElementById('lg_btn');if(btn){btn.disabled=false;btn.style.opacity='';}if(p)p.focus();}
 function lgToggle(){var p=document.getElementById('lg_pwd'),ic=document.getElementById('lg_show_ic'),b=document.getElementById('lg_show');if(!p)return;if(p.type==='password'){p.type='text';if(ic)ic.className='ti ti-eye-off';if(b)b.setAttribute('aria-label','Hide password');}else{p.type='password';if(ic)ic.className='ti ti-eye';if(b)b.setAttribute('aria-label','Show password');}}
 function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim();const pw=document.getElementById('lg_pwd').value||'';const err=document.getElementById('lg_err');const btn=document.getElementById('lg_btn');
   if(!ph||!pw){err.textContent=T('Enter mobile number and password.','મોબાઇલ નંબર અને પાસવર્ડ ભરો.');return;}
