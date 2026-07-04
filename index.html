@@ -212,7 +212,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='3.9'; /* v3.9 — PM bottom-nav gains a TLs tab (full-screen team-leader list) */
+const APP_VERSION='4.0'; /* v4.0 — logs auto-break numbered points (1. 2. 3.) into steps even without Enter — readable on mobile */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -503,7 +503,15 @@ function detailInsights(){
 }
 function escA(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 /* like escA but keeps the line breaks the writer typed (for diary remarks / summaries) */
-function escN(s){return escA(s).replace(/\r?\n/g,'<br>');}
+/* escape + keep typed line breaks, AND auto-break numbered points ("1. .. 2. .. 3. ..")
+   that field staff often type as one long paragraph, so logs read step-wise on mobile.
+   Latin (0-9) and Gujarati (૦-૯) digits; only triggers on a real list (has a "1." marker + >=2 markers). */
+function escN(s){s=String(s==null?'':s);var esc=escA(s).replace(/\r?\n/g,'<br>');
+  var marks=s.match(/(?:^|\s)[0-9૦-૯]{1,2}[.)]\s/g)||[];
+  if(marks.length>=2 && /(?:^|\s)[1૧][.)]\s/.test(s)){
+    esc=esc.replace(/(^|<br>|\s)([0-9૦-૯]{1,2}[.)]\s)/g,function(_,p,g){return (p===''||p==='<br>')?p+g:'<br>'+g;}).replace(/^(?:<br>)+/,'');
+  }
+  return esc;}
 function buildBlocksFull(q){
   q=(q||'').toLowerCase();
   const tls=DB.users.filter(x=>x.role==='TL'&&x.active!==false);
