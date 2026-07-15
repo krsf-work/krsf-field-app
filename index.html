@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='4.9'; /* v4.9 — Peer TL monitor cards: new monitorsTLs field (separate from seesAlso, which is untouched) lets a TL see another TL's status/tasks/activity — not their teachers — via toggle chips on Manage users, a Home "Also see" section, and a reused detailTL() peer mode. Includes task-assignment attribution fix (saveTask now stamps assignedBy/byRole). Zero extra Firestore reads. */
+const APP_VERSION='5.0'; /* v5.0 — Teacher timetable viewer: read-only Timetable card on the teacher profile screen (detailTeacher), visible to both PM and TL, built entirely from the same setup data teachers already fill in during their one-time Setup flow. Zero extra Firestore reads, zero new fields, no rules change. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -915,6 +915,27 @@ function detailTeacher(tid){
     var es=DB.entries.filter(function(e){return e.userId===tid;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,60);
     var td=today();var e=es.find(function(x){return x.date===td;});
     var tiles=`<div class="card"><div class="tiles"><div class="tile ${hasDiary(e)?'g':'r'}"><div class="v">${hasDiary(e)?'✓':'✗'}</div><div class="l">${T('Logged today','આજે લોગ')}</div></div><div class="tile"><div class="v">${es.length}</div><div class="l">${T('Recent entries','તાજેતરની નોંધ')}</div></div><div class="tile"><div class="v">${(e&&e.present!==''&&e.present!=null)?e.present+'/'+e.total:'-'}</div><div class="l">${T('Attendance today','આજે હાજરી')}</div></div><div class="tile"><div class="v">${fmtMin((e&&e.ttMinutes)||0)}</div><div class="l">${T('Taught today','આજે ભણાવ્યું')}</div></div></div></div>`;
+    var ttCard='';
+    if(!hasSetup(tid)){
+      ttCard='<div class="card"><h3><i class="ti ti-table"></i> '+T('Timetable','સમયપત્રક')+'</h3><div class="empty">'+T('Timetable not set up yet.','સમયપત્રક હજુ સેટ નથી.')+'</div></div>';
+    }else{
+      var schools=schoolsOf(t);
+      var ttBody=schools.map(function(sch){
+        var tt=ttForSchool(t,sch);
+        var rows=SLABS.map(function(sl){
+          var r=ttRowFor(tt,sl);
+          if(!r||!r.subject)return '';
+          var stdPart;
+          if(r.subject==='FLN'){stdPart='';}
+          else if(Array.isArray(r.std)){stdPart=r.std.length?(' ('+r.std.map(escA).join(', ')+')'):'';}
+          else{stdPart=r.std?(' ('+escA(r.std)+')'):'';}
+          return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px"><span>'+sl+'</span><span>'+escA(r.subject)+stdPart+'</span></div>';
+        }).join('');
+        var heading=(schools.length>1)?('<div class="muted" style="font-size:11.5px;margin:8px 0 4px;font-weight:700">'+escA(sch)+'</div>'):'';
+        return heading+rows;
+      }).join('');
+      ttCard='<div class="card"><h3><i class="ti ti-table"></i> '+T('Timetable','સમયપત્રક')+'</h3>'+ttBody+'</div>';
+    }
     var list=es.length?es.map(function(en){return `<div class="entry"><div class="top"><span>${fmtD(en.date)} · ${escA(en.school||'-')}</span><span>${en.punchIn||'-'} → ${en.punchOut||T('open','ચાલુ')}</span></div><div class="body">${en.topic?'<b>'+escA(en.topic)+'</b> ':''}${(en.present!==''&&en.present!=null)?`<span class="pill b">${T('Att','હાજરી')} ${en.present}/${en.total}</span>`:''}${en.summary?'<div style="margin-top:4px">'+escN(en.summary)+'</div>':''}${(en.challenge&&en.challenge!=='None.')?'<div class="warnline" style="margin-top:3px">'+escN(en.challenge)+'</div>':''}</div></div>`;}).join(''):`<div class="empty">${T('No entries yet.','હજુ નોંધ નથી.')}</div>`;
     var cl=clusterOf(t);
     var flagBtnD='<div style="display:flex;gap:7px;flex-shrink:0"><button onclick="gflagUser(\''+tid+'\')" style="background:'+(t.gflag?'#059669':'#f2fdf8')+';border:1.5px solid #059669;border-radius:6px;cursor:pointer;padding:6px 12px;font-size:13px;color:'+(t.gflag?'#fff':'#059669')+';display:flex;align-items:center;gap:5px;font-weight:600"><i class="ti '+(t.gflag?'ti-flag-filled':'ti-flag')+'"></i>'+(t.gflag?T('Good ✓','સારું ✓'):T('Good','સારું'))+'</button>'
@@ -928,7 +949,7 @@ function detailTeacher(tid){
     var composer=composerOpen?('<div style="margin-top:9px;padding-top:9px;border-top:0.5px solid var(--line)"><textarea id="tt_text_'+tid+'" placeholder="'+T('Task for','કાર્ય')+' '+escA(t.name)+'…" style="min-height:42px"></textarea><div style="display:flex;gap:8px;align-items:center;margin-top:7px"><label style="margin:0;font-size:12px;color:var(--muted)">'+T('Due','મુદત')+'</label><input type="date" id="tt_due_'+tid+'" value="'+addDays(tdR,5)+'" style="width:auto"><button class="btn sm" style="margin-left:auto;width:auto" onclick="assignTeacherTask(\''+tid+'\')">'+T('Assign','સોંપો')+'</button></div></div>'):'';
     var taskCard='<div class="card"><h3><i class="ti ti-checklist"></i> '+T('Tasks','કાર્ય')+' ('+openTks.length+' '+T('open','ઓપન')+')</h3>'+tkRows+assignBtn+composer+'</div>';
     var backBtn='<button class="btn ghost" style="width:auto;padding:6px 11px;flex-shrink:0" onclick="selectItem(TEACH_BACK||\'teachers\')">← '+T('Back','પાછળ')+'</button>';
-    return '<div class="dhead">'+backBtn+'<div class="ava g">'+initials(t.name)+'</div><div style="flex:1;min-width:0"><div class="dh-name">'+escA(t.name)+(t.flagged?'<i class="ti ti-flag-filled" style="color:#dc2626;font-size:14px;margin-left:6px"></i>':'')+(t.gflag?'<i class="ti ti-flag-filled" style="color:#059669;font-size:14px;margin-left:6px"></i>':'')+'</div><div class="dh-sub">'+T('Teacher','શિક્ષક')+' · '+(cl?escA(cl)+' · ':'')+T('under','હેઠળ')+' '+(tl?escA(tl.name):'-')+'</div></div>'+flagBtnD+'</div>'+tiles+taskCard+'<div class="card"><h3><i class="ti ti-history"></i> '+T('Daily diary entries','દૈનિક ડાયરી')+'</h3>'+list+'</div>';
+    return '<div class="dhead">'+backBtn+'<div class="ava g">'+initials(t.name)+'</div><div style="flex:1;min-width:0"><div class="dh-name">'+escA(t.name)+(t.flagged?'<i class="ti ti-flag-filled" style="color:#dc2626;font-size:14px;margin-left:6px"></i>':'')+(t.gflag?'<i class="ti ti-flag-filled" style="color:#059669;font-size:14px;margin-left:6px"></i>':'')+'</div><div class="dh-sub">'+T('Teacher','શિક્ષક')+' · '+(cl?escA(cl)+' · ':'')+T('under','હેઠળ')+' '+(tl?escA(tl.name):'-')+'</div></div>'+flagBtnD+'</div>'+tiles+ttCard+taskCard+'<div class="card"><h3><i class="ti ti-history"></i> '+T('Daily diary entries','દૈનિક ડાયરી')+'</h3>'+list+'</div>';
   }
 /* ---- TL / Teacher detail ---- */
 function myToday(){return DB.entries.find(e=>e.userId===CUR&&e.date===selDate());}
