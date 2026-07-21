@@ -1,4 +1,4 @@
-const CACHE='krsf-v19';
+const CACHE='krsf-v20';
 const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./pragati-logo.png'];
 /* Static asset CDNs whose responses we cache so the icon font & web fonts keep working offline / on poor networks */
 function isAssetCDN(u){return u.indexOf('cdnjs.cloudflare.com')>-1||u.indexOf('fonts.googleapis.com')>-1||u.indexOf('fonts.gstatic.com')>-1;}

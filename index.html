@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='5.2'; /* v5.2 — Teaching hours report: a Marks / Teaching hours toggle on the Reports screen. Teaching hours is a per-teacher, NGO-filterable table of hours/day derived entirely from each teacher's one-time timetable Setup (schoolsOf/ttForSchool/ttMinFromTT), sorted ascending so under-scheduled or not-yet-set-up teachers surface first. Zero new Firestore reads, zero new fields, no rules change. */
+const APP_VERSION='5.3'; /* v5.3 — TL see-all-logs: the TL detail screen's "Recent daily logs" card was hardcoded to the last 6 entries with no way to see anything older. Added detailTLLogs(), a full-history screen mirroring the existing teacher equivalent, reachable via a "See all logs" link shown whenever there are more than 6. Zero new Firestore reads, zero new fields, no rules change. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -360,7 +360,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return (n||'').replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(function(w){return (w&&w[0])||'';}).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all';function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all';function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -433,7 +433,7 @@ function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim
 function startSession(id){CUR=id;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();}}
 function logout(){if(AUTH)AUTH.signOut();CUR=null;showLogin();}
 var TEACH_BACK='teachers';
-function selectItem(k,extra){if(DIRTY&&SEL!==k&&!confirm(T('You have unsaved changes. Leave without saving?','સાચવ્યા વગરના ફેરફાર છે. સાચવ્યા વગર જવું?')))return;DIRTY=false;SETUP_TT=null;if(u(k)&&u(k).role==='Teacher'&&!(u(SEL)&&u(SEL).role==='Teacher'))TEACH_BACK=SEL||'teachers';if(k==='reports'&&SEL!=='reports'){REPORT_LEVEL=null;REPORT_ID=null;}SEL=k;if(k==='teacherLogs'&&extra)SELTEACHER=extra;document.getElementById('detail').scrollTop=0;renderAll();}
+function selectItem(k,extra){if(DIRTY&&SEL!==k&&!confirm(T('You have unsaved changes. Leave without saving?','સાચવ્યા વગરના ફેરફાર છે. સાચવ્યા વગર જવું?')))return;DIRTY=false;SETUP_TT=null;if(u(k)&&u(k).role==='Teacher'&&!(u(SEL)&&u(SEL).role==='Teacher'))TEACH_BACK=SEL||'teachers';if(k==='reports'&&SEL!=='reports'){REPORT_LEVEL=null;REPORT_ID=null;}SEL=k;if(k==='teacherLogs'&&extra)SELTEACHER=extra;if(k==='tlLogs'&&extra)SELTL=extra;document.getElementById('detail').scrollTop=0;renderAll();}
 
 /* ----- MASTER ----- */
 function renderMaster(){
@@ -511,8 +511,8 @@ function masterNav(role){
 /* ----- DETAIL ----- */
 function renderDetail(){DIRTY=false;
   const role=u(CUR).role;const d=document.getElementById('detail');
-  if(role==='PM'){d.innerHTML=SEL==='overview'?detailOverview():SEL==='insights'?detailInsights():SEL==='challenges'?detailChallenges():SEL==='tls'?detailTLs():SEL==='queries'?detailQueries():SEL==='reports'?detailReports():SEL==='teachers'?detailAllTeachers():SEL==='flagged'?detailFlagged():SEL==='assigned'?detailAssigned():SEL==='users'?detailUsers():SEL==='export'?detailExport():SEL==='teacherLogs'?detailTeacherLogs():(u(SEL)&&u(SEL).role==='Teacher')?detailTeacher(SEL):detailTL(SEL);if(SEL==='insights')aiGenerate();}
-  else{d.innerHTML=SEL==='teacherLogs'?detailTeacherLogs():detailRole(role,SEL);}
+  if(role==='PM'){d.innerHTML=SEL==='overview'?detailOverview():SEL==='insights'?detailInsights():SEL==='challenges'?detailChallenges():SEL==='tls'?detailTLs():SEL==='queries'?detailQueries():SEL==='reports'?detailReports():SEL==='teachers'?detailAllTeachers():SEL==='flagged'?detailFlagged():SEL==='assigned'?detailAssigned():SEL==='users'?detailUsers():SEL==='export'?detailExport():SEL==='teacherLogs'?detailTeacherLogs():SEL==='tlLogs'?detailTLLogs():(u(SEL)&&u(SEL).role==='Teacher')?detailTeacher(SEL):detailTL(SEL);if(SEL==='insights')aiGenerate();}
+  else{d.innerHTML=SEL==='teacherLogs'?detailTeacherLogs():SEL==='tlLogs'?detailTLLogs():detailRole(role,SEL);}
 }
 
 /* ---- AI Insights (live, via Gemini Apps Script endpoint) ---- */
@@ -830,8 +830,28 @@ function detailTL(tlid,peerMode){
       ${s.tks.length?s.tks.sort((a,b)=>(a.status>b.status?1:-1)).map(t=>taskItem(t)).join(''):`<div class="empty">${T('No tasks assigned yet.','હજુ કોઈ કાર્ય નથી.')}</div>`}
       <button class="btn sm" style="margin-top:12px" onclick="openModal('${s.tlid}')"><i class="ti ti-plus"></i> ${T('Assign task','કાર્ય સોંપો')}</button></div>
     <div class="card"><h3><i class="ti ti-history"></i>${T('Recent daily logs','તાજેતરના લોગ')}</h3>
-      ${s.es.slice(0,6).map(en=>`<div class="entry"><div class="top"><span>${fmtD(en.date)} · ${escA(en.visited||'')}</span><span>${en.punchIn} → ${en.punchOut||'…'}</span></div><div class="body">${en.observation?`<span class="gu-rem">${escN(en.observation)}</span>`:`<span class="warnline">${T('No remark logged','અવલોકન નથી')}</span>`}${(en.purpose||(en.met&&en.met.length))?`<div class="muted" style="font-size:12.5px;margin-top:4px">${en.purpose?`${T('Purpose','હેતુ')}: ${escA(en.purpose)}`:''}${en.purpose&&en.met&&en.met.length?' · ':''}${en.met&&en.met.length?`${T('Met','મળ્યા')}: ${escA(en.met.join(', '))}`:''}</div>`:''}</div></div>`).join('')||`<div class="empty">${T('No logs.','કોઈ લોગ નથી.')}</div>`}</div>
+      ${s.es.slice(0,6).map(en=>`<div class="entry"><div class="top"><span>${fmtD(en.date)} · ${escA(en.visited||'')}</span><span>${en.punchIn} → ${en.punchOut||'…'}</span></div><div class="body">${en.observation?`<span class="gu-rem">${escN(en.observation)}</span>`:`<span class="warnline">${T('No remark logged','અવલોકન નથી')}</span>`}${(en.purpose||(en.met&&en.met.length))?`<div class="muted" style="font-size:12.5px;margin-top:4px">${en.purpose?`${T('Purpose','હેતુ')}: ${escA(en.purpose)}`:''}${en.purpose&&en.met&&en.met.length?' · ':''}${en.met&&en.met.length?`${T('Met','મળ્યા')}: ${escA(en.met.join(', '))}`:''}</div>`:''}</div></div>`).join('')||`<div class="empty">${T('No logs.','કોઈ લોગ નથી.')}</div>`}
+      ${s.es.length>6?`<div style="text-align:right;margin-top:5px"><a onclick="selectItem('tlLogs','${s.tlid}')" style="font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline">${T('See all logs →','બધા લોગ →')}</a></div>`:''}</div>
     ${teachersCard}`;
+}
+function detailTLLogs(){
+  var t=u(SELTL);
+  if(!t)return '';
+  var entries=DB.entries.filter(function(x){return x.userId===SELTL;}).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var backTo=SELTL;
+  var header='<div class="dhead"><div style="display:flex;align-items:center;gap:10px"><button class="btn ghost" style="width:auto;padding:5px 10px" onclick="SEL=\''+backTo+'\';SELTL=null;renderDetail()">← '+T('Back','પાછળ')+'</button><div class="dh-title" style="font-size:16px">'+escA(t.name)+'</div></div></div>';
+  if(!entries.length)return header+'<div class="card muted" style="font-style:italic">'+T('No diary entries yet.','હજુ કોઈ ડાયરી નોંધ નથી.')+'</div>';
+  return header+entries.map(function(e){
+    var hasChallenge=e.challenge&&e.challenge!=='None.'&&e.challenge!=='None';
+    var metLine=(e.purpose||(e.met&&e.met.length))?('<div class="muted" style="font-size:12.5px;margin-top:4px">'+(e.purpose?(T('Purpose','હેતુ')+': '+escA(e.purpose)):'')+(e.purpose&&e.met&&e.met.length?' · ':'')+(e.met&&e.met.length?(T('Met','મળ્યા')+': '+escA(e.met.join(', '))):'')+'</div>'):'';
+    var bodyText=(e.observation||'').trim();
+    return '<div class="card" style="margin-bottom:10px">'
+      +'<div style="font-weight:700;font-size:13px;margin-bottom:4px">'+fmtD(e.date)+(e.visited?' · <span class="muted" style="font-weight:400">'+escA(e.visited)+'</span>':'')+'</div>'
+      +(bodyText?'<div style="margin-top:6px;font-size:14px">'+escN(bodyText)+'</div>':'')
+      +metLine
+      +(hasChallenge?'<div class="challenge-line" style="margin-top:6px"><i class="ti ti-alert-triangle"></i> '+escA(e.challenge)+'</div>':'')
+      +'</div>';
+  }).join('');
 }
 function logBlock(e){if(!e)return `<div class="empty">${T('No log submitted today.','આજે કોઈ લોગ નથી.')}</div>`;
   var _g=(e.gps&&!e.gps.approx)?` · <a href="https://maps.google.com/?q=${e.gps.lat},${e.gps.lng}" target="_blank" style="color:var(--gB-tx)"><i class="ti ti-map-pin"></i> ${T('map','નકશો')}</a>`:'';
