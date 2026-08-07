@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='6.3'; /* v6.3 - Schools now render as dumbbells like Teachers and NGOs, through one shared path where each school is a group of one. The heatmap grid is gone: on a wide screen its 1fr name column absorbed every spare pixel and left a dead gap before the cells. Each school row keeps its status dot and stays tappable. A teacher's own profile now carries a Bridge course card showing the results for the schools they entered in Setup, with its own gain/level toggle - and, when nothing matches, says whether the cause is no Setup or no data, because those look identical otherwise. */
+const APP_VERSION='6.5'; /* v6.5 - readability of the dumbbell rows. Three fixes from a real screenshot: (1) a school that had not moved printed the SAME number twice, above and below its dot, because the collision-avoidance rule fired on identical values - the start label is now printed only when it differs from the end; (2) the right-hand column repeated the end value a third time in level view - it now always shows the CHANGE, while the dots carry the two levels; (3) on the absolute 0-10 axis these schools sit inside the first tenth, so the row read as a smudge against the left edge - level view now draws gridlines every 2 marks with a 0..10 legend above the list. Track widened by trimming the subject label and the value column. Version 6.4 is reserved for the dead-code removal running in a separate worktree. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1350,21 +1350,31 @@ function bridgeDot(s){return {red:'#b3261e',amber:'#eda100',green:'#1baf7a',grey
 function bridgeLbl(pos,txt,top,col,bold){
   var anchor=pos<9?('left:0;transform:none'):(pos>91?('right:0;transform:none'):('left:'+pos+'%;transform:translateX(-50%)'));
   return '<span style="position:absolute;top:'+top+'px;'+anchor+';font-size:9.5px;white-space:nowrap;color:'+col+';font-weight:'+(bold?700:400)+'">'+txt+'</span>';}
-function bridgeDumbbell(k,a,b,mx,labels){
-  if(a==null&&b==null)return '<div style="flex:1;height:'+(labels?34:14)+'px"></div>';
+function bridgeDumbbell(k,a,b,mx,labels,grid){
+  var h=labels?30:14,dy=labels?11:2;
+  if(a==null&&b==null)return '<div style="flex:1;height:'+h+'px"></div>';
   var p=function(v){return Math.round(Math.max(0,Math.min(100,(v/mx)*100))*100)/100;};
-  var c='rgb('+BRIDGE_RGB[k]+')',s='',h=labels?34:14,dy=labels?13:2;
+  var c='rgb('+BRIDGE_RGB[k]+')',s='';
+  /* On the absolute 0-10 axis these values sit in the first tenth, so without gridlines
+     the row reads as an unlabelled smudge against the left edge. */
+  if(grid)for(var gi=1;gi<5;gi++)s+='<span style="position:absolute;top:'+(dy-3)+'px;height:15px;left:'+(gi*20)+'%;width:1px;background:var(--line)"></span>';
   var pa=(a==null)?null:p(a),pb=(b==null)?null:p(b);
   if(pa!=null&&pb!=null)s+='<span style="position:absolute;top:'+(dy+3)+'px;left:'+Math.min(pa,pb)+'%;width:'+Math.abs(pb-pa)+'%;height:3px;border-radius:2px;background:'+c+'"></span>';
   if(pa!=null)s+='<span title="'+a.toFixed(2)+'" style="position:absolute;top:'+dy+'px;left:'+pa+'%;margin-left:-4px;width:9px;height:9px;border-radius:50%;background:var(--panel);border:2px solid '+c+';box-sizing:border-box"></span>';
   if(pb!=null)s+='<span title="'+b.toFixed(2)+'" style="position:absolute;top:'+dy+'px;left:'+pb+'%;margin-left:-4px;width:9px;height:9px;border-radius:50%;background:'+c+'"></span>';
   if(labels){
-    /* when the two dots nearly coincide the labels would collide, so drop the start below */
+    /* Print the start value ONLY when it differs from the end value. A school that has not
+       moved was printing the same number twice, once above the dot and once below. */
+    var same=(pa==null||pb==null)||(a.toFixed(2)===b.toFixed(2));
     var close=(pa!=null&&pb!=null&&Math.abs(pb-pa)<16);
-    if(pa!=null)s+=bridgeLbl(pa,a.toFixed(2),close?24:1,'var(--muted)',false);
-    if(pb!=null)s+=bridgeLbl(pb,b.toFixed(2),1,c,true);
+    if(pa!=null&&!same)s+=bridgeLbl(pa,a.toFixed(2),close?21:0,'var(--muted)',false);
+    if(pb!=null)s+=bridgeLbl(pb,b.toFixed(2),0,c,true);
+    else if(pa!=null)s+=bridgeLbl(pa,a.toFixed(2),0,c,true);
   }
   return '<div style="position:relative;flex:1;height:'+h+'px;border-left:1px solid var(--line)">'+s+'</div>';}
+function bridgeAxisLegend(){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><span style="width:44px;flex-shrink:0"></span><div style="position:relative;flex:1;height:12px">'
+  +[0,2,4,6,8,10].map(function(v){var pos=v*10;var anchor=pos<9?'left:0':(pos>91?'right:0':'left:'+pos+'%;transform:translateX(-50%)');return '<span style="position:absolute;top:0;'+anchor+';font-size:9px;color:var(--muted)">'+v+'</span>';}).join('')
+  +'</div><span style="width:48px;flex-shrink:0"></span></div>';}
 /* BRIDGE_MAX is the top of the proficiency scale. Levels are marks out of 10, so
    "where is this school" and "how far did it move" are different questions and the
    list answers whichever one BRIDGE_VIEW is set to. */
@@ -1421,18 +1431,23 @@ function bridgeTeacherGroups(list){var out=[],matched={};
 function bridgeNgoGroups(list){var by={},order=[];
   list.forEach(function(m){var c=m.cluster||'—';if(!by[c]){by[c]=[];order.push(c);}by[c].push(m);});
   return order.sort().map(function(c){return {name:c,sub:by[c].length+' '+(by[c].length===1?T('school','શાળા'):T('schools','શાળા')),st:bridgeGroupStats(by[c])};});}
+/* The right-hand column always shows the CHANGE. It used to repeat the end value in level
+   view, so the same number appeared three times on one row: above the dot, below it, and
+   again on the right. The dots carry the two levels; this column carries the movement. */
 function bridgeGroupLines(st,mx){var lvl=(BRIDGE_VIEW==='level');
-  return BRIDGE_SUBJ.map(function(k){var o=st.subj[k],a=null,b=null,tail='';
-    if(lvl){ if(o.ln){a=(o.sn?o.sa/o.sn:null);b=o.ls/o.ln;tail='<span style="width:60px;text-align:right;font-size:11.5px;font-weight:700">'+b.toFixed(2)+' / 10</span>';} }
-    else { if(o.n){a=o.a/o.n;b=o.b/o.n;var d=b-a;tail='<span style="width:60px;text-align:right;font-size:11.5px;font-weight:700;color:'+(d<0?'#b3261e':'#1baf7a')+'">'+(d>0?'+':'')+d.toFixed(2)+'</span>';} }
-    if(a==null&&b==null)return '<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span style="width:56px;font-size:11.5px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span><span class="muted" style="font-size:11.5px;flex:1">'+(lvl?T('no data yet','હજુ ડેટા નથી'):T('no July-end data yet','હજુ જુલાઈ-અંતનો ડેટા નથી'))+'</span><span style="width:60px"></span></div>';
-    return '<div style="display:flex;align-items:center;gap:8px"><span style="width:56px;font-size:11.5px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span>'+bridgeDumbbell(k,a,b,mx,true)+tail+'</div>';}).join('');}
+  return BRIDGE_SUBJ.map(function(k){var o=st.subj[k],a=null,b=null;
+    if(lvl){ if(o.ln){a=(o.sn?o.sa/o.sn:null);b=o.ls/o.ln;} }
+    else { if(o.n){a=o.a/o.n;b=o.b/o.n;} }
+    var d=(o.n?(o.b/o.n)-(o.a/o.n):null);
+    var tail=(d==null)?'<span style="width:48px"></span>':('<span style="width:48px;text-align:right;font-size:11.5px;font-weight:700;color:'+(d<0?'#b3261e':(d===0?'#6b7280':'#1baf7a'))+'">'+(d>0?'+':'')+d.toFixed(2)+'</span>');
+    if(a==null&&b==null)return '<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span style="width:44px;font-size:11px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span><span class="muted" style="font-size:11.5px;flex:1">'+(lvl?T('no data yet','હજુ ડેટા નથી'):T('no July-end data yet','હજુ જુલાઈ-અંતનો ડેટા નથી'))+'</span><span style="width:48px"></span></div>';
+    return '<div style="display:flex;align-items:center;gap:8px"><span style="width:44px;font-size:11px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span>'+bridgeDumbbell(k,a,b,mx,true,lvl)+tail+'</div>';}).join('');}
 function bridgeGroupScale(groups){var lvl=(BRIDGE_VIEW==='level');if(lvl)return BRIDGE_MAX;
   var mx=0;groups.forEach(function(g){BRIDGE_SUBJ.forEach(function(k){var o=g.st.subj[k];if(o.n){var v=o.b/o.n;if(v>mx)mx=v;}});});
   return Math.max(0.5,Math.ceil((mx*1.15)*10)/10);}
 function bridgeGroupView(groups){if(!groups.length)return '<div class="empty">'+T('Nothing to show yet','હજુ કંઈ નથી')+'</div>';
   var mx=bridgeGroupScale(groups);
-  return groups.map(function(g){var al=g.st.ln?(g.st.lsum/g.st.ln):null;
+  return (BRIDGE_VIEW==='level'?bridgeAxisLegend():'')+groups.map(function(g){var al=g.st.ln?(g.st.lsum/g.st.ln):null;
     return '<div style="padding:9px 0;border-top:1px solid var(--line)'+(g.click?';cursor:pointer':'')+'"'+(g.click?(' onclick="'+g.click+'"'):'')+'><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(g.dot?('<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+g.dot+';margin-right:5px;vertical-align:middle"></span>'):'')+escA(g.name)+'</div><div class="muted" style="font-size:11px">'+escA(g.sub)+'</div></div>'
      +(al==null?'':('<div style="width:86px;flex-shrink:0"><div style="font-size:11.5px;text-align:right;font-weight:700">'+al.toFixed(2)+' <span class="muted" style="font-weight:400">/ 10</span></div><div style="height:4px;border-radius:2px;background:var(--line);margin-top:3px"><div style="height:4px;border-radius:2px;width:'+Math.min(100,al/BRIDGE_MAX*100).toFixed(0)+'%;background:var(--brand-d)"></div></div></div>'))
      +'</div><div style="margin-top:4px">'+bridgeGroupLines(g.st,mx)+'</div></div>';}).join('');}
