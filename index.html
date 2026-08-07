@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='5.8'; /* v5.8 - New NGO / cluster codes. Two places assumed the four clusters were fixed: the Bridge course confirm screen hardcoded KCT/JCT/SVT/Dahod as its only choices, and a TL's cluster could only ever be set at the moment of promotion and only while blank, so an existing TL's NGO could never be changed. Cluster choices are now derived from the data (bridgeClusters) with a '+ New NGO' option, and muSetCluster makes the cluster pill on Manage Users editable. */
+const APP_VERSION='5.9'; /* v5.9 - NGO master. NGOs are now real records (code, full name, active) managed from a card on Manage Users: add, rename, retire. Nothing is ever hard-deleted - retiring only removes an NGO from the pickers. Renaming CASCADES: it moves every team leader on that code and re-keys every bridge course record, because bridgeId() embeds the cluster and a stale key would duplicate on the next upload. A team leader's NGO is now a dropdown fed by the master rather than free text. New Firestore collection `ngos` - REQUIRES a security rule. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -347,6 +347,10 @@ if(!DB.marks)DB.marks=[];
   if(!DB.bridgeMarks){DB.bridgeMarks=[];changed=true;}
   if(!DB.bridgeClusterMap){DB.bridgeClusterMap={};changed=true;}
   if(!DB.bridgeSchoolMap){DB.bridgeSchoolMap={};changed=true;}
+  if(!DB.ngos){DB.ngos=[];changed=true;}
+  /* the NGO seed itself is deliberately NOT here — it needs clusterOf(), which calls u(),
+     which is a const declared further down and therefore still in its temporal dead zone
+     at migration time. ngoSeedOnce() runs lazily from ngoAll() instead. */
   if(!DB.cleanV2){var realIds=['pm1','tl_nilesh','tl_yogesh','tl_jignesh','tch_disha','tch_9265825570','tch_7016331672','tch_8347271269','tch_9875264540','tch_7862967620','tch_8758856634','tch_6353507962','tch_7016205975','tch_9875176685','tch_8758656867','tch_1234567890','tch_8758116247','tch_9925684464','tch_7046429791','tch_9106457920','tch_8980889656','tch_9726449061','tch_9638116561','tch_8238628485','tch_9328988841','tch_8141773675','tch_9925934368','tch_7621063197','tl_bhargav','tl_martin','tch_7874056947','tch_8758865343','tch_9106296747','tch_6352465958','tch_9712798742','tch_7861840649','tch_9726811972','tch_8849910371','tch_9426584407','tch_9586759247','tch_9574517506','tch_9016500890','tch_9106906834','tch_8160852953','tch_9510697388','tch_9484631154','tch_7990731812','tch_9409163084','tch_9313097294','tch_9427612556','tch_9016285092','tch_9510834816','tl_falguni'];DB.users=DB.users.filter(function(uu){return realIds.indexOf(uu.id)>-1;});DB.entries=[];DB.tasks=[];DB.cleanV2=true;changed=true;}
   if(!DB.seesAlsoMigrated){var seesMigrate={tl_yogesh:['tl_falguni'],tl_falguni:['tl_yogesh'],tl_martin:['tl_jignesh'],tl_jignesh:['tl_martin','tl_bhargav'],tl_bhargav:['tl_jignesh']};Object.keys(seesMigrate).forEach(function(id){var x=DB.users.find(function(uu){return uu.id===id;});if(x)x.seesAlso=seesMigrate[id];});DB.seesAlsoMigrated=true;changed=true;}
   /* v1.1: collapse any duplicate user records sharing an id (legacy from the old double-add bug).
@@ -409,7 +413,7 @@ function syncNow(manual){if(manual){SYNC.err=0;}updateSyncUI();
   try{DB.entries.filter(e=>e&&e.id&&e.userId===CUR&&e.date>=addDays(realToday(),-7)).forEach(e=>syncTrack(FS.collection('logs').doc(String(e.id)).set(e,{merge:true})));}catch(err){SYNC.err++;updateSyncUI();console.warn('sync logs',err);}
   try{if(u(CUR)&&u(CUR).role==='PM')DB.tasks.filter(t=>t&&t.id).forEach(t=>FS.collection('tasks').doc(String(t.id)).set(t,{merge:true}));}catch(err){console.warn('sync tasks',err);}
   try{DB.schools.forEach(s=>{if(s)FS.collection('schools').doc(String(s)).set({name:s});});}catch(err){console.warn('sync schools',err);}
-  loadSharedLogs(manual);loadSharedTasks(manual);loadSharedSchools(manual);loadSharedUsers(manual);loadSharedSetup(manual);loadSharedMarks(manual);loadSharedBridgeMarks(manual);
+  loadSharedLogs(manual);loadSharedTasks(manual);loadSharedSchools(manual);loadSharedUsers(manual);loadSharedSetup(manual);loadSharedMarks(manual);loadSharedBridgeMarks(manual);loadSharedNgos(manual);
   if(manual)toast(T('Synced ✓','સિંક થયું ✓'));}
 window.addEventListener('online',function(){updateNetStatus();syncNow(false);});
 window.addEventListener('offline',updateNetStatus);
@@ -435,7 +439,7 @@ function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim
   /* 4 digits = default scheme (krsf+last4); anything else = a custom password set by the PM, sent verbatim */
   var full=(/^[0-9]{4}$/.test(pw))?(PWD_PREFIX+pw):pw;
   AUTH.signInWithEmailAndPassword(ph+AUTH_DOMAIN, full).catch(function(e){err.textContent=T('Wrong mobile number or password.','ખોટો મોબાઇલ નંબર અથવા પાસવર્ડ.');if(btn){btn.disabled=false;btn.style.opacity='';}});}
-function startSession(id){CUR=id;BRIDGE_REVIEW=null;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();loadSharedBridgeMarks();}}
+function startSession(id){CUR=id;BRIDGE_REVIEW=null;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();loadSharedBridgeMarks();loadSharedNgos();}}
 function logout(){if(AUTH)AUTH.signOut();CUR=null;BRIDGE_REVIEW=null;showLogin();}
 var TEACH_BACK='teachers';
 function selectItem(k,extra){if(DIRTY&&SEL!==k&&!confirm(T('You have unsaved changes. Leave without saving?','સાચવ્યા વગરના ફેરફાર છે. સાચવ્યા વગર જવું?')))return;DIRTY=false;SETUP_TT=null;if(u(k)&&u(k).role==='Teacher'&&!(u(SEL)&&u(SEL).role==='Teacher'))TEACH_BACK=SEL||'teachers';if(k==='reports'&&SEL!=='reports'){REPORT_LEVEL=null;REPORT_ID=null;}SEL=k;if(k==='teacherLogs'&&extra)SELTEACHER=extra;if(k==='tlLogs'&&extra)SELTL=extra;document.getElementById('detail').scrollTop=0;renderAll();}
@@ -1106,7 +1110,7 @@ function detailReports(){
 }
 function loadSharedUsers(force){if(!FS)return;if(!fetchDue('users',864e5,force))return;FS.collection('appusers').get().then(function(snap){snap.docs.forEach(function(d){var v=d.data()||{};if(!v.id)return;var ex=u(v.id);if(ex){for(var k in v){ex[k]=v[k];}}else{DB.users.push(v);}});fetchStamp('users');save();renderAll();}).catch(function(err){quotaWarn(err);console.warn('loadSharedUsers',err);});}
 function muTlOpts(sel){var tls=DB.users.filter(function(x){return x.role==='TL';});return '<option value="">—</option>'+tls.map(function(t){return '<option value="'+t.id+'" '+(sel===t.id?'selected':'')+'>'+t.name+'</option>';}).join('');}
-function detailUsers(){var addCard='<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Add user','નવો યુઝર')+'</h3><label>'+T('Name','નામ')+'</label><input id="mu_name" class="fld"><label>'+T('Mobile number','મોબાઇલ નંબર')+'</label><input id="mu_phone" class="fld" inputmode="numeric"><label>'+T('Role','ભૂમિકા')+'</label><select id="mu_role" class="fld" onchange="muRoleChange()"><option value="Teacher">Teacher</option><option value="TL">Team Leader</option><option value="PM">PM</option></select><div id="mu_tlwrap"><label>'+T('Under Team Leader','ટીમ લીડર હેઠળ')+'</label><select id="mu_tl" class="fld">'+muTlOpts('')+'</select></div><div id="mu_clwrap" style="display:none"><label>'+T('NGO / cluster code (e.g. SVT, KCT, JCT, Dahod, GST)','NGO / ક્લસ્ટર કોડ (દા.ત. SVT, KCT, JCT, Dahod, GST)')+'</label><input id="mu_cluster" class="fld"></div><div class="muted" style="font-size:12px;margin:6px 0">'+T('Password = last 4 digits of the mobile number.','પાસવર્ડ = મોબાઇલના છેલ્લા 4 અંક.')+'</div><label>'+T('Password (optional)','પાસવર્ડ (વૈકલ્પિક)')+'</label><input id="mu_pw" class="fld" placeholder="'+T('Blank = last 4 digits','ખાલી = છેલ્લા 4 અંક')+'"><button class="btn block" onclick="muAdd()">'+T('Add user','યુઝર ઉમેરો')+'</button></div>';var roles=['PM','TL','Teacher'];var listCard='';roles.forEach(function(role){var us=DB.users.filter(function(x){return x.role===role;});if(!us.length)return;listCard+='<div class="card"><h3>'+role+' ('+us.length+')</h3>'+us.map(function(x){var cl=clusterOf(x);var inactive=x.active===false;var roleSel='<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:110px" onchange="muSetRole(this.dataset.id,this.value)">'+['Teacher','TL','PM'].map(function(r){return '<option '+(x.role===r?'selected':'')+'>'+r+'</option>';}).join('')+'</select>';var ra=(x.role==='Teacher')?'<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:140px" onchange="muReassign(this.dataset.id,this.value)">'+muTlOpts(x.tl)+'</select>':'';var seesRow='';if(x.role==='TL'){var others=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others.length){var seesSet=x.seesAlso||[];var chips=others.map(function(y){var on=seesSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetSeesAlso(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');seesRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also sees teams of:','આ પણ ટીમો જુએ છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips+'</div></div>';}}var monitorsRow='';if(x.role==='TL'){var others2=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others2.length){var monSet=x.monitorsTLs||[];var chips2=others2.map(function(y){var on=monSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetMonitorsTL(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');monitorsRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also monitors:','આ પણ મોનિટર કરે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips2+'</div></div>';}}return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(inactive?'opacity:.55':'')+'"><div style="flex:1;min-width:130px"><div style="font-weight:700">'+x.name+(x.role==='TL'?(' <span class="pill b" style="font-size:10px;cursor:pointer" title="'+T('Tap to change NGO','NGO બદલવા દબાવો')+'" onclick="muSetCluster(\''+escAJ(x.id)+'\')">'+(cl?escA(cl):('+ '+T('NGO','NGO')))+'</span>'):(cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':''))+(inactive?' <span class="pill r" style="font-size:10px">'+T('inactive','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(x.phone||'')+'</div></div>'+roleSel+ra+'<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muSetActive(this.dataset.id,'+(inactive?'true':'false')+')">'+(inactive?T('Activate','ચાલુ કરો'):T('Deactivate','બંધ કરો'))+'</button>'+seesRow+monitorsRow+'</div>';}).join('')+'</div>';});/* bulk assign panel */
+function detailUsers(){var addCard='<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Add user','નવો યુઝર')+'</h3><label>'+T('Name','નામ')+'</label><input id="mu_name" class="fld"><label>'+T('Mobile number','મોબાઇલ નંબર')+'</label><input id="mu_phone" class="fld" inputmode="numeric"><label>'+T('Role','ભૂમિકા')+'</label><select id="mu_role" class="fld" onchange="muRoleChange()"><option value="Teacher">Teacher</option><option value="TL">Team Leader</option><option value="PM">PM</option></select><div id="mu_tlwrap"><label>'+T('Under Team Leader','ટીમ લીડર હેઠળ')+'</label><select id="mu_tl" class="fld">'+muTlOpts('')+'</select></div><div id="mu_clwrap" style="display:none"><label>'+T('NGO / cluster code (e.g. SVT, KCT, JCT, Dahod, GST)','NGO / ક્લસ્ટર કોડ (દા.ત. SVT, KCT, JCT, Dahod, GST)')+'</label><input id="mu_cluster" class="fld"></div><div class="muted" style="font-size:12px;margin:6px 0">'+T('Password = last 4 digits of the mobile number.','પાસવર્ડ = મોબાઇલના છેલ્લા 4 અંક.')+'</div><label>'+T('Password (optional)','પાસવર્ડ (વૈકલ્પિક)')+'</label><input id="mu_pw" class="fld" placeholder="'+T('Blank = last 4 digits','ખાલી = છેલ્લા 4 અંક')+'"><button class="btn block" onclick="muAdd()">'+T('Add user','યુઝર ઉમેરો')+'</button></div>';var roles=['PM','TL','Teacher'];var listCard='';roles.forEach(function(role){var us=DB.users.filter(function(x){return x.role===role;});if(!us.length)return;listCard+='<div class="card"><h3>'+role+' ('+us.length+')</h3>'+us.map(function(x){var cl=clusterOf(x);var inactive=x.active===false;var roleSel='<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:110px" onchange="muSetRole(this.dataset.id,this.value)">'+['Teacher','TL','PM'].map(function(r){return '<option '+(x.role===r?'selected':'')+'>'+r+'</option>';}).join('')+'</select>';var ra=(x.role==='Teacher')?'<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:140px" onchange="muReassign(this.dataset.id,this.value)">'+muTlOpts(x.tl)+'</select>':'';var ngoSel=(x.role==='TL')?('<select class="fld" data-id="'+x.id+'" title="'+T('NGO','NGO')+'" style="padding:5px 7px;max-width:110px" onchange="muSetCluster(this.dataset.id,this.value)">'+ngoOpts(cl)+'</select>'):'';var seesRow='';if(x.role==='TL'){var others=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others.length){var seesSet=x.seesAlso||[];var chips=others.map(function(y){var on=seesSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetSeesAlso(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');seesRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also sees teams of:','આ પણ ટીમો જુએ છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips+'</div></div>';}}var monitorsRow='';if(x.role==='TL'){var others2=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others2.length){var monSet=x.monitorsTLs||[];var chips2=others2.map(function(y){var on=monSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetMonitorsTL(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');monitorsRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also monitors:','આ પણ મોનિટર કરે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips2+'</div></div>';}}return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(inactive?'opacity:.55':'')+'"><div style="flex:1;min-width:130px"><div style="font-weight:700">'+x.name+(x.role!=='TL'&&cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':'')+(inactive?' <span class="pill r" style="font-size:10px">'+T('inactive','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(x.phone||'')+'</div></div>'+roleSel+ngoSel+ra+'<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muSetActive(this.dataset.id,'+(inactive?'true':'false')+')">'+(inactive?T('Activate','ચાલુ કરો'):T('Deactivate','બંધ કરો'))+'</button>'+seesRow+monitorsRow+'</div>';}).join('')+'</div>';});/* bulk assign panel */
 var allTLs=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
 var allTeachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
 var clusters=[...new Set(allTLs.map(clusterOf).concat(allTeachers.map(clusterOf)).filter(Boolean))].sort();
@@ -1135,7 +1139,7 @@ if(BULK_OPEN){
     +'<button class="btn block" '+(selCount===0?'disabled':'')+' onclick="submitBulkAssign()">'+T('Assign to','સોંપો')+' '+selCount+' '+T('people','લોકો')+'</button>'
     +'</div>';
 }
-return '<div class="dhead"><div class="dh-title">'+T('Manage users','યુઝર મેનેજ')+'</div></div><button class="btn ghost block" style="margin-bottom:10px" onclick="selectItem(\'export\')"><i class="ti ti-download"></i> '+T('Export data (CSV)','ડેટા એક્સપોર્ટ (CSV)')+'</button>'+bulkToggleBtn+bulkPanel+addCard+listCard;}
+return '<div class="dhead"><div class="dh-title">'+T('Manage users','યુઝર મેનેજ')+'</div></div><button class="btn ghost block" style="margin-bottom:10px" onclick="selectItem(\'export\')"><i class="ti ti-download"></i> '+T('Export data (CSV)','ડેટા એક્સપોર્ટ (CSV)')+'</button>'+bulkToggleBtn+bulkPanel+ngoCard()+addCard+listCard;}
 function submitBulkAssign(){var text=(document.getElementById('bulk_text')||{}).value||'';text=text.trim();var due=(document.getElementById('bulk_due')||{}).value||addDays(realToday(),5);var ids=Object.keys(BULK_SEL);if(!text||!ids.length){toast(T('Select people and enter a task','લોકો પસંદ કરો અને કાર્ય લખો'));return;}ids.forEach(function(id){assignTeacherTask(id,text,due);});toast(T('Task assigned to','કાર્ય સોંપ્યું')+' '+ids.length+' '+T('people','લોકો')+' ✓');BULK_OPEN=false;BULK_SEL={};renderDetail();}
 function muRoleChange(){var r=val('mu_role');var a=document.getElementById('mu_tlwrap'),b=document.getElementById('mu_clwrap');if(a)a.style.display=(r==='Teacher')?'':'none';if(b)b.style.display=(r==='TL')?'':'none';}
 var MU_BUSY=false;
@@ -1144,9 +1148,9 @@ function muReassign(id,tlid){var x=u(id);if(!x)return;x.tl=tlid;save();if(FS){FS
 /* Until v5.8 a TL's cluster could ONLY be set here, at the moment of promotion, and
    only if it was still blank — so an existing TL's NGO could never be changed and a
    new NGO could not be introduced without creating a new user. muSetCluster fixes that. */
-function muSetCluster(id){var x=u(id);if(!x||x.role!=='TL')return;var cur=x.cluster||clusterOf(x)||'';
-  var v=(prompt(T('NGO / cluster code for ','NGO / ક્લસ્ટર કોડ — ')+x.name+T(' (e.g. KCT, JCT, SVT, Dahod, GST)',' (દા.ત. KCT, JCT, SVT, Dahod, GST)'),cur)||'').trim();
-  if(!v||v===cur)return;
+function muSetCluster(id,v){var x=u(id);if(!x||x.role!=='TL')return;var cur=x.cluster||clusterOf(x)||'';
+  v=(v==null?'':String(v)).trim();
+  if(v===cur)return;
   if(v.length>24){toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return;}
   x.cluster=v;save();
   if(FS){try{FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:v,active:x.active!==false},{merge:true});}catch(err){console.warn('muSetCluster',err);}}
@@ -1175,8 +1179,17 @@ function downloadMarksTemplate(){dlCSV('marks-template.csv',[['teacher_phone','s
 /* BRIDGE_CLUSTERS is only a SEED. The rest of the app derives clusters from the data
    (clustersInScope), so hardcoding four here made a new NGO impossible to pick. */
 var BRIDGE_CLUSTERS=['KCT','JCT','SVT','Dahod'],BRIDGE_SUBJ=['reading','writing','maths'];
-function bridgeClusters(){var set={},out=[];function add(c){c=(c==null?'':String(c)).trim();if(!c)return;var k=bridgeNorm(c);if(!k||set[k])return;set[k]=1;out.push(c);}
+function bridgeKnownCodes(){var set={},out=[];function add(c){c=(c==null?'':String(c)).trim();if(!c)return;var k=bridgeNorm(c);if(!k||set[k])return;set[k]=1;out.push(c);}
+  ngoAll().forEach(function(n){add(n.code);});
   BRIDGE_CLUSTERS.forEach(add);
+  try{clustersInScope().forEach(add);}catch(e){}
+  (DB.bridgeMarks||[]).forEach(function(m){if(m)add(m.cluster);});
+  return out;}
+function bridgeClusters(){var set={},out=[];function add(c){c=(c==null?'':String(c)).trim();if(!c)return;var k=bridgeNorm(c);if(!k||set[k])return;set[k]=1;out.push(c);}
+  /* the NGO master is the source of truth; the seed four are only a first-run fallback,
+     and clusters already present in data are always offered so nothing becomes unpickable */
+  ngoActive().forEach(function(n){add(n.code);});
+  if(!out.length)BRIDGE_CLUSTERS.forEach(add);
   try{clustersInScope().forEach(add);}catch(e){}
   (DB.bridgeMarks||[]).forEach(function(m){if(m)add(m.cluster);});
   var mp=DB.bridgeClusterMap||{};Object.keys(mp).forEach(function(k){add(mp[k]);});
@@ -1218,7 +1231,9 @@ function parseBridgeCSV(text){var lines=String(text==null?'':text).split(/\r?\n/
   return {rows:rows,heads:heads,skipped:skipped,total:total};}
 /* ---- bridge course: matching (people exact-only, schools fuzzy) ---- */
 function bridgeResolveHead(head){var h=(head==null?'':String(head)).trim();if(!h)return null;var k=bridgeNorm(h),i;
-  var known=bridgeClusters();
+  /* recognising a code is broader than offering it: a retired NGO, or one that predates
+     the NGO master, must still resolve from a file rather than re-prompting the PM. */
+  var known=bridgeKnownCodes();
   for(i=0;i<known.length;i++){if(k===bridgeNorm(known[i]))return {cluster:known[i],via:'code'};}
   var saved=(DB.bridgeClusterMap||{})[k];if(saved)return {cluster:saved,via:'saved'};
   var tl=(DB.users||[]).filter(function(x){return x&&x.role==='TL'&&x.active!==false&&bridgeNorm(x.name)===k;})[0];
@@ -1242,6 +1257,7 @@ function bridgeBuildReview(text){var p=parseBridgeCSV(text),headMap={},headVia={
 function bridgeSetHead(head,cluster){if(!BRIDGE_REVIEW)return;cluster=(cluster==null?'':String(cluster)).trim();if(!cluster||cluster.length>24)return;BRIDGE_REVIEW.headMap[head]=cluster;BRIDGE_REVIEW.headVia[head]='manual';renderDetail();}
 function bridgeNewCluster(head){if(!BRIDGE_REVIEW)return;var v=(prompt(T('New NGO / cluster code (e.g. GST)','નવો NGO / ક્લસ્ટર કોડ (દા.ત. GST)'))||'').trim();if(!v)return;
   if(v.length>24){toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return;}
+  if(!ngoByCode(v))ngoAdd(v,'');   /* creating one here registers it in the NGO master too */
   bridgeSetHead(head,v);}
 function bridgeLinkSchool(i,choice){if(!BRIDGE_REVIEW)return;BRIDGE_REVIEW.linked[i]=choice;renderDetail();}
 function bridgeCancelReview(){BRIDGE_REVIEW=null;renderDetail();}
@@ -1321,6 +1337,71 @@ function bridgeCardHTML(r){var m=r.m;
     var badge=g==null?('<span class="muted" style="font-size:12px">'+T('no end data','અંતનો ડેટા નથી')+'</span>'):('<span style="font-weight:800;font-size:12.5px;color:'+(g<0?'#b3261e':(g===0?'#6b7280':'#1baf7a'))+'">'+(g>0?'+':'')+g.toFixed(2)+'</span>');
     return '<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span style="width:64px;font-size:12.5px;color:var(--muted)">'+bridgeSubjLabel(k)+'</span>'+bridgeSpark([s.start,s.mid,s.end])+badge+'</div>';}).join('');
   return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></span><span style="font-weight:700">'+escA(m.school)+'</span><span class="pill b" style="font-size:10px;padding:1px 6px">'+escA(m.cluster||'')+'</span><span class="muted" style="font-size:11.5px;margin-left:auto">'+(m.students||0)+' '+T('students','વિદ્યાર્થી')+'</span></div><div class="muted" style="font-size:11.5px">'+why+'</div>'+lines+'</div>';}
+/* ---- NGO master (v5.9) ---- */
+function ngoSeedOnce(){if(DB.ngosSeeded)return;if(!DB.ngos)DB.ngos=[];var seen={};
+  (DB.users||[]).forEach(function(x){if(!x||(x.role!=='TL'&&x.role!=='Teacher')||x.active===false)return;var c=clusterOf(x);if(!c)return;var k=bridgeNorm(c);if(seen[k])return;seen[k]=1;
+    var dup=false;DB.ngos.forEach(function(n){if(n&&bridgeNorm(n.code)===k)dup=true;});
+    if(!dup)DB.ngos.push({id:'ngo_'+bridgeSlug(c),code:c,name:'',active:true,updatedAt:Date.now()});});
+  DB.ngosSeeded=true;save();}
+function ngoAll(){ngoSeedOnce();return (DB.ngos||[]).slice();}
+function ngoActive(){return ngoAll().filter(function(n){return n&&n.active!==false;});}
+function ngoById(id){return ngoAll().filter(function(n){return n&&n.id===id;})[0]||null;}
+function ngoByCode(c){var k=bridgeNorm(c);if(!k)return null;return ngoAll().filter(function(n){return n&&bridgeNorm(n.code)===k;})[0]||null;}
+function pushNgo(n){ if(!FS)return; try{ n.updatedAt=Date.now(); syncTrack(FS.collection('ngos').doc(String(n.id)).set(n,{merge:true})); }catch(err){SYNC.err++;updateSyncUI();console.warn('pushNgo',err);} }
+async function loadSharedNgos(force){ if(!FS)return; var _me=u(CUR); if(!_me||_me.role!=='PM')return; if(!fetchDue('ngos',9e5,force))return; try{ const snap=await FS.collection('ngos').get(); const remote=snap.docs.map(d=>d.data()); var _nb={};(DB.ngos||[]).forEach(function(x){if(x&&x.id)_nb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_nb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_nb[r.id]=r;});DB.ngos=Object.keys(_nb).map(function(k){return _nb[k];}); fetchStamp('ngos'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedNgos',err);} }
+function ngoAdd(code,name){code=(code==null?'':String(code)).trim();name=(name==null?'':String(name)).trim();
+  if(!code){toast(T('Enter a short code','ટૂંકો કોડ લખો'));return null;}
+  if(code.length>24){toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return null;}
+  var ex=ngoByCode(code);
+  if(ex){if(ex.active===false){ex.active=true;if(name)ex.name=name;ex.updatedAt=Date.now();save();pushNgo(ex);toast(T('NGO turned back on','NGO ફરી ચાલુ')+' ✓');renderAll();return ex;}toast(T('That NGO already exists','આ NGO પહેલેથી છે'));return null;}
+  var n={id:'ngo_'+bridgeSlug(code),code:code,name:name,active:true,updatedAt:Date.now()};
+  if(!DB.ngos)DB.ngos=[];DB.ngos.push(n);save();pushNgo(n);toast(T('NGO added','NGO ઉમેર્યું')+' ✓');renderAll();return n;}
+function ngoImpact(code){var k=bridgeNorm(code);
+  return {tls:(DB.users||[]).filter(function(x){return x&&x.role==='TL'&&bridgeNorm(clusterOf(x))===k;}),
+          teachers:(DB.users||[]).filter(function(x){return x&&x.role==='Teacher'&&x.active!==false&&bridgeNorm(clusterOf(x))===k;}),
+          recs:(DB.bridgeMarks||[]).filter(function(m){return m&&bridgeNorm(m.cluster)===k;})};}
+/* Rename cascades. Note bridgeId() embeds the cluster, so every affected bridge record
+   must be RE-KEYED (new doc written, old doc deleted) or a later re-upload would create
+   a duplicate under the new code. TLs relying on clusterOf's hardcoded fallback map have
+   no `cluster` field of their own, so we set it explicitly or the old code comes back. */
+function ngoRename(id,newCode){var n=ngoById(id);if(!n)return false;
+  newCode=(newCode==null?'':String(newCode)).trim();
+  if(!newCode||newCode===n.code)return false;
+  if(newCode.length>24){toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return false;}
+  var clash=ngoByCode(newCode);if(clash&&clash.id!==n.id){toast(T('That code is already used','આ કોડ પહેલેથી વપરાયો છે'));return false;}
+  var oldCode=n.code,imp=ngoImpact(oldCode);
+  if(!confirm(T('Rename ','નામ બદલો ')+oldCode+' → '+newCode+'?\n\n'+imp.tls.length+T(' team leader(s), ',' ટીમ લીડર, ')+imp.teachers.length+T(' teacher(s) and ',' શિક્ષક અને ')+imp.recs.length+T(' bridge course record(s) will move.',' બ્રિજ કોર્સ રેકોર્ડ ખસેડાશે.')))return false;
+  imp.tls.forEach(function(x){x.cluster=newCode;if(FS){try{FS.collection('appusers').doc(x.id).set({id:x.id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:newCode,active:x.active!==false},{merge:true});}catch(err){console.warn('ngoRename tl',err);}}});
+  var oldIds=[];
+  imp.recs.forEach(function(m){oldIds.push(m.id);m.cluster=newCode;m.id=bridgeId(newCode,m.school);m.updatedAt=Date.now();});
+  var live={};(DB.bridgeMarks||[]).forEach(function(m){if(m&&m.id)live[m.id]=m;});
+  DB.bridgeMarks=Object.keys(live).map(function(k){return live[k];});
+  imp.recs.forEach(function(m){if(live[m.id]===m)pushBridgeMark(m);});
+  oldIds.forEach(function(oid){if(live[oid])return;if(FS){try{syncTrack(FS.collection('bridgeMarks').doc(String(oid)).delete());}catch(err){console.warn('ngoRename del',err);}}});
+  var mp=DB.bridgeClusterMap||{};Object.keys(mp).forEach(function(k){if(bridgeNorm(mp[k])===bridgeNorm(oldCode))mp[k]=newCode;});
+  n.code=newCode;n.updatedAt=Date.now();
+  save();pushNgo(n);toast(T('Renamed','નામ બદલ્યું')+' ✓');renderAll();return true;}
+function ngoSetActive(id,on){var n=ngoById(id);if(!n)return;
+  if(!on){var imp=ngoImpact(n.code);if(imp.tls.length&&!confirm(T('Retire ','બંધ કરો ')+n.code+'?\n\n'+imp.tls.length+T(' team leader(s) still use it. Nothing is deleted — it just stops appearing in the pickers.',' ટીમ લીડર હજુ વાપરે છે. કંઈ ડિલીટ થશે નહીં — ફક્ત યાદીમાં દેખાશે નહીં.')))return;}
+  n.active=!!on;n.updatedAt=Date.now();save();pushNgo(n);toast(on?(T('NGO turned on','NGO ચાલુ')+' ✓'):(T('NGO retired','NGO બંધ')+' ✓'));renderAll();}
+function ngoSetName(id,name){var n=ngoById(id);if(!n)return;n.name=(name==null?'':String(name)).trim();n.updatedAt=Date.now();save();pushNgo(n);toast(T('Saved','સાચવ્યું')+' ✓');renderAll();}
+function ngoAddFromForm(){if(ngoAdd(val('ngo_code')||'',val('ngo_name')||'')){var a=document.getElementById('ngo_code'),b=document.getElementById('ngo_name');if(a)a.value='';if(b)b.value='';}}
+function ngoPromptRename(id){var n=ngoById(id);if(!n)return;var v=(prompt(T('New code for ','નવો કોડ — ')+n.code,n.code)||'').trim();if(v)ngoRename(id,v);}
+function ngoPromptName(id){var n=ngoById(id);if(!n)return;var v=prompt(T('Full name for ','પૂરું નામ — ')+n.code,n.name||'');if(v!==null)ngoSetName(id,v);}
+function ngoOpts(cur){var codes=ngoActive().map(function(n){return n.code;});
+  if(cur&&codes.map(bridgeNorm).indexOf(bridgeNorm(cur))<0)codes.unshift(cur);
+  return '<option value="">—</option>'+codes.map(function(c){return '<option value="'+escA(c)+'"'+(bridgeNorm(c)===bridgeNorm(cur||'')?' selected':'')+'>'+escA(c)+'</option>';}).join('');}
+function ngoCard(){var rows=ngoAll().slice().sort(function(a,b){return ((a.active===false)?1:0)-((b.active===false)?1:0)||String(a.code||'').localeCompare(String(b.code||''));}).map(function(n){var off=n.active===false;var used=ngoImpact(n.code);
+  return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(off?'opacity:.55':'')+'"><div style="flex:1;min-width:120px"><div style="font-weight:700">'+escA(n.code)+(off?' <span class="pill r" style="font-size:10px">'+T('retired','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(n.name?escA(n.name):T('no full name yet','પૂરું નામ નથી'))+' · '+used.tls.length+' '+T('TL','TL')+' · '+used.teachers.length+' '+T('teachers','શિક્ષક')+'</div></div>'
+   +'<button class="btn ghost" style="padding:5px 9px;font-size:12px" onclick="ngoPromptName(\''+escAJ(n.id)+'\')">'+T('Full name','પૂરું નામ')+'</button>'
+   +'<button class="btn ghost" style="padding:5px 9px;font-size:12px" onclick="ngoPromptRename(\''+escAJ(n.id)+'\')">'+T('Rename','નામ બદલો')+'</button>'
+   +'<button class="btn ghost" style="padding:5px 9px;font-size:12px" onclick="ngoSetActive(\''+escAJ(n.id)+'\','+(off?'true':'false')+')">'+(off?T('Turn on','ચાલુ કરો'):T('Retire','બંધ કરો'))+'</button></div>';}).join('');
+  return '<div class="card"><h3><i class="ti ti-building-community"></i> '+T('NGOs','NGO')+' ('+ngoActive().length+')</h3>'
+   +(rows||('<div class="empty">'+T('No NGOs yet','હજુ કોઈ NGO નથી')+'</div>'))
+   +'<label style="margin-top:10px">'+T('Add a new NGO','નવું NGO ઉમેરો')+'</label>'
+   +'<input id="ngo_code" class="fld" placeholder="'+T('Short code, e.g. GST','ટૂંકો કોડ, દા.ત. GST')+'">'
+   +'<input id="ngo_name" class="fld" style="margin-top:6px" placeholder="'+T('Full name (optional), e.g. Gram Seva Trust','પૂરું નામ (વૈકલ્પિક)')+'">'
+   +'<button class="btn block" style="margin-top:8px" onclick="ngoAddFromForm()">'+T('Add NGO','NGO ઉમેરો')+'</button></div>';}
 function fmtUpd(v){if(!v)return '';var d=(typeof v==='number')?new Date(v):new Date(String(v));return isNaN(d.getTime())?'':fmtD(dstr(d));}
 async function expLogs(){var from=val('exp_from')||'';var to=val('exp_to')||'';if(from&&to&&from>to){var t=from;from=to;to=t;}var _win=addDays(realToday(),-60);if(FS&&(!from||from<_win)){try{toast(T('Fetching older logs…','જૂના લોગ લવાય છે…'));var _snap=await FS.collection('logs').where('date','>=',from||'2000-01-01').where('date','<=',to||realToday()).get();mergeLogs(_snap.docs.map(function(d){return d.data();}));save();}catch(err){quotaWarn(err);toast(T('Could not fetch older logs — export may be incomplete','જૂના લોગ ન મળ્યા — એક્સપોર્ટ અધૂરું હોઈ શકે'));}}var es=DB.entries.filter(function(e){if(!(hasDiary(e)||e.punchIn||e.punchOut))return false;var d=e.date||'';if(from&&d<from)return false;if(to&&d>to)return false;return true;});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String((u(a.userId)&&u(a.userId).name)||'').localeCompare(String((u(b.userId)&&u(b.userId).name)||''));});if(!es.length){toast(T('No logs in that range','આ શ્રેણીમાં લોગ નથી'));return;}var head=['Date','Name','Role','Cluster','Under TL','School(s)','Present','Total','Work done','Challenge','Purpose','Met','Observation','Topic','Punch in','Punch out','Updated'];var rows=[head];es.forEach(function(e){var x=u(e.userId);var tl=(x&&x.tl)?u(x.tl):null;var sch=e.school||e.visited||((e.schools&&e.schools.join)?e.schools.join('; '):'')||'';rows.push([fmtD(e.date),(x&&x.name)||e.userId||'',e.role||(x&&x.role)||'',x?clusterOf(x):'',tl?tl.name:'',sch,(e.present!=null?e.present:''),(e.total!=null?e.total:''),e.summary||'',(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?e.challenge:'',e.purpose||'',(e.met&&e.met.join)?e.met.join('; '):'',e.observation||'',e.topic||'',e.punchIn||'',e.punchOut||'',fmtUpd(e.updatedAt)]);});dlCSV('krsf-logs-'+(from||'all')+'_to_'+(to||'all')+'.csv',rows);toast(es.length+' '+T('records exported','રેકોર્ડ એક્સપોર્ટ')+' ✓');}
 function expUsers(){var ord={PM:0,TL:1,Teacher:2};var us=DB.users.slice().sort(function(a,b){return ((ord[a.role]==null?9:ord[a.role])-(ord[b.role]==null?9:ord[b.role]))||String(a.name||'').localeCompare(String(b.name||''));});var head=['Name','Role','Cluster','Phone','Under TL','Active'];var rows=[head];us.forEach(function(x){var tl=x.tl?u(x.tl):null;rows.push([x.name||'',x.role||'',clusterOf(x),x.phone||'',tl?tl.name:'',x.active===false?'No':'Yes']);});dlCSV('krsf-staff.csv',rows);toast(us.length+' '+T('users exported','યુઝર એક્સપોર્ટ')+' ✓');}
