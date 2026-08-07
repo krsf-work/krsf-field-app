@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='5.5'; /* v5.5 — Marks trend chart: a month-by-month score comparison chart at the top of the Reports Marks tab, one line per NGO cluster with filter chips to show/hide each. Built as plain inline SVG (no charting library, no CDN) to match this app's offline-first design. Zero new Firestore reads, zero new fields, no rules change. */
+const APP_VERSION='5.7'; /* v5.7 — Bridge course report: a third Reports tab that ingests the org's native-app CSV export unchanged. Columns are read by fixed position (the export's merged two-row header makes header text unusable), the Cluster column's cluster-head names are resolved once each against Pragati TLs (exact match only — never fuzzy, two surnames collide), and school-name spelling drift is caught by a confirm-before-save review screen. The uploaded spelling is always what gets stored; confirming a match only records a link in schoolRef. New Firestore collection `bridgeMarks` — REQUIRES a security rule before it will write. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -253,6 +253,8 @@ function pushSchool(name){ if(!FS||!name)return; try{ syncTrack(FS.collection('s
 async function loadSharedSchools(force){ if(!FS)return; if(!fetchDue('schools',864e5,force))return; try{ const snap=await FS.collection('schools').get(); const remote=snap.docs.map(d=>(d.data()||{}).name).filter(Boolean); DB.schools=[...new Set(DB.schools.concat(remote))].sort(); fetchStamp('schools'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedSchools',err);} }
 function markId(teacherId,subject,examDate){return teacherId+'_'+String(subject).trim().toLowerCase().replace(/[^a-z0-9]+/g,'-')+'_'+examDate;}
 function pushMark(m){ if(!FS)return; try{ m.updatedAt=Date.now(); syncTrack(FS.collection('marks').doc(String(m.id)).set(m,{merge:true})); }catch(err){SYNC.err++;updateSyncUI();console.warn('pushMark',err);} }
+function pushBridgeMark(m){ if(!FS)return; try{ m.updatedAt=Date.now(); syncTrack(FS.collection('bridgeMarks').doc(String(m.id)).set(m,{merge:true})); }catch(err){SYNC.err++;updateSyncUI();console.warn('pushBridgeMark',err);} }
+async function loadSharedBridgeMarks(force){ if(!FS)return; var _me=u(CUR); if(!_me||_me.role!=='PM')return; if(!fetchDue('bridgeMarks',9e5,force))return; try{ const snap=await FS.collection('bridgeMarks').get(); const remote=snap.docs.map(d=>d.data()); var _bb={};(DB.bridgeMarks||[]).forEach(function(x){if(x&&x.id)_bb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_bb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_bb[r.id]=r;});DB.bridgeMarks=Object.keys(_bb).map(function(k){return _bb[k];}); fetchStamp('bridgeMarks'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedBridgeMarks',err);} }
 async function loadSharedMarks(force){ if(!FS)return; var _me=u(CUR); if(!_me||_me.role!=='PM')return; if(!fetchDue('marks',9e5,force))return; try{ const snap=await FS.collection('marks').get(); const remote=snap.docs.map(d=>d.data()); var _mb={};DB.marks.forEach(function(x){if(x&&x.id)_mb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_mb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_mb[r.id]=r;});DB.marks=Object.keys(_mb).map(function(k){return _mb[k];}); fetchStamp('marks'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedMarks',err);} }
 function addSchool(name){ name=(name||'').trim(); if(!name)return false; var _an=name.length>=6;for(var _i=0;_i<name.length;_i++){var _c=name.charCodeAt(_i);if(_c<48||_c>57){_an=false;break;}}if(_an)return false; if(!DB.schools.includes(name)){DB.schools.push(name);DB.schools.sort();save();} pushSchool(name); return true; }
 const PURPOSES=['School observation','Teacher mentoring','Remedial session','Community/parent meeting','BRC/CRC coordination','Material distribution','Other'];
@@ -342,6 +344,9 @@ if(!DB.marks)DB.marks=[];
   if(pm&&pm.phone!=='9909960404'){pm.phone='9909960404';changed=true;}
   DB.users.forEach(function(x){if('pwd' in x){delete x.pwd;changed=true;}});
   if(!DB.schoolsCleared){DB.schools=[];DB.schoolsCleared=true;changed=true;}
+  if(!DB.bridgeMarks){DB.bridgeMarks=[];changed=true;}
+  if(!DB.bridgeClusterMap){DB.bridgeClusterMap={};changed=true;}
+  if(!DB.bridgeSchoolMap){DB.bridgeSchoolMap={};changed=true;}
   if(!DB.cleanV2){var realIds=['pm1','tl_nilesh','tl_yogesh','tl_jignesh','tch_disha','tch_9265825570','tch_7016331672','tch_8347271269','tch_9875264540','tch_7862967620','tch_8758856634','tch_6353507962','tch_7016205975','tch_9875176685','tch_8758656867','tch_1234567890','tch_8758116247','tch_9925684464','tch_7046429791','tch_9106457920','tch_8980889656','tch_9726449061','tch_9638116561','tch_8238628485','tch_9328988841','tch_8141773675','tch_9925934368','tch_7621063197','tl_bhargav','tl_martin','tch_7874056947','tch_8758865343','tch_9106296747','tch_6352465958','tch_9712798742','tch_7861840649','tch_9726811972','tch_8849910371','tch_9426584407','tch_9586759247','tch_9574517506','tch_9016500890','tch_9106906834','tch_8160852953','tch_9510697388','tch_9484631154','tch_7990731812','tch_9409163084','tch_9313097294','tch_9427612556','tch_9016285092','tch_9510834816','tl_falguni'];DB.users=DB.users.filter(function(uu){return realIds.indexOf(uu.id)>-1;});DB.entries=[];DB.tasks=[];DB.cleanV2=true;changed=true;}
   if(!DB.seesAlsoMigrated){var seesMigrate={tl_yogesh:['tl_falguni'],tl_falguni:['tl_yogesh'],tl_martin:['tl_jignesh'],tl_jignesh:['tl_martin','tl_bhargav'],tl_bhargav:['tl_jignesh']};Object.keys(seesMigrate).forEach(function(id){var x=DB.users.find(function(uu){return uu.id===id;});if(x)x.seesAlso=seesMigrate[id];});DB.seesAlsoMigrated=true;changed=true;}
   /* v1.1: collapse any duplicate user records sharing an id (legacy from the old double-add bug).
@@ -360,7 +365,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return (n||'').replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(function(w){return (w&&w[0])||'';}).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={};function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -404,7 +409,7 @@ function syncNow(manual){if(manual){SYNC.err=0;}updateSyncUI();
   try{DB.entries.filter(e=>e&&e.id&&e.userId===CUR&&e.date>=addDays(realToday(),-7)).forEach(e=>syncTrack(FS.collection('logs').doc(String(e.id)).set(e,{merge:true})));}catch(err){SYNC.err++;updateSyncUI();console.warn('sync logs',err);}
   try{if(u(CUR)&&u(CUR).role==='PM')DB.tasks.filter(t=>t&&t.id).forEach(t=>FS.collection('tasks').doc(String(t.id)).set(t,{merge:true}));}catch(err){console.warn('sync tasks',err);}
   try{DB.schools.forEach(s=>{if(s)FS.collection('schools').doc(String(s)).set({name:s});});}catch(err){console.warn('sync schools',err);}
-  loadSharedLogs(manual);loadSharedTasks(manual);loadSharedSchools(manual);loadSharedUsers(manual);loadSharedSetup(manual);loadSharedMarks(manual);
+  loadSharedLogs(manual);loadSharedTasks(manual);loadSharedSchools(manual);loadSharedUsers(manual);loadSharedSetup(manual);loadSharedMarks(manual);loadSharedBridgeMarks(manual);
   if(manual)toast(T('Synced ✓','સિંક થયું ✓'));}
 window.addEventListener('online',function(){updateNetStatus();syncNow(false);});
 window.addEventListener('offline',updateNetStatus);
@@ -430,8 +435,8 @@ function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim
   /* 4 digits = default scheme (krsf+last4); anything else = a custom password set by the PM, sent verbatim */
   var full=(/^[0-9]{4}$/.test(pw))?(PWD_PREFIX+pw):pw;
   AUTH.signInWithEmailAndPassword(ph+AUTH_DOMAIN, full).catch(function(e){err.textContent=T('Wrong mobile number or password.','ખોટો મોબાઇલ નંબર અથવા પાસવર્ડ.');if(btn){btn.disabled=false;btn.style.opacity='';}});}
-function startSession(id){CUR=id;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();}}
-function logout(){if(AUTH)AUTH.signOut();CUR=null;showLogin();}
+function startSession(id){CUR=id;BRIDGE_REVIEW=null;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();loadSharedBridgeMarks();}}
+function logout(){if(AUTH)AUTH.signOut();CUR=null;BRIDGE_REVIEW=null;showLogin();}
 var TEACH_BACK='teachers';
 function selectItem(k,extra){if(DIRTY&&SEL!==k&&!confirm(T('You have unsaved changes. Leave without saving?','સાચવ્યા વગરના ફેરફાર છે. સાચવ્યા વગર જવું?')))return;DIRTY=false;SETUP_TT=null;if(u(k)&&u(k).role==='Teacher'&&!(u(SEL)&&u(SEL).role==='Teacher'))TEACH_BACK=SEL||'teachers';if(k==='reports'&&SEL!=='reports'){REPORT_LEVEL=null;REPORT_ID=null;}SEL=k;if(k==='teacherLogs'&&extra)SELTEACHER=extra;if(k==='tlLogs'&&extra)SELTL=extra;document.getElementById('detail').scrollTop=0;renderAll();}
 
@@ -1037,7 +1042,23 @@ function detailReports(){
     var rows=tls.map(function(tl){var tIds=teachersInScope('tl',tl.id).map(function(x){return x.id;});var tCount=tIds.length;var redCount=tIds.filter(function(id){var a=marksAgg([id]);return a.hasData&&a.flag==='red';}).length;var sub=redCount>0?T(redCount+' of '+tCount+' teachers red-flagged',tCount+' માંથી '+redCount+' શિક્ષકો રેડ ફ્લેગ'):(tCount+' '+T('teachers','શિક્ષકો'));return reportRow(tl.name,sub,marksAgg(tIds),"reportsGoto('tl','"+tl.id+"')");}).join('')||('<div class="empty">'+T('No team leaders in this cluster.','આ ક્લસ્ટરમાં TL નથી.')+'</div>');
     return '<div class="dh-sub" style="margin-bottom:8px">'+crumbs+'</div>'+legend+'<div class="card" style="padding:0;overflow:hidden">'+rows+'</div>';
   }
-  var modeToggle='<div class="chips" style="margin-bottom:2px"><span class="chip '+(REPORT_MODE==='marks'?'on':'')+'" onclick="setReportMode(\'marks\')">'+T('Marks','માર્ક્સ')+'</span><span class="chip '+(REPORT_MODE==='hours'?'on':'')+'" onclick="setReportMode(\'hours\')">'+T('Teaching hours','શિક્ષણ કલાક')+'</span></div>';
+  var modeToggle='<div class="chips" style="margin-bottom:2px"><span class="chip '+(REPORT_MODE==='marks'?'on':'')+'" onclick="setReportMode(\'marks\')">'+T('Marks','માર્ક્સ')+'</span><span class="chip '+(REPORT_MODE==='hours'?'on':'')+'" onclick="setReportMode(\'hours\')">'+T('Teaching hours','શિક્ષણ કલાક')+'</span><span class="chip '+(REPORT_MODE==='bridge'?'on':'')+'" onclick="setReportMode(\'bridge\')">'+T('Bridge course','બ્રિજ કોર્સ')+'</span></div>';
+  if(REPORT_MODE==='bridge'){
+    if(BRIDGE_REVIEW)return bridgeReviewView();
+    var bClus=bridgeAgg('all').clusters.slice().sort();
+    if(BRIDGE_CLUS!=='all'&&bClus.indexOf(BRIDGE_CLUS)<0)BRIDGE_CLUS='all';
+    var bA=bridgeAgg(BRIDGE_CLUS);
+    var bBtns='<div style="display:flex;gap:8px;align-items:center"><button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="downloadBridgeTemplate()">⬇ '+T('Download template','ટેમ્પલેટ ડાઉનલોડ')+'</button><button class="btn" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="document.getElementById(\'bridgeFile\').click()">⬆ '+T('Upload CSV','CSV અપલોડ')+'</button><input type="file" id="bridgeFile" accept=".csv" style="display:none" onchange="bridgeFileChange(event)"></div>';
+    var bChips=bClus.length>1?('<div class="chips"><span class="chip '+(BRIDGE_CLUS==='all'?'on':'')+'" onclick="setBridgeClus(\'all\')">'+T('All','બધા')+'</span>'+bClus.map(function(c){return '<span class="chip '+(BRIDGE_CLUS===c?'on':'')+'" onclick="setBridgeClus(\''+escAJ(c)+'\')">'+escA(c)+'</span>';}).join('')+'</div>'):'';
+    var bKpi='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"><div class="card" style="margin:0;padding:10px 12px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">'+T('Students','વિદ્યાર્થી')+'</div><div style="font-size:20px;font-weight:700">'+(bA.total?bA.students:'—')+'</div></div><div class="card" style="margin:0;padding:10px 12px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">'+T('July-end data complete','જુલાઈ-અંતનો ડેટા પૂર્ણ')+'</div><div style="font-size:20px;font-weight:700">'+(bA.total?(bA.complete+'/'+bA.total):'—')+'</div></div></div>';
+    var att=[];
+    if(bA.declines.length)att.push('<div style="font-size:13px;margin-top:3px"><b style="color:#b3261e">'+T('Went down','ઘટાડો')+':</b> '+bA.declines.map(function(r){return escA(r.m.school);}).join(', ')+'</div>');
+    if(bA.missing.length)att.push('<div style="font-size:13px;margin-top:3px"><b>'+T('No July-end data yet','હજુ જુલાઈ-અંતનો ડેટા નથી')+':</b> '+bA.missing.length+' '+T('schools','શાળા')+'</div>');
+    if(bA.flat.length)att.push('<div style="font-size:13px;margin-top:3px"><b style="color:#eda100">'+T('Start and end identical — please check','શરૂઆત અને અંત સરખા — તપાસો')+':</b> '+bA.flat.map(function(r){return escA(r.m.school);}).join(', ')+'</div>');
+    var bAtt=att.length?('<div class="card"><h3><i class="ti ti-flag"></i> '+T('Needs attention','ધ્યાન જરૂરી')+'</h3>'+att.join('')+'</div>'):'';
+    var bList=bA.rows.length?bA.rows.map(bridgeCardHTML).join(''):('<div class="empty">'+T('No bridge course data yet — upload a CSV to begin.','હજુ બ્રિજ કોર્સ ડેટા નથી — શરૂ કરવા CSV અપલોડ કરો.')+'</div>');
+    return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ')+'</div></div>'+bBtns+'</div>'+modeToggle+bChips+bKpi+bAtt+'<div class="card" style="padding:0;overflow:hidden">'+bList+'</div>';
+  }
   if(REPORT_MODE==='hours'){
     var hClusters=clustersInScope();
     if(HOURS_CLUS!=='all'&&hClusters.indexOf(HOURS_CLUS)<0)HOURS_CLUS='all';
@@ -1140,6 +1161,143 @@ function uploadMarksCSV(text){var parsed=parseMarksCSV(text);var byId={};DB.mark
 function marksFileChange(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){try{uploadMarksCSV(e.target.result);}catch(err){alert('Could not parse CSV: '+err.message);}ev.target.value='';};reader.readAsText(file);}
 function dlCSV(fn,rows){var csv=rows.map(function(r){return r.map(csvEsc).join(',');}).join('\r\n');var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},800);}
 function downloadMarksTemplate(){dlCSV('marks-template.csv',[['teacher_phone','subject','exam_date','score'],['9999999999','Maths','2026-07-10','38/50']]);}
+/* ---- bridge course: parsing primitives ---- */
+var BRIDGE_CLUSTERS=['KCT','JCT','SVT','Dahod'],BRIDGE_SUBJ=['reading','writing','maths'];
+function csvSplit(line){var out=[],cur='',q=false;for(var i=0;i<line.length;i++){var c=line.charAt(i);if(q){if(c==='"'){if(line.charAt(i+1)==='"'){cur+='"';i++;}else q=false;}else cur+=c;}else if(c==='"')q=true;else if(c===','){out.push(cur);cur='';}else cur+=c;}out.push(cur);return out.map(function(s){return s.trim();});}
+function bridgeNorm(s){return String(s==null?'':s).replace(/^\uFEFF/,'').toLowerCase().replace(/[\s\-_.,;:()\[\]\/\\'"]+/g,'');}
+function bridgeLev(a,b){var m=a.length,n=b.length;if(!m)return n;if(!n)return m;var prev=[],cur=[],i,j;for(j=0;j<=n;j++)prev[j]=j;for(i=1;i<=m;i++){cur[0]=i;for(j=1;j<=n;j++){var cost=a.charAt(i-1)===b.charAt(j-1)?0:1;cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+cost);}for(j=0;j<=n;j++)prev[j]=cur[j];}return prev[n];}
+function bridgeSim(a,b){a=bridgeNorm(a);b=bridgeNorm(b);if(!a||!b)return 0;if(a===b)return 1;var mx=Math.max(a.length,b.length);return 1-(bridgeLev(a,b)/mx);}
+/* escJS must run BEFORE escA on any value going into an onclick="fn('...')" body.
+   The HTML parser decodes character references in an attribute value before the
+   handler is compiled, so escA's &#39; turns back into a real quote in the JS source:
+   a school called "St. Mary's" produced a SyntaxError (every chip on that row dead,
+   Save unreachable forever), and a crafted name executed arbitrary JS. */
+function escJS(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function escAJ(s){return escA(escJS(s));}
+function bridgeHash(s){var h=5381,i;for(i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return h.toString(36);}
+function bridgeSlug(s){var t=String(s==null?'':s).trim();var out=t.toLowerCase().replace(/[^a-z0-9\u0A80-\u0AFF]+/g,'-').replace(/^-+|-+$/g,'');
+  /* a name in any other script (Devanagari, emoji, pure punctuation) strips to '' and
+     would collide every such school onto one Firestore doc; over-long ids blow the
+     1500-byte limit and .doc() throws inside a swallowed try. Hash both cases. */
+  if(!out||out.length>120)out='x'+bridgeHash(t);return out;}
+function bridgeId(cluster,school){return bridgeSlug(cluster)+'|'+bridgeSlug(school);}
+function parseBridgeCSV(text){var lines=String(text==null?'':text).split(/\r?\n/),hdr=-1,i;
+  for(i=0;i<lines.length;i++){if(!lines[i].trim())continue;if(bridgeNorm(csvSplit(lines[i])[0])==='cluster'){hdr=i;break;}}
+  if(hdr===-1)throw new Error(T('Could not find the header row — the first column should be headed "Cluster".','હેડર હરોળ મળી નથી — પહેલા કૉલમનું નામ "Cluster" હોવું જોઈએ.'));
+  var rows=[],skipped=[],heads=[],seen={},total=0;
+  for(i=hdr+1;i<lines.length;i++){if(!lines[i].trim())continue;
+    var c=csvSplit(lines[i]),head=(c[0]||'').trim(),school=(c[1]||'').trim();
+    /* a concatenated per-region export repeats its header block; without this a phantom
+       school called "School Name" under a phantom head called "Cluster" gets ingested */
+    if(bridgeNorm(head)==='cluster'&&bridgeNorm(school)==='schoolname'){skipped.push({row:i+1,reason:'repeated header row'});continue;}
+    if(!school){skipped.push({row:i+1,reason:'no school name'});continue;}
+    total++;
+    if(!head){skipped.push({row:i+1,reason:'no cluster for '+school});continue;}
+    var num=function(k){var v=(c[k]||'').trim().replace(/,/g,'');if(v==='')return null;var n=parseFloat(v);return (isNaN(n)||n<0)?null:n;};
+    var st=parseInt((c[2]||'').trim().replace(/[\s,]/g,''),10);if(isNaN(st)||st<0)st=0;
+    rows.push({head:head,school:school,students:st,reading:{start:num(3),mid:num(4),end:num(5)},writing:{start:num(6),mid:num(7),end:num(8)},maths:{start:num(9),mid:num(10),end:num(11)}});
+    if(!seen[head]){seen[head]=1;heads.push(head);}}
+  return {rows:rows,heads:heads,skipped:skipped,total:total};}
+/* ---- bridge course: matching (people exact-only, schools fuzzy) ---- */
+function bridgeResolveHead(head){var h=(head==null?'':String(head)).trim();if(!h)return null;var k=bridgeNorm(h),i;
+  for(i=0;i<BRIDGE_CLUSTERS.length;i++){if(k===bridgeNorm(BRIDGE_CLUSTERS[i]))return {cluster:BRIDGE_CLUSTERS[i],via:'code'};}
+  var saved=(DB.bridgeClusterMap||{})[k];if(saved&&BRIDGE_CLUSTERS.indexOf(saved)>-1)return {cluster:saved,via:'saved'};
+  var tl=(DB.users||[]).filter(function(x){return x&&x.role==='TL'&&x.active!==false&&bridgeNorm(x.name)===k;})[0];
+  if(tl){var c=clusterOf(tl);if(BRIDGE_CLUSTERS.indexOf(c)>-1)return {cluster:c,via:'tl',tlName:tl.name};}
+  return null;}
+function bridgeSchoolCandidates(){var seen={},out=[];function add(n){n=(n==null?'':String(n)).trim();if(!n)return;var k=bridgeNorm(n);if(!k||seen[k])return;seen[k]=1;out.push(n);}
+  (DB.schools||[]).forEach(add);(DB.bridgeMarks||[]).forEach(function(m){if(m)add(m.school);});return out;}
+function bridgeMatchSchools(rows){var cands=bridgeSchoolCandidates(),map=DB.bridgeSchoolMap||{};
+  return (rows||[]).map(function(r,i){var key=bridgeNorm(r&&r.school);
+    if(!key)return {i:i,kind:'new',ref:null};
+    if(Object.prototype.hasOwnProperty.call(map,key))return {i:i,kind:'saved',ref:(map[key]===false?null:map[key])};
+    var j;for(j=0;j<cands.length;j++){if(bridgeNorm(cands[j])===key)return {i:i,kind:'exact',ref:cands[j]};}
+    var near=[];for(j=0;j<cands.length;j++){var s=bridgeSim(r.school,cands[j]);if(s>=0.82)near.push({name:cands[j],sim:s});}
+    if(!near.length)return {i:i,kind:'new',ref:null};
+    near.sort(function(a,b){return b.sim-a.sim;});
+    return {i:i,kind:'close',ref:null,options:near.slice(0,3).map(function(x){return x.name;})};});}
+/* ---- bridge course: review state + the only write path ---- */
+function bridgeBuildReview(text){var p=parseBridgeCSV(text),headMap={},headVia={};
+  p.heads.forEach(function(h){var r=bridgeResolveHead(h);if(r){headMap[h]=r.cluster;headVia[h]=r.via;}});
+  return {rows:p.rows,heads:p.heads,matches:bridgeMatchSchools(p.rows),headMap:headMap,headVia:headVia,linked:{},skipped:p.skipped,total:p.total};}
+function bridgeSetHead(head,cluster){if(!BRIDGE_REVIEW)return;if(BRIDGE_CLUSTERS.indexOf(cluster)<0)return;BRIDGE_REVIEW.headMap[head]=cluster;BRIDGE_REVIEW.headVia[head]='manual';renderDetail();}
+function bridgeLinkSchool(i,choice){if(!BRIDGE_REVIEW)return;BRIDGE_REVIEW.linked[i]=choice;renderDetail();}
+function bridgeCancelReview(){BRIDGE_REVIEW=null;renderDetail();}
+function bridgeUnmappedHeads(){if(!BRIDGE_REVIEW)return [];return BRIDGE_REVIEW.heads.filter(function(h){return !BRIDGE_REVIEW.headMap[h];});}
+function bridgeConfirmSave(){var R=BRIDGE_REVIEW;if(!R)return;
+  if(bridgeUnmappedHeads().length){toast(T('Choose a cluster for every cluster head first','પહેલા દરેક ક્લસ્ટર હેડ માટે ક્લસ્ટર પસંદ કરો'));return;}
+  var byId={};(DB.bridgeMarks||[]).forEach(function(x){if(x&&x.id)byId[x.id]=x;});var wrote={};
+  R.rows.forEach(function(r,i){var cluster=R.headMap[r.head];if(!cluster)return;
+    var m=R.matches[i]||{},ref=null;
+    if(m.kind==='exact'||m.kind==='saved')ref=m.ref||null;
+    else if(m.kind==='close'&&R.linked[i])ref=R.linked[i];
+    var rec={id:bridgeId(cluster,r.school),cluster:cluster,head:r.head,school:r.school,schoolRef:ref||null,students:r.students,reading:r.reading,writing:r.writing,maths:r.maths,uploadedBy:CUR,updatedAt:Date.now()};
+    byId[rec.id]=rec;pushBridgeMark(rec);wrote[rec.id]=1;});
+  var n=Object.keys(wrote).length;
+  DB.bridgeMarks=Object.keys(byId).map(function(k){return byId[k];});
+  R.heads.forEach(function(h){if(R.headMap[h])DB.bridgeClusterMap[bridgeNorm(h)]=R.headMap[h];});
+  R.rows.forEach(function(r,i){var m=R.matches[i]||{};if(m.kind==='close'&&R.linked[i]!==undefined)DB.bridgeSchoolMap[bridgeNorm(r.school)]=R.linked[i];});
+  save();BRIDGE_REVIEW=null;toast(n+' '+T('schools saved','શાળા સાચવી')+' ✓');renderAll();}
+/* ---- bridge course: aggregation (pure over DB.bridgeMarks) ---- */
+function bridgeGain(s){if(!s||s.start==null||s.end==null)return null;return Math.round((s.end-s.start)*100)/100;}
+function bridgeRow(m){var gains=[],decline=false,anyEnd=false,allEnd=true,flat=true;
+  BRIDGE_SUBJ.forEach(function(k){var s=m[k]||{},g=bridgeGain(s);
+    if(s.end!=null)anyEnd=true;else allEnd=false;
+    if(g==null){flat=false;return;}
+    gains.push(g);if(g<0)decline=true;if(g!==0)flat=false;});
+  var avg=gains.length?Math.round((gains.reduce(function(a,b){return a+b;},0)/gains.length)*100)/100:null;
+  var reason=decline?'decline':(!anyEnd?'noend':((avg!=null&&avg<0.8)?'low':'ok'));
+  /* 'noend' is grey, NOT red: on a mid-programme upload most schools have no July-end
+     figure yet, and a red dot on 53 of 65 schools reads as "failing" when it only means
+     "not measured yet". Red is reserved for a real decline. */
+  var status=reason==='decline'?'red':(reason==='noend'?'grey':(reason==='low'?'amber':'green'));
+  return {m:m,gains:gains,avg:avg,decline:decline,anyEnd:anyEnd,allEnd:allEnd,flat:(flat&&anyEnd&&gains.length>0),status:status,reason:reason};}
+function bridgeAgg(scope){var list=(DB.bridgeMarks||[]).filter(function(m){return m&&(!scope||scope==='all'||m.cluster===scope);});
+  var rows=list.map(bridgeRow),withEnd=rows.filter(function(r){return r.anyEnd;}),noEnd=rows.filter(function(r){return !r.anyEnd;});
+  withEnd.sort(function(a,b){return (a.avg==null?1e9:a.avg)-(b.avg==null?1e9:b.avg);});
+  noEnd.sort(function(a,b){return String(a.m.school||'').localeCompare(String(b.m.school||''));});
+  var cl={};(DB.bridgeMarks||[]).forEach(function(m){if(m&&m.cluster)cl[m.cluster]=1;});
+  return {rows:withEnd.concat(noEnd),students:list.reduce(function(a,m){return a+(m.students||0);},0),
+    complete:rows.filter(function(r){return r.allEnd;}).length,total:rows.length,
+    declines:rows.filter(function(r){return r.decline;}),missing:noEnd,flat:rows.filter(function(r){return r.flat;}),
+    clusters:Object.keys(cl)};}
+/* ---- bridge course: review screen ---- */
+function bridgeReviewView(){var R=BRIDGE_REVIEW;if(!R)return '';
+  var heads=R.heads.map(function(h){var cur=R.headMap[h],via=(R.headVia||{})[h];
+    var how=!cur?'':(via==='tl'?T('matched to team leader','ટીમ લીડર સાથે મેળ'):(via==='saved'?T('remembered from last time','ગયા વખતથી યાદ'):(via==='manual'?T('you chose this','તમે પસંદ કર્યું'):T('typed in the file','ફાઇલમાં લખેલ'))));
+    var btns=BRIDGE_CLUSTERS.map(function(c){return '<span class="chip '+(cur===c?'on':'')+'" onclick="bridgeSetHead(\''+escAJ(h)+'\',\''+c+'\')">'+c+'</span>';}).join('');
+    return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700">'+escA(h)+(cur?(' <span class="pill b" style="font-size:10px;padding:1px 6px">'+escA(cur)+'</span>'):'')+'</div><div class="muted" style="font-size:12px">'+(how||T('Which cluster is this?','આ કયું ક્લસ્ટર છે?'))+'</div><div class="chips" style="margin-top:4px">'+btns+'</div></div>';}).join('');
+  var closes=R.matches.filter(function(m){return m.kind==='close';}).map(function(m){var r=R.rows[m.i],pick=R.linked[m.i];
+    var opts=(m.options||[]).map(function(o){return '<span class="chip '+(pick===o?'on':'')+'" onclick="bridgeLinkSchool('+m.i+',\''+escAJ(o)+'\')">'+T('Same as','આ જ')+' “'+escA(o)+'”</span>';}).join('');
+    return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700">'+escA(r.school)+'</div><div class="muted" style="font-size:12px">'+T('Looks close to an existing school. Same one?','હાલની શાળા જેવું લાગે છે. એક જ છે?')+'</div><div class="chips" style="margin-top:4px">'+opts+'<span class="chip '+(pick===false?'on':'')+'" onclick="bridgeLinkSchool('+m.i+',false)">'+T('Different school','અલગ શાળા')+'</span></div></div>';}).join('');
+  var news=R.matches.filter(function(m){return m.kind==='new';});
+  var newBlock=news.length?('<div class="card"><h3><i class="ti ti-school"></i> '+T('New schools','નવી શાળા')+' ('+news.length+')</h3><div class="muted" style="font-size:12.5px;margin-bottom:6px">'+T('Not seen before — these will be added automatically.','પહેલા જોયેલી નથી — આપોઆપ ઉમેરાશે.')+'</div><div style="font-size:13px">'+news.map(function(m){return escA(R.rows[m.i].school);}).join(' · ')+'</div></div>'):'';
+  var blocked=bridgeUnmappedHeads().length>0;
+  var saveBtn='<button class="btn block'+(blocked?' bridge-save-off':'')+'"'+(blocked?' disabled style="opacity:.5"':'')+' onclick="bridgeConfirmSave()">'+T('Save','સાચવો')+' '+R.rows.length+' '+T('schools','શાળા')+'</button>';
+  var skipNote=R.skipped.length?('<div class="muted" style="font-size:12px;margin-top:6px">'+R.skipped.length+' '+T('rows skipped','હરોળ છોડી')+'</div>'):'';
+  return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Check before saving','સાચવતા પહેલા તપાસો')+'</div><div class="dh-sub">'+R.rows.length+' '+T('schools in this file','શાળા આ ફાઇલમાં')+'</div></div></div>'
+    +(heads?('<div class="card"><h3><i class="ti ti-users"></i> '+T('Cluster heads','ક્લસ્ટર હેડ')+'</h3>'+heads+'</div>'):'')
+    +(closes?('<div class="card"><h3><i class="ti ti-alert-triangle"></i> '+T('Check these school names','આ શાળાનાં નામ તપાસો')+'</h3>'+closes+'</div>'):'')
+    +newBlock
+    +'<div class="card">'+saveBtn+'<button class="btn ghost block" style="margin-top:8px" onclick="bridgeCancelReview()">'+T('Cancel','રદ કરો')+'</button>'+skipNote+'</div>';}
+function bridgeFileChange(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){try{BRIDGE_REVIEW=bridgeBuildReview(e.target.result);renderDetail();}catch(err){alert(T('Could not read this file: ','આ ફાઇલ વાંચી શકાઈ નહીં: ')+err.message);}ev.target.value='';};reader.readAsText(file);}
+function downloadBridgeTemplate(){dlCSV('bridge-course-template.csv',[['','','Reading','','','','Writing','','','Maths','',''],['Cluster','School Name','Students','Start Level','Mid July Level','July End Level','Start Level','Mid July Level','July End Level','Start Level','Mid July Level','July End Level'],['Nilesh Hathila','Vajelav','58','1.26','','2.31','0.36','','1.29','0.02','','0.41']]);}
+/* ---- bridge course: report rendering ---- */
+function setBridgeClus(c){BRIDGE_CLUS=c;renderDetail();}
+function bridgeSpark(pts){var w=56,h=20,pad=3,vals=(pts||[]).filter(function(v){return v!=null;});
+  if(vals.length<2)return '<svg width="'+w+'" height="'+h+'" style="flex-shrink:0"></svg>';
+  var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);if(mx===mn){mn=mn-1;mx=mx+1;}
+  var n=pts.length,seg=[],i;
+  for(i=0;i<n;i++){if(pts[i]==null)continue;var x=pad+i*((w-2*pad)/Math.max(1,n-1));var y=h-pad-((pts[i]-mn)/(mx-mn))*(h-2*pad);seg.push(x.toFixed(1)+','+y.toFixed(1));}
+  return '<svg width="'+w+'" height="'+h+'" style="flex-shrink:0"><polyline points="'+seg.join(' ')+'" fill="none" stroke="#c9a05a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
+function bridgeSubjLabel(k){return k==='reading'?T('Reading','વાંચન'):(k==='writing'?T('Writing','લેખન'):T('Maths','ગણિત'));}
+function bridgeCardHTML(r){var m=r.m;
+  var dot={red:'#b3261e',amber:'#eda100',green:'#1baf7a',grey:'#c3c8d0'}[r.status];
+  var why=r.reason==='noend'?T('no July-end data yet','હજુ જુલાઈ-અંતનો ડેટા નથી'):(r.reason==='decline'?T('a subject went down','એક વિષય ઘટ્યો'):(r.reason==='low'?T('small gain so far','અત્યાર સુધી થોડો સુધારો'):T('on track','સારી પ્રગતિ')));
+  var lines=BRIDGE_SUBJ.map(function(k){var s=m[k]||{},g=bridgeGain(s);
+    var badge=g==null?('<span class="muted" style="font-size:12px">'+T('no end data','અંતનો ડેટા નથી')+'</span>'):('<span style="font-weight:800;font-size:12.5px;color:'+(g<0?'#b3261e':(g===0?'#6b7280':'#1baf7a'))+'">'+(g>0?'+':'')+g.toFixed(2)+'</span>');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span style="width:64px;font-size:12.5px;color:var(--muted)">'+bridgeSubjLabel(k)+'</span>'+bridgeSpark([s.start,s.mid,s.end])+badge+'</div>';}).join('');
+  return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></span><span style="font-weight:700">'+escA(m.school)+'</span><span class="pill b" style="font-size:10px;padding:1px 6px">'+escA(m.cluster||'')+'</span><span class="muted" style="font-size:11.5px;margin-left:auto">'+(m.students||0)+' '+T('students','વિદ્યાર્થી')+'</span></div><div class="muted" style="font-size:11.5px">'+why+'</div>'+lines+'</div>';}
 function fmtUpd(v){if(!v)return '';var d=(typeof v==='number')?new Date(v):new Date(String(v));return isNaN(d.getTime())?'':fmtD(dstr(d));}
 async function expLogs(){var from=val('exp_from')||'';var to=val('exp_to')||'';if(from&&to&&from>to){var t=from;from=to;to=t;}var _win=addDays(realToday(),-60);if(FS&&(!from||from<_win)){try{toast(T('Fetching older logs…','જૂના લોગ લવાય છે…'));var _snap=await FS.collection('logs').where('date','>=',from||'2000-01-01').where('date','<=',to||realToday()).get();mergeLogs(_snap.docs.map(function(d){return d.data();}));save();}catch(err){quotaWarn(err);toast(T('Could not fetch older logs — export may be incomplete','જૂના લોગ ન મળ્યા — એક્સપોર્ટ અધૂરું હોઈ શકે'));}}var es=DB.entries.filter(function(e){if(!(hasDiary(e)||e.punchIn||e.punchOut))return false;var d=e.date||'';if(from&&d<from)return false;if(to&&d>to)return false;return true;});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String((u(a.userId)&&u(a.userId).name)||'').localeCompare(String((u(b.userId)&&u(b.userId).name)||''));});if(!es.length){toast(T('No logs in that range','આ શ્રેણીમાં લોગ નથી'));return;}var head=['Date','Name','Role','Cluster','Under TL','School(s)','Present','Total','Work done','Challenge','Purpose','Met','Observation','Topic','Punch in','Punch out','Updated'];var rows=[head];es.forEach(function(e){var x=u(e.userId);var tl=(x&&x.tl)?u(x.tl):null;var sch=e.school||e.visited||((e.schools&&e.schools.join)?e.schools.join('; '):'')||'';rows.push([fmtD(e.date),(x&&x.name)||e.userId||'',e.role||(x&&x.role)||'',x?clusterOf(x):'',tl?tl.name:'',sch,(e.present!=null?e.present:''),(e.total!=null?e.total:''),e.summary||'',(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?e.challenge:'',e.purpose||'',(e.met&&e.met.join)?e.met.join('; '):'',e.observation||'',e.topic||'',e.punchIn||'',e.punchOut||'',fmtUpd(e.updatedAt)]);});dlCSV('krsf-logs-'+(from||'all')+'_to_'+(to||'all')+'.csv',rows);toast(es.length+' '+T('records exported','રેકોર્ડ એક્સપોર્ટ')+' ✓');}
 function expUsers(){var ord={PM:0,TL:1,Teacher:2};var us=DB.users.slice().sort(function(a,b){return ((ord[a.role]==null?9:ord[a.role])-(ord[b.role]==null?9:ord[b.role]))||String(a.name||'').localeCompare(String(b.name||''));});var head=['Name','Role','Cluster','Phone','Under TL','Active'];var rows=[head];us.forEach(function(x){var tl=x.tl?u(x.tl):null;rows.push([x.name||'',x.role||'',clusterOf(x),x.phone||'',tl?tl.name:'',x.active===false?'No':'Yes']);});dlCSV('krsf-staff.csv',rows);toast(us.length+' '+T('users exported','યુઝર એક્સપોર્ટ')+' ✓');}
