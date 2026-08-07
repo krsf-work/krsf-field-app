@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='6.6'; /* v6.6 - Schools become a sortable table under a priority quadrant. A row-per-school dumbbell list gave all 65 schools equal weight; the quadrant plots each school as one dot (x = level now, y = change) so the ones that need attention separate themselves, and the table carries School, Teacher, NGO, Students, each subject with its level and change, average out of 10 and overall change - every column sortable, every row tappable. The teacher column shows 'not linked' in red where Setup has not connected one, keeping the gap visible. The gain/level toggle is hidden on Schools because the table shows both at once; it still applies to Teachers and NGOs. Also fixes three icons that had been rendering blank - ti-chart-bar and ti-chart-line are not in this build's font subset. */
+const APP_VERSION='6.7'; /* v6.7 - Removed the priority quadrant; the sortable table stands alone. Added one-click teacher linking: a school can now carry an explicit teacherId chosen by the PM, which takes precedence over the Setup-name matching and lives on the bridgeMarks record itself, so it needs no new collection and no new security rule. The Link teachers screen pre-fills a suggestion for every unlinked school - the closest spelling among the schools each teacher typed into Setup, nudged towards teachers already in that school's NGO - so accepting them all is a single tap on Save. Anything with no close match is left blank with a dropdown, and nothing is written until Save. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -369,7 +369,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return (n||'').replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(function(w){return (w&&w[0])||'';}).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true};function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -439,8 +439,8 @@ function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim
   /* 4 digits = default scheme (krsf+last4); anything else = a custom password set by the PM, sent verbatim */
   var full=(/^[0-9]{4}$/.test(pw))?(PWD_PREFIX+pw):pw;
   AUTH.signInWithEmailAndPassword(ph+AUTH_DOMAIN, full).catch(function(e){err.textContent=T('Wrong mobile number or password.','ખોટો મોબાઇલ નંબર અથવા પાસવર્ડ.');if(btn){btn.disabled=false;btn.style.opacity='';}});}
-function startSession(id){CUR=id;BRIDGE_REVIEW=null;BRIDGE_SEL=null;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();loadSharedBridgeMarks();loadSharedNgos();}}
-function logout(){if(AUTH)AUTH.signOut();CUR=null;BRIDGE_REVIEW=null;BRIDGE_SEL=null;showLogin();}
+function startSession(id){CUR=id;BRIDGE_REVIEW=null;BRIDGE_SEL=null;BRIDGE_LINK=null;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();loadSharedBridgeMarks();loadSharedNgos();}}
+function logout(){if(AUTH)AUTH.signOut();CUR=null;BRIDGE_REVIEW=null;BRIDGE_SEL=null;BRIDGE_LINK=null;showLogin();}
 var TEACH_BACK='teachers';
 function selectItem(k,extra){if(DIRTY&&SEL!==k&&!confirm(T('You have unsaved changes. Leave without saving?','સાચવ્યા વગરના ફેરફાર છે. સાચવ્યા વગર જવું?')))return;DIRTY=false;SETUP_TT=null;if(u(k)&&u(k).role==='Teacher'&&!(u(SEL)&&u(SEL).role==='Teacher'))TEACH_BACK=SEL||'teachers';if(k==='reports'&&SEL!=='reports'){REPORT_LEVEL=null;REPORT_ID=null;}SEL=k;if(k==='teacherLogs'&&extra)SELTEACHER=extra;if(k==='tlLogs'&&extra)SELTL=extra;document.getElementById('detail').scrollTop=0;renderAll();}
 
@@ -1014,7 +1014,7 @@ function marksAgg(teacherIds){var rows=DB.marks.filter(function(m){return teache
 function marksMonthlySeries(clusterId){var ids=teachersInScope('cluster',clusterId).map(function(x){return x.id;});var rows=DB.marks.filter(function(m){return ids.indexOf(m.teacherId)>-1;});var byMonth={};rows.forEach(function(m){var mk=String(m.examDate).slice(0,7);(byMonth[mk]=byMonth[mk]||[]).push(m.score);});return Object.keys(byMonth).sort().map(function(mk){var a=byMonth[mk];return {month:mk,avg:a.reduce(function(x,y){return x+y;},0)/a.length};});}
 function teacherSubjectRows(tid){var rows=DB.marks.filter(function(m){return m.teacherId===tid;});var bySub={};rows.forEach(function(m){(bySub[m.subject]=bySub[m.subject]||[]).push(m);});return Object.keys(bySub).sort().map(function(subj){var arr=bySub[subj].slice().sort(function(a,b){return a.examDate.localeCompare(b.examDate);});var last=arr[arr.length-1],prev=arr.length>1?arr[arr.length-2]:null;return {subject:subj,score:last.score,delta:prev?(last.score-prev.score):null,series:arr.map(function(m){return {date:m.examDate,score:m.score};})};});}
 function reportsGoto(level,id){REPORT_LEVEL=level;REPORT_ID=id;renderDetail();}
-function setReportMode(m){REPORT_MODE=m;BRIDGE_SEL=null;renderDetail();}
+function setReportMode(m){REPORT_MODE=m;BRIDGE_SEL=null;BRIDGE_LINK=null;renderDetail();}
 function setHoursClus(c){HOURS_CLUS=c;renderDetail();}
 function setTrendShow(c,on){TREND_SHOW[c]=on;renderDetail();}
 function fmtMonth(mk){var p=mk.split('-');var names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return names[parseInt(p[1],10)-1]+' '+p[0].slice(2);}
@@ -1049,6 +1049,7 @@ function detailReports(){
   var modeToggle='<div class="chips" style="margin-bottom:2px"><span class="chip '+(REPORT_MODE==='marks'?'on':'')+'" onclick="setReportMode(\'marks\')">'+T('Marks','માર્ક્સ')+'</span><span class="chip '+(REPORT_MODE==='hours'?'on':'')+'" onclick="setReportMode(\'hours\')">'+T('Teaching hours','શિક્ષણ કલાક')+'</span><span class="chip '+(REPORT_MODE==='bridge'?'on':'')+'" onclick="setReportMode(\'bridge\')">'+T('Bridge course','બ્રિજ કોર્સ')+'</span></div>';
   if(REPORT_MODE==='bridge'){
     if(BRIDGE_REVIEW)return bridgeReviewView();
+    if(BRIDGE_LINK)return bridgeLinkView();
     if(BRIDGE_SEL)return bridgeDetailView();
     var bClus=bridgeAgg('all').clusters.slice().sort();
     if(BRIDGE_CLUS!=='all'&&bClus.indexOf(BRIDGE_CLUS)<0)BRIDGE_CLUS='all';
@@ -1071,9 +1072,11 @@ function detailReports(){
     }
     /* Schools show every level AND every change at once in the table, so the gain/level
        toggle is meaningless here — it only applies to the aggregated Teacher and NGO views. */
-    else bInner='<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Tap a column heading to sort. Tap a row for that school.','ક્રમમાં ગોઠવવા કૉલમનું નામ દબાવો. વિગત માટે હરોળ દબાવો.')+'</div>'+bridgeTable(bA.rows);
+    else{var bUn=bridgeUnlinked(bA.rows.map(function(r){return r.m;}));
+      var bLinkBtn=bUn.length?('<button class="btn block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+T('Link teachers to','શિક્ષક જોડો —')+' '+bUn.length+' '+(bUn.length===1?T('school','શાળા'):T('schools','શાળા'))+'</button>'):'';
+      bInner=bLinkBtn+'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Tap a column heading to sort. Tap a row for that school.','ક્રમમાં ગોઠવવા કૉલમનું નામ દબાવો. વિગત માટે હરોળ દબાવો.')+'</div>'+bridgeTable(bA.rows);}
     var bSchools=(BRIDGE_GROUP!=='teacher'&&bA.rows.length);
-    var bList=(bSchools?bridgeQuadrant(bA.rows):'')+'<div class="card">'+(bA.rows.length?bridgeGroupToggle()+(bSchools?'':bridgeViewToggle()):'')+bInner+'</div>';
+    var bList='<div class="card">'+(bA.rows.length?bridgeGroupToggle()+(bSchools?'':bridgeViewToggle()):'')+bInner+'</div>';
     return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ')+'</div></div>'+bBtns+'</div>'+modeToggle+bridgeNgoChart()+bChips+bKpi+bAtt+bList;
   }
   if(REPORT_MODE==='hours'){
@@ -1273,7 +1276,7 @@ function bridgeNewCluster(head){if(!BRIDGE_REVIEW)return;var v=(prompt(T('New NG
   if(!ngoByCode(v))ngoAdd(v,'');   /* creating one here registers it in the NGO master too */
   bridgeSetHead(head,v);}
 function bridgeLinkSchool(i,choice){if(!BRIDGE_REVIEW)return;BRIDGE_REVIEW.linked[i]=choice;renderDetail();}
-function bridgeCancelReview(){BRIDGE_REVIEW=null;BRIDGE_SEL=null;renderDetail();}
+function bridgeCancelReview(){BRIDGE_REVIEW=null;BRIDGE_SEL=null;BRIDGE_LINK=null;renderDetail();}
 function bridgeUnmappedHeads(){if(!BRIDGE_REVIEW)return [];return BRIDGE_REVIEW.heads.filter(function(h){return !BRIDGE_REVIEW.headMap[h];});}
 function bridgeConfirmSave(){var R=BRIDGE_REVIEW;if(!R)return;
   if(bridgeUnmappedHeads().length){toast(T('Choose a cluster for every cluster head first','પહેલા દરેક ક્લસ્ટર હેડ માટે ક્લસ્ટર પસંદ કરો'));return;}
@@ -1519,7 +1522,7 @@ function bridgeQuadrant(rows){var pts=rows.map(function(r){return {r:r,x:bridgeR
   pts.forEach(function(p){var m=p.r.m,tn=bridgeTeacherNames(m);
     s+='<circle cx="'+X(Math.min(xmax,p.x)).toFixed(1)+'" cy="'+Y(Math.max(ymin,Math.min(ymax,p.y==null?0:p.y))).toFixed(1)+'" r="5.5" fill="'+bridgeDot(p.r.status)+'" opacity="0.85" style="cursor:pointer" onclick="bridgeOpen(\''+escAJ(m.id)+'\')"><title>'+escA(m.school)+(tn?(' — '+escA(tn)):'')+' — '+p.x.toFixed(2)+'/10'+(p.y==null?'':', '+(p.y>0?'+':'')+p.y.toFixed(2))+'</title></circle>';});
   return '<div class="card"><h3><i class="ti ti-search"></i> '+T('Where to look first','પહેલા ક્યાં જોવું')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('One dot per school. Right = further along. Up = moved more. Tap a dot to open it.','દરેક શાળા એક ટપકું. જમણે = આગળ. ઉપર = વધુ સુધારો. ખોલવા ટપકું દબાવો.')+'</div>'+s+'</svg></div>';}
-function setBridgeGroup(g){BRIDGE_GROUP=g;BRIDGE_SEL=null;renderDetail();}
+function setBridgeGroup(g){BRIDGE_GROUP=g;BRIDGE_SEL=null;BRIDGE_LINK=null;renderDetail();}
 /* NGOs stay pinned at the top rather than being a third option here, so the comparison
    is always in view while you read the list underneath. */
 function bridgeGroupToggle(){var o=[['school',T('Schools','શાળા')],['teacher',T('Teachers','શિક્ષક')]];
@@ -1531,7 +1534,59 @@ function bridgeSortRows(rows){var a=rows.slice();
   var withL=a.filter(function(r){return bridgeAvgLevel(r.m)!=null}),noL=a.filter(function(r){return bridgeAvgLevel(r.m)==null});
   withL.sort(function(x,y){return bridgeAvgLevel(x.m)-bridgeAvgLevel(y.m);});
   return withL.concat(noL);}
-function bridgeForTeacher(t){if(!t)return [];var keys={};schoolsOf(t).forEach(function(sc){var k=bridgeNorm(sc);if(k)keys[k]=1;});if(!Object.keys(keys).length)return [];return (DB.bridgeMarks||[]).filter(function(m){return m&&bridgeSchoolKeys(m).some(function(k){return keys[k];});});}function bridgeTeacherResultCard(t){if(!t||t.role!=='Teacher')return '';if(!(DB.bridgeMarks||[]).length)return '';var head='<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Bridge course','બ્રિજ કોર્સ')+'</h3>';var sc=schoolsOf(t);if(!sc.length)return head+'<div class="muted" style="font-size:12.5px">'+T('This teacher has not completed Setup, so no school is linked to them and bridge course results cannot be matched.','આ શિક્ષકે Setup પૂર્ણ કર્યું નથી, તેથી કોઈ શાળા જોડાયેલ નથી.')+'</div></div>';var list=bridgeForTeacher(t);if(!list.length)return head+'<div class="muted" style="font-size:12.5px">'+T('No bridge course data for this teacher’s schools yet.','આ શિક્ષકની શાળાઓ માટે હજુ ડેટા નથી.')+'</div><div class="muted" style="font-size:11.5px;margin-top:5px">'+T('Schools in Setup','Setup માં શાળા')+': '+sc.map(escA).join(' · ')+'</div></div>';var g=[{name:t.name,sub:list.length+' '+(list.length===1?T('school','શાળા'):T('schools','શાળા'))+' · '+list.map(function(m){return m.school;}).join(', '),st:bridgeGroupStats(list)}];return head+'<div class="muted" style="font-size:11.5px">'+(BRIDGE_VIEW==='level'?T('Level reached so far, out of 10.','અત્યાર સુધીનું સ્તર, 10 માંથી.'):T('Start of course to July end, across this teacher’s schools.','શરૂઆતથી જુલાઈ-અંત સુધી.'))+'</div>'+bridgeViewToggle()+bridgeGroupView(g)+'</div>';}function bridgeTeachersFor(m){var keys=bridgeSchoolKeys(m);return (DB.users||[]).filter(function(t){return t&&t.role==='Teacher'&&t.active!==false&&schoolsOf(t).some(function(sc){return keys.indexOf(bridgeNorm(sc))>-1;});});}function bridgeTeacherBox(m){var ts=bridgeTeachersFor(m);if(!ts.length)return '<div class="card" style="border-left:3px solid #eda100;border-radius:0"><div style="font-weight:700;font-size:12.5px">'+T('No teacher is linked to this school','આ શાળા સાથે કોઈ શિક્ષક જોડાયેલ નથી')+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+T('The link comes from the school names a teacher enters in Setup. Until one matches, this school is missing from the Teachers view.','જોડાણ શિક્ષકે Setup માં લખેલી શાળા પરથી થાય છે. મેળ ન થાય ત્યાં સુધી આ શાળા શિક્ષક યાદીમાં નહીં દેખાય.')+'</div></div>';return '<div class="card"><div class="muted" style="font-size:11px;text-transform:uppercase;font-weight:700">'+(ts.length===1?T('Teacher','શિક્ષક'):T('Teachers','શિક્ષક'))+'</div>'+ts.map(function(t){return '<div style="font-weight:700;font-size:13px;margin-top:3px">'+escA(t.name)+' <span class="pill b" style="font-size:10px;font-weight:400">'+escA(clusterOf(t))+'</span></div>';}).join('')+'</div>';}function bridgeOpen(id){BRIDGE_SEL=id;renderDetail();}
+function bridgeForTeacher(t){if(!t)return [];var keys={};schoolsOf(t).forEach(function(sc){var k=bridgeNorm(sc);if(k)keys[k]=1;});if(!Object.keys(keys).length)return [];return (DB.bridgeMarks||[]).filter(function(m){return m&&bridgeSchoolKeys(m).some(function(k){return keys[k];});});}function bridgeTeacherResultCard(t){if(!t||t.role!=='Teacher')return '';if(!(DB.bridgeMarks||[]).length)return '';var head='<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Bridge course','બ્રિજ કોર્સ')+'</h3>';var sc=schoolsOf(t);if(!sc.length)return head+'<div class="muted" style="font-size:12.5px">'+T('This teacher has not completed Setup, so no school is linked to them and bridge course results cannot be matched.','આ શિક્ષકે Setup પૂર્ણ કર્યું નથી, તેથી કોઈ શાળા જોડાયેલ નથી.')+'</div></div>';var list=bridgeForTeacher(t);if(!list.length)return head+'<div class="muted" style="font-size:12.5px">'+T('No bridge course data for this teacher’s schools yet.','આ શિક્ષકની શાળાઓ માટે હજુ ડેટા નથી.')+'</div><div class="muted" style="font-size:11.5px;margin-top:5px">'+T('Schools in Setup','Setup માં શાળા')+': '+sc.map(escA).join(' · ')+'</div></div>';var g=[{name:t.name,sub:list.length+' '+(list.length===1?T('school','શાળા'):T('schools','શાળા'))+' · '+list.map(function(m){return m.school;}).join(', '),st:bridgeGroupStats(list)}];return head+'<div class="muted" style="font-size:11.5px">'+(BRIDGE_VIEW==='level'?T('Level reached so far, out of 10.','અત્યાર સુધીનું સ્તર, 10 માંથી.'):T('Start of course to July end, across this teacher’s schools.','શરૂઆતથી જુલાઈ-અંત સુધી.'))+'</div>'+bridgeViewToggle()+bridgeGroupView(g)+'</div>';}/* Two ways a school reaches a teacher. An explicit teacherId chosen by the PM wins;
+   otherwise fall back to matching the school names the teacher typed into their own Setup.
+   The explicit link lives on the bridgeMarks record itself, so it needs no new collection
+   and therefore no new security rule. */
+function bridgeTeachersFor(m){if(!m)return [];
+  if(m.teacherId){var t0=u(m.teacherId);if(t0&&t0.role==='Teacher'&&t0.active!==false)return [t0];}
+  var keys=bridgeSchoolKeys(m);return (DB.users||[]).filter(function(t){return t&&t.role==='Teacher'&&t.active!==false&&schoolsOf(t).some(function(sc){return keys.indexOf(bridgeNorm(sc))>-1;});});}
+function bridgeUnlinked(list){return (list||DB.bridgeMarks||[]).filter(function(m){return m&&!bridgeTeachersFor(m).length;});}
+/* Suggest a teacher for an unlinked school: the closest spelling among the schools each
+   teacher entered in Setup, nudged towards teachers already in that school's NGO. */
+function bridgeSuggestTeacher(m){var best=null,bs=0;
+  (DB.users||[]).forEach(function(t){if(!t||t.role!=='Teacher'||t.active===false)return;
+    var bonus=(clusterOf(t)&&clusterOf(t)===m.cluster)?0.06:0;
+    schoolsOf(t).forEach(function(sc){var s=bridgeSim(sc,m.school);
+      if(m.schoolRef){var s2=bridgeSim(sc,m.schoolRef);if(s2>s)s=s2;}
+      s+=bonus;if(s>bs){bs=s;best=t;}});});
+  /* 0.52 is calibrated against the real name shapes in this org's data, not guessed.
+     Same school written differently scores 0.56 (NILOSHI / Niloshi Primary) to 0.64
+     (Vajelav / Vajelav Shala). Genuinely DIFFERENT schools that merely share a prefix
+     score 0.44 or less (Jesawada / Jesawada Kharedi Dungri, Matva Mukhy / Matva Patel
+     Faliya). 0.52 sits in that gap; raising it loses real matches, lowering it starts
+     proposing neighbouring schools. */
+  return (best&&bs>=0.52)?{t:best,score:Math.min(1,bs)}:null;}
+function bridgeOpenLink(){BRIDGE_LINK={picks:{}};
+  bridgeUnlinked().forEach(function(m){var s=bridgeSuggestTeacher(m);if(s)BRIDGE_LINK.picks[m.id]=s.t.id;});
+  BRIDGE_SEL=null;renderDetail();}
+function bridgeCancelLink(){BRIDGE_LINK=null;renderDetail();}
+function bridgeSetLink(id,tid){if(!BRIDGE_LINK)return;if(tid)BRIDGE_LINK.picks[id]=tid;else delete BRIDGE_LINK.picks[id];renderDetail();}
+function bridgeClearLinks(){if(!BRIDGE_LINK)return;BRIDGE_LINK.picks={};renderDetail();}
+function bridgeSaveLinks(){if(!BRIDGE_LINK)return;var n=0,by={};
+  (DB.bridgeMarks||[]).forEach(function(m){if(m&&m.id)by[m.id]=m;});
+  Object.keys(BRIDGE_LINK.picks).forEach(function(id){var m=by[id],tid=BRIDGE_LINK.picks[id];if(!m||!tid)return;
+    var t=u(tid);if(!t||t.role!=='Teacher')return;
+    m.teacherId=tid;m.updatedAt=Date.now();pushBridgeMark(m);n++;});
+  save();BRIDGE_LINK=null;toast(n+' '+T('schools linked','શાળા જોડાઈ')+' ✓');renderAll();}
+function bridgeTeacherOpts(cur,cl){var ts=(DB.users||[]).filter(function(t){return t&&t.role==='Teacher'&&t.active!==false;});
+  ts.sort(function(a,b){var ac=(clusterOf(a)===cl)?0:1,bc=(clusterOf(b)===cl)?0:1;return ac-bc||String(a.name||'').localeCompare(String(b.name||''));});
+  return '<option value="">'+T('— not linked —','— જોડાયેલ નથી —')+'</option>'+ts.map(function(t){var c=clusterOf(t);
+    return '<option value="'+escA(t.id)+'"'+(cur===t.id?' selected':'')+'>'+escA(t.name)+(c?(' · '+escA(c)):'')+'</option>';}).join('');}
+function bridgeLinkView(){var R=BRIDGE_LINK;if(!R)return '';
+  var backBtn='<button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px" onclick="bridgeCancelLink()">← '+T('Back','પાછળ')+'</button>';
+  var list=bridgeUnlinked();
+  if(!list.length)return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Link teachers','શિક્ષક જોડો')+'</div></div>'+backBtn+'</div><div class="card"><div class="empty">'+T('Every school already has a teacher.','દરેક શાળાને શિક્ષક છે.')+'</div></div>';
+  var picked=Object.keys(R.picks).filter(function(k){return R.picks[k];}).length;
+  var rows=list.map(function(m){var sug=bridgeSuggestTeacher(m),cur=R.picks[m.id]||'';
+    return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700;font-size:13px">'+escA(m.school)+' <span class="pill b" style="font-size:10px;font-weight:400">'+escA(m.cluster||'')+'</span></div>'
+     +'<div class="muted" style="font-size:11px;margin-top:2px">'+(sug?T('Suggested from the school names that teacher typed in Setup','શિક્ષકે Setup માં લખેલી શાળા પરથી સૂચવેલ'):T('No close match — choose a teacher','મેળ મળ્યો નથી — શિક્ષક પસંદ કરો'))+'</div>'
+     +'<select class="fld" style="margin-top:5px;padding:6px 8px;font-size:12.5px" onchange="bridgeSetLink(\''+escAJ(m.id)+'\',this.value)">'+bridgeTeacherOpts(cur,m.cluster)+'</select></div>';}).join('');
+  return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Link teachers','શિક્ષક જોડો')+'</div><div class="dh-sub">'+list.length+' '+T('schools have no teacher','શાળાને શિક્ષક નથી')+'</div></div>'+backBtn+'</div>'
+   +'<div class="card"><div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('Suggestions are already filled in. Check them, change any that look wrong, then save.','સૂચનો પહેલેથી ભરેલા છે. તપાસો, ખોટા બદલો, પછી સાચવો.')+'</div>'
+   +'<button class="btn block"'+(picked?'':' disabled style="opacity:.5"')+' onclick="bridgeSaveLinks()">'+T('Link','જોડો')+' '+picked+' '+(picked===1?T('school','શાળા'):T('schools','શાળા'))+'</button>'
+   +(picked?('<button class="btn ghost block" style="margin-top:8px" onclick="bridgeClearLinks()">'+T('Clear all','બધા હટાવો')+'</button>'):'')+'</div>'
+   +'<div class="card">'+rows+'</div>';}function bridgeTeacherBox(m){var ts=bridgeTeachersFor(m);if(!ts.length)return '<div class="card" style="border-left:3px solid #eda100;border-radius:0"><div style="font-weight:700;font-size:12.5px">'+T('No teacher is linked to this school','આ શાળા સાથે કોઈ શિક્ષક જોડાયેલ નથી')+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+T('The link comes from the school names a teacher enters in Setup. Until one matches, this school is missing from the Teachers view.','જોડાણ શિક્ષકે Setup માં લખેલી શાળા પરથી થાય છે. મેળ ન થાય ત્યાં સુધી આ શાળા શિક્ષક યાદીમાં નહીં દેખાય.')+'</div></div>';return '<div class="card"><div class="muted" style="font-size:11px;text-transform:uppercase;font-weight:700">'+(ts.length===1?T('Teacher','શિક્ષક'):T('Teachers','શિક્ષક'))+'</div>'+ts.map(function(t){return '<div style="font-weight:700;font-size:13px;margin-top:3px">'+escA(t.name)+' <span class="pill b" style="font-size:10px;font-weight:400">'+escA(clusterOf(t))+'</span></div>';}).join('')+'</div>';}function bridgeOpen(id){BRIDGE_SEL=id;renderDetail();}
 function bridgeBack(){BRIDGE_SEL=null;renderDetail();}
 function bridgeDetailView(){var m=(DB.bridgeMarks||[]).filter(function(x){return x&&x.id===BRIDGE_SEL;})[0];
   if(!m){BRIDGE_SEL=null;return '';}
