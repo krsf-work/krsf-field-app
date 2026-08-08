@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='6.8'; /* v6.8 - a teacher link can be CHANGED or REMOVED. In 6.7 the Link teachers screen only listed schools with no teacher, so the moment one was linked it vanished from the only screen that could edit it and a mis-placed teacher was permanent. Now every school is listed, prefilled with whoever it currently resolves to, behind a Needs a teacher / All schools filter; a blank pick clears an existing link instead of being ignored; changed rows are outlined and counted, and Save writes only what actually changed. The school's own screen also carries the picker, so fixing one mistake is two taps. Each row says whether the PM chose the teacher or Setup matched them, because clearing a chosen link falls back to Setup rather than to nothing. */
+const APP_VERSION='6.9'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1426,9 +1426,7 @@ function bridgeSchoolKeys(m){var k=[bridgeNorm(m.school)];if(m.schoolRef)k.push(
    reported rather than hidden, because it looks identical to "no data" otherwise. */
 function bridgeTeacherGroups(list){var out=[],matched={};
   (DB.users||[]).filter(function(x){return x&&x.role==='Teacher'&&x.active!==false;}).forEach(function(t){
-    var keys={};schoolsOf(t).forEach(function(s){var k=bridgeNorm(s);if(k)keys[k]=1;});
-    if(!Object.keys(keys).length)return;
-    var mine=list.filter(function(m){return bridgeSchoolKeys(m).some(function(k){return keys[k];});});
+    var mine=list.filter(function(m){return bridgeOwnsSchool(t,m);});
     if(!mine.length)return;
     mine.forEach(function(m){matched[m.id]=1;});
     out.push({name:t.name,sub:clusterOf(t)+' · '+mine.length+' '+(mine.length===1?T('school','શાળા'):T('schools','શાળા')),st:bridgeGroupStats(mine)});});
@@ -1534,7 +1532,21 @@ function bridgeSortRows(rows){var a=rows.slice();
   var withL=a.filter(function(r){return bridgeAvgLevel(r.m)!=null}),noL=a.filter(function(r){return bridgeAvgLevel(r.m)==null});
   withL.sort(function(x,y){return bridgeAvgLevel(x.m)-bridgeAvgLevel(y.m);});
   return withL.concat(noL);}
-function bridgeForTeacher(t){if(!t)return [];var keys={};schoolsOf(t).forEach(function(sc){var k=bridgeNorm(sc);if(k)keys[k]=1;});if(!Object.keys(keys).length)return [];return (DB.bridgeMarks||[]).filter(function(m){return m&&bridgeSchoolKeys(m).some(function(k){return keys[k];});});}function bridgeTeacherResultCard(t){if(!t||t.role!=='Teacher')return '';if(!(DB.bridgeMarks||[]).length)return '';var head='<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Bridge course','બ્રિજ કોર્સ')+'</h3>';var sc=schoolsOf(t);if(!sc.length)return head+'<div class="muted" style="font-size:12.5px">'+T('This teacher has not completed Setup, so no school is linked to them and bridge course results cannot be matched.','આ શિક્ષકે Setup પૂર્ણ કર્યું નથી, તેથી કોઈ શાળા જોડાયેલ નથી.')+'</div></div>';var list=bridgeForTeacher(t);if(!list.length)return head+'<div class="muted" style="font-size:12.5px">'+T('No bridge course data for this teacher’s schools yet.','આ શિક્ષકની શાળાઓ માટે હજુ ડેટા નથી.')+'</div><div class="muted" style="font-size:11.5px;margin-top:5px">'+T('Schools in Setup','Setup માં શાળા')+': '+sc.map(escA).join(' · ')+'</div></div>';var g=[{name:t.name,sub:list.length+' '+(list.length===1?T('school','શાળા'):T('schools','શાળા'))+' · '+list.map(function(m){return m.school;}).join(', '),st:bridgeGroupStats(list)}];return head+'<div class="muted" style="font-size:11.5px">'+(BRIDGE_VIEW==='level'?T('Level reached so far, out of 10.','અત્યાર સુધીનું સ્તર, 10 માંથી.'):T('Start of course to July end, across this teacher’s schools.','શરૂઆતથી જુલાઈ-અંત સુધી.'))+'</div>'+bridgeViewToggle()+bridgeGroupView(g)+'</div>';}/* Two ways a school reaches a teacher. An explicit teacherId chosen by the PM wins;
+/* The SINGLE test of whether a school belongs to a teacher. It defers to
+   bridgeTeachersFor, so an explicit teacherId chosen by the PM wins and a school linked
+   to one teacher never also shows under another via Setup name matching. Both the
+   Teachers report and the teacher's own profile go through here - they each had their
+   own copy of the Setup-only logic, which silently ignored every manual link. */
+function bridgeOwnsSchool(t,m){if(!t||!m)return false;return bridgeTeachersFor(m).some(function(x){return x.id===t.id;});}
+function bridgeForTeacher(t,list){if(!t)return [];return (list||DB.bridgeMarks||[]).filter(function(m){return bridgeOwnsSchool(t,m);});}function bridgeTeacherResultCard(t){if(!t||t.role!=='Teacher')return '';if(!(DB.bridgeMarks||[]).length)return '';var head='<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Bridge course','બ્રિજ કોર્સ')+'</h3>';/* Results FIRST. This used to bail out on an empty Setup before ever looking at the
+   school list, so a teacher whose schools were linked by hand still read 'has not
+   completed Setup' and showed nothing. */
+  var sc=schoolsOf(t),list=bridgeForTeacher(t);
+  var hint='<div class="muted" style="font-size:11.5px;margin-top:6px">'+T('You can link any school to this teacher from Reports → Bridge course → Change teacher links.','Reports → Bridge course → Change teacher links માંથી કોઈપણ શાળા જોડી શકો.')+'</div>';
+  if(!list.length){
+    if(!sc.length)return head+'<div class="muted" style="font-size:12.5px">'+T('No school is linked to this teacher yet, and they have not completed Setup, so nothing matched automatically.','આ શિક્ષક સાથે કોઈ શાળા જોડાયેલ નથી. Setup પૂર્ણ નથી, તેથી આપોઆપ મેળ થયો નથી.')+'</div>'+hint+'</div>';
+    return head+'<div class="muted" style="font-size:12.5px">'+T('No bridge course data for this teacher’s schools yet.','આ શિક્ષકની શાળાઓ માટે હજુ ડેટા નથી.')+'</div><div class="muted" style="font-size:11.5px;margin-top:5px">'+T('Schools in Setup','Setup માં શાળા')+': '+sc.map(escA).join(' · ')+'</div>'+hint+'</div>';
+  }var g=[{name:t.name,sub:list.length+' '+(list.length===1?T('school','શાળા'):T('schools','શાળા'))+' · '+list.map(function(m){return m.school;}).join(', '),st:bridgeGroupStats(list)}];return head+'<div class="muted" style="font-size:11.5px">'+(BRIDGE_VIEW==='level'?T('Level reached so far, out of 10.','અત્યાર સુધીનું સ્તર, 10 માંથી.'):T('Start of course to July end, across this teacher’s schools.','શરૂઆતથી જુલાઈ-અંત સુધી.'))+'</div>'+bridgeViewToggle()+bridgeGroupView(g)+'</div>';}/* Two ways a school reaches a teacher. An explicit teacherId chosen by the PM wins;
    otherwise fall back to matching the school names the teacher typed into their own Setup.
    The explicit link lives on the bridgeMarks record itself, so it needs no new collection
    and therefore no new security rule. */
