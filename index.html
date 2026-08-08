@@ -221,7 +221,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='6.7'; /* v6.7 - Removed the priority quadrant; the sortable table stands alone. Added one-click teacher linking: a school can now carry an explicit teacherId chosen by the PM, which takes precedence over the Setup-name matching and lives on the bridgeMarks record itself, so it needs no new collection and no new security rule. The Link teachers screen pre-fills a suggestion for every unlinked school - the closest spelling among the schools each teacher typed into Setup, nudged towards teachers already in that school's NGO - so accepting them all is a single tap on Save. Anything with no close match is left blank with a dropdown, and nothing is written until Save. */
+const APP_VERSION='6.8'; /* v6.8 - a teacher link can be CHANGED or REMOVED. In 6.7 the Link teachers screen only listed schools with no teacher, so the moment one was linked it vanished from the only screen that could edit it and a mis-placed teacher was permanent. Now every school is listed, prefilled with whoever it currently resolves to, behind a Needs a teacher / All schools filter; a blank pick clears an existing link instead of being ignored; changed rows are outlined and counted, and Save writes only what actually changed. The school's own screen also carries the picker, so fixing one mistake is two taps. Each row says whether the PM chose the teacher or Setup matched them, because clearing a chosen link falls back to Setup rather than to nothing. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1073,7 +1073,7 @@ function detailReports(){
     /* Schools show every level AND every change at once in the table, so the gain/level
        toggle is meaningless here — it only applies to the aggregated Teacher and NGO views. */
     else{var bUn=bridgeUnlinked(bA.rows.map(function(r){return r.m;}));
-      var bLinkBtn=bUn.length?('<button class="btn block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+T('Link teachers to','શિક્ષક જોડો —')+' '+bUn.length+' '+(bUn.length===1?T('school','શાળા'):T('schools','શાળા'))+'</button>'):'';
+      var bLinkBtn='<button class="btn'+(bUn.length?'':' ghost')+' block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+(bUn.length?(T('Link teachers to','શિક્ષક જોડો —')+' '+bUn.length+' '+(bUn.length===1?T('school','શાળા'):T('schools','શાળા'))):T('Change teacher links','શિક્ષક બદલો'))+'</button>';
       bInner=bLinkBtn+'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Tap a column heading to sort. Tap a row for that school.','ક્રમમાં ગોઠવવા કૉલમનું નામ દબાવો. વિગત માટે હરોળ દબાવો.')+'</div>'+bridgeTable(bA.rows);}
     var bSchools=(BRIDGE_GROUP!=='teacher'&&bA.rows.length);
     var bList='<div class="card">'+(bA.rows.length?bridgeGroupToggle()+(bSchools?'':bridgeViewToggle()):'')+bInner+'</div>';
@@ -1557,36 +1557,82 @@ function bridgeSuggestTeacher(m){var best=null,bs=0;
      Faliya). 0.52 sits in that gap; raising it loses real matches, lowering it starts
      proposing neighbouring schools. */
   return (best&&bs>=0.52)?{t:best,score:Math.min(1,bs)}:null;}
-function bridgeOpenLink(){BRIDGE_LINK={picks:{}};
-  bridgeUnlinked().forEach(function(m){var s=bridgeSuggestTeacher(m);if(s)BRIDGE_LINK.picks[m.id]=s.t.id;});
+/* Prefills EVERY school, not just the unlinked ones: a school that has already been
+   linked - correctly or by mistake - must still be reachable, or a wrong choice is
+   permanent. Each row starts on whoever it currently resolves to. */
+function bridgeOpenLink(only){BRIDGE_LINK={picks:{},base:{},only:only||((bridgeUnlinked().length)?'unlinked':'all')};
+  (DB.bridgeMarks||[]).forEach(function(m){if(!m||!m.id)return;
+    /* base = where this school stands right now (chosen, or matched by Setup).
+       pick = that, or a suggestion when it stands nowhere. A suggestion is therefore a
+       PROPOSED change, which is what keeps "accept them all" a single tap on Save, while
+       a school Setup already matches contributes no change at all. */
+    var eff=m.teacherId||'';
+    if(!eff){var ex=bridgeTeachersFor(m);eff=ex.length?ex[0].id:'';}
+    BRIDGE_LINK.base[m.id]=eff;
+    var cur=eff;
+    if(!cur){var s=bridgeSuggestTeacher(m);if(s)cur=s.t.id;}
+    BRIDGE_LINK.picks[m.id]=cur;});
   BRIDGE_SEL=null;renderDetail();}
+function setBridgeLinkOnly(v){if(!BRIDGE_LINK)return;BRIDGE_LINK.only=v;renderDetail();}
+/* How a school reaches its teacher right now, so a row can say whether the PM chose it
+   or Setup did — clearing an explicit link falls back to Setup, which is not obvious. */
+function bridgeLinkSource(m){if(!m)return 'none';
+  if(m.teacherId&&u(m.teacherId)&&u(m.teacherId).active!==false)return 'chosen';
+  return bridgeTeachersFor(m).length?'setup':'none';}
+function bridgeSetTeacherNow(id,tid){var m=(DB.bridgeMarks||[]).filter(function(x){return x&&x.id===id;})[0];if(!m)return;
+  tid=(tid==null?'':String(tid)).trim();
+  if(tid){var t=u(tid);if(!t||t.role!=='Teacher')return;m.teacherId=tid;}
+  else delete m.teacherId;
+  m.updatedAt=Date.now();pushBridgeMark(m);save();
+  toast(tid?(T('Teacher changed','શિક્ષક બદલ્યો')+' ✓'):(T('Teacher removed','શિક્ષક હટાવ્યો')+' ✓'));renderAll();}
 function bridgeCancelLink(){BRIDGE_LINK=null;renderDetail();}
-function bridgeSetLink(id,tid){if(!BRIDGE_LINK)return;if(tid)BRIDGE_LINK.picks[id]=tid;else delete BRIDGE_LINK.picks[id];renderDetail();}
+/* Stores the blank rather than deleting the key. Deleting it dropped the row out of
+   Object.keys(picks) entirely, so "remove this teacher" was silently discarded. */
+function bridgeSetLink(id,tid){if(!BRIDGE_LINK)return;BRIDGE_LINK.picks[id]=tid||'';renderDetail();}
 function bridgeClearLinks(){if(!BRIDGE_LINK)return;BRIDGE_LINK.picks={};renderDetail();}
-function bridgeSaveLinks(){if(!BRIDGE_LINK)return;var n=0,by={};
+/* Writes only what actually changed, and a BLANK pick now clears an existing link
+   rather than being ignored — that omission was why a mis-placed teacher was permanent. */
+function bridgeLinkChanges(){if(!BRIDGE_LINK)return [];var by={},out=[];
   (DB.bridgeMarks||[]).forEach(function(m){if(m&&m.id)by[m.id]=m;});
-  Object.keys(BRIDGE_LINK.picks).forEach(function(id){var m=by[id],tid=BRIDGE_LINK.picks[id];if(!m||!tid)return;
-    var t=u(tid);if(!t||t.role!=='Teacher')return;
-    m.teacherId=tid;m.updatedAt=Date.now();pushBridgeMark(m);n++;});
-  save();BRIDGE_LINK=null;toast(n+' '+T('schools linked','શાળા જોડાઈ')+' ✓');renderAll();}
+  Object.keys(BRIDGE_LINK.picks).forEach(function(id){var m=by[id];if(!m)return;
+    /* against the PREFILL, not the explicit field: otherwise every school that Setup
+       already matches would count as an unsaved change the moment the screen opens */
+    var tid=BRIDGE_LINK.picks[id]||'',was=(BRIDGE_LINK.base||{})[id]||'';
+    if(tid===was)return;
+    if(tid){var t=u(tid);if(!t||t.role!=='Teacher')return;}
+    out.push({m:m,tid:tid});});
+  return out;}
+function bridgeSaveLinks(){if(!BRIDGE_LINK)return;var ch=bridgeLinkChanges();
+  if(!ch.length){BRIDGE_LINK=null;toast(T('Nothing changed','કંઈ બદલાયું નથી'));renderDetail();return;}
+  ch.forEach(function(c){if(c.tid)c.m.teacherId=c.tid;else delete c.m.teacherId;
+    c.m.updatedAt=Date.now();pushBridgeMark(c.m);});
+  save();BRIDGE_LINK=null;toast(ch.length+' '+T('schools updated','શાળા બદલાઈ')+' ✓');renderAll();}
 function bridgeTeacherOpts(cur,cl){var ts=(DB.users||[]).filter(function(t){return t&&t.role==='Teacher'&&t.active!==false;});
   ts.sort(function(a,b){var ac=(clusterOf(a)===cl)?0:1,bc=(clusterOf(b)===cl)?0:1;return ac-bc||String(a.name||'').localeCompare(String(b.name||''));});
   return '<option value="">'+T('— not linked —','— જોડાયેલ નથી —')+'</option>'+ts.map(function(t){var c=clusterOf(t);
     return '<option value="'+escA(t.id)+'"'+(cur===t.id?' selected':'')+'>'+escA(t.name)+(c?(' · '+escA(c)):'')+'</option>';}).join('');}
 function bridgeLinkView(){var R=BRIDGE_LINK;if(!R)return '';
   var backBtn='<button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px" onclick="bridgeCancelLink()">← '+T('Back','પાછળ')+'</button>';
-  var list=bridgeUnlinked();
-  if(!list.length)return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Link teachers','શિક્ષક જોડો')+'</div></div>'+backBtn+'</div><div class="card"><div class="empty">'+T('Every school already has a teacher.','દરેક શાળાને શિક્ષક છે.')+'</div></div>';
-  var picked=Object.keys(R.picks).filter(function(k){return R.picks[k];}).length;
-  var rows=list.map(function(m){var sug=bridgeSuggestTeacher(m),cur=R.picks[m.id]||'';
-    return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700;font-size:13px">'+escA(m.school)+' <span class="pill b" style="font-size:10px;font-weight:400">'+escA(m.cluster||'')+'</span></div>'
-     +'<div class="muted" style="font-size:11px;margin-top:2px">'+(sug?T('Suggested from the school names that teacher typed in Setup','શિક્ષકે Setup માં લખેલી શાળા પરથી સૂચવેલ'):T('No close match — choose a teacher','મેળ મળ્યો નથી — શિક્ષક પસંદ કરો'))+'</div>'
-     +'<select class="fld" style="margin-top:5px;padding:6px 8px;font-size:12.5px" onchange="bridgeSetLink(\''+escAJ(m.id)+'\',this.value)">'+bridgeTeacherOpts(cur,m.cluster)+'</select></div>';}).join('');
-  return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Link teachers','શિક્ષક જોડો')+'</div><div class="dh-sub">'+list.length+' '+T('schools have no teacher','શાળાને શિક્ષક નથી')+'</div></div>'+backBtn+'</div>'
-   +'<div class="card"><div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('Suggestions are already filled in. Check them, change any that look wrong, then save.','સૂચનો પહેલેથી ભરેલા છે. તપાસો, ખોટા બદલો, પછી સાચવો.')+'</div>'
-   +'<button class="btn block"'+(picked?'':' disabled style="opacity:.5"')+' onclick="bridgeSaveLinks()">'+T('Link','જોડો')+' '+picked+' '+(picked===1?T('school','શાળા'):T('schools','શાળા'))+'</button>'
-   +(picked?('<button class="btn ghost block" style="margin-top:8px" onclick="bridgeClearLinks()">'+T('Clear all','બધા હટાવો')+'</button>'):'')+'</div>'
-   +'<div class="card">'+rows+'</div>';}function bridgeTeacherBox(m){var ts=bridgeTeachersFor(m);if(!ts.length)return '<div class="card" style="border-left:3px solid #eda100;border-radius:0"><div style="font-weight:700;font-size:12.5px">'+T('No teacher is linked to this school','આ શાળા સાથે કોઈ શિક્ષક જોડાયેલ નથી')+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+T('The link comes from the school names a teacher enters in Setup. Until one matches, this school is missing from the Teachers view.','જોડાણ શિક્ષકે Setup માં લખેલી શાળા પરથી થાય છે. મેળ ન થાય ત્યાં સુધી આ શાળા શિક્ષક યાદીમાં નહીં દેખાય.')+'</div></div>';return '<div class="card"><div class="muted" style="font-size:11px;text-transform:uppercase;font-weight:700">'+(ts.length===1?T('Teacher','શિક્ષક'):T('Teachers','શિક્ષક'))+'</div>'+ts.map(function(t){return '<div style="font-weight:700;font-size:13px;margin-top:3px">'+escA(t.name)+' <span class="pill b" style="font-size:10px;font-weight:400">'+escA(clusterOf(t))+'</span></div>';}).join('')+'</div>';}function bridgeOpen(id){BRIDGE_SEL=id;renderDetail();}
+  var all=(DB.bridgeMarks||[]).filter(function(m){return m&&m.id;});
+  if(!all.length)return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Teacher for each school','દરેક શાળાનો શિક્ષક')+'</div></div>'+backBtn+'</div><div class="card"><div class="empty">'+T('No bridge course data yet.','હજુ બ્રિજ કોર્સ ડેટા નથી.')+'</div></div>';
+  var unl=bridgeUnlinked(all);
+  var list=(R.only==='unlinked')?unl:all.slice().sort(function(a,b){var an=bridgeLinkSource(a)==='none'?0:1,bn=bridgeLinkSource(b)==='none'?0:1;return an-bn||String(a.school||'').localeCompare(String(b.school||''));});
+  var ch=bridgeLinkChanges().length;
+  var chips='<div class="chips" style="margin-bottom:8px"><span class="chip '+(R.only==='unlinked'?'on':'')+'" onclick="setBridgeLinkOnly(\'unlinked\')">'+T('Needs a teacher','શિક્ષક જોઈએ')+' ('+unl.length+')</span><span class="chip '+(R.only==='all'?'on':'')+'" onclick="setBridgeLinkOnly(\'all\')">'+T('All schools','બધી શાળા')+' ('+all.length+')</span></div>';
+  var rows=list.length?list.map(function(m){var cur=R.picks[m.id]||'',src=bridgeLinkSource(m),sug=(src==='none')?bridgeSuggestTeacher(m):null;
+    var note=(src==='chosen')?T('You chose this. Pick “not linked” to undo it.','તમે પસંદ કર્યું. રદ કરવા “જોડાયેલ નથી” પસંદ કરો.')
+      :((src==='setup')?T('Matched from this teacher’s Setup schools','શિક્ષકની Setup શાળા પરથી મેળ')
+      :(sug?T('Suggested — please check','સૂચવેલ — તપાસો'):T('No close match — choose a teacher','મેળ મળ્યો નથી — શિક્ષક પસંદ કરો')));
+    var dirty=(cur!==((R.base||{})[m.id]||''));
+    return '<div class="mrow" style="border:1px solid '+(dirty?'var(--brand)':'var(--line)')+';margin-bottom:6px;display:block"><div style="font-weight:700;font-size:13px">'+escA(m.school)+' <span class="pill b" style="font-size:10px;font-weight:400">'+escA(m.cluster||'')+'</span>'+(dirty?(' <span class="pill" style="font-size:10px;background:var(--brand-tint);color:var(--brand-d);border:1px solid var(--brand)">'+T('changed','બદલ્યું')+'</span>'):'')+'</div>'
+     +'<div class="muted" style="font-size:11px;margin-top:2px">'+note+'</div>'
+     +'<select class="fld" style="margin-top:5px;padding:6px 8px;font-size:12.5px" onchange="bridgeSetLink(\''+escAJ(m.id)+'\',this.value)">'+bridgeTeacherOpts(cur,m.cluster)+'</select></div>';}).join(''):('<div class="empty">'+T('Every school has a teacher.','દરેક શાળાને શિક્ષક છે.')+'</div>');
+  return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Teacher for each school','દરેક શાળાનો શિક્ષક')+'</div><div class="dh-sub">'+unl.length+' '+T('of','માંથી')+' '+all.length+' '+T('still need one','ને હજુ જોઈએ')+'</div></div>'+backBtn+'</div>'
+   +'<div class="card">'+chips
+   +'<div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('Change any school here, including ones already linked. Nothing is saved until you tap Save.','અહીં કોઈપણ શાળા બદલી શકો, જોડાયેલી પણ. Save દબાવો ત્યાં સુધી કંઈ સચવાતું નથી.')+'</div>'
+   +'<button class="btn block"'+(ch?'':' disabled style="opacity:.5"')+' onclick="bridgeSaveLinks()">'+(ch?(T('Save','સાચવો')+' '+ch+' '+(ch===1?T('change','ફેરફાર'):T('changes','ફેરફાર'))):T('No changes yet','હજુ ફેરફાર નથી'))+'</button>'
+   +(ch?('<button class="btn ghost block" style="margin-top:8px" onclick="bridgeOpenLink(\''+R.only+'\')">'+T('Undo my edits','મારા ફેરફાર રદ કરો')+'</button>'):'')+'</div>'
+   +'<div class="card">'+rows+'</div>';}function bridgeTeacherBox(m){var ts=bridgeTeachersFor(m),src=bridgeLinkSource(m);var picker='<select class="fld" style="margin-top:6px;padding:6px 8px;font-size:12.5px" onchange="bridgeSetTeacherNow(\''+escAJ(m.id)+'\',this.value)">'+bridgeTeacherOpts(m.teacherId||(ts.length?ts[0].id:''),m.cluster)+'</select>';var srcNote='<div class="muted" style="font-size:11px;margin-top:4px">'+(src==='chosen'?T('You chose this teacher. Change it here any time.','તમે આ શિક્ષક પસંદ કર્યો. ગમે ત્યારે બદલો.'):(src==='setup'?T('Matched from this teacher’s Setup schools. Choosing one here overrides it.','Setup પરથી મેળ. અહીં પસંદ કરશો તો તે ચાલશે.'):''))+'</div>';if(!ts.length)return '<div class="card" style="border-left:3px solid #eda100;border-radius:0"><div style="font-weight:700;font-size:12.5px">'+T('No teacher is linked to this school','આ શાળા સાથે કોઈ શિક્ષક જોડાયેલ નથી')+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+T('The link comes from the school names a teacher enters in Setup. Until one matches, this school is missing from the Teachers view.','જોડાણ શિક્ષકે Setup માં લખેલી શાળા પરથી થાય છે. મેળ ન થાય ત્યાં સુધી આ શાળા શિક્ષક યાદીમાં નહીં દેખાય.')+'</div>'+picker+'</div>';return '<div class="card"><div class="muted" style="font-size:11px;text-transform:uppercase;font-weight:700">'+(ts.length===1?T('Teacher','શિક્ષક'):T('Teachers','શિક્ષક'))+'</div>'+ts.map(function(t){return '<div style="font-weight:700;font-size:13px;margin-top:3px">'+escA(t.name)+' <span class="pill b" style="font-size:10px;font-weight:400">'+escA(clusterOf(t))+'</span></div>';}).join('')+picker+srcNote+'</div>';}function bridgeOpen(id){BRIDGE_SEL=id;renderDetail();}
 function bridgeBack(){BRIDGE_SEL=null;renderDetail();}
 function bridgeDetailView(){var m=(DB.bridgeMarks||[]).filter(function(x){return x&&x.id===BRIDGE_SEL;})[0];
   if(!m){BRIDGE_SEL=null;return '';}
