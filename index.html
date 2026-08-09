@@ -178,6 +178,19 @@
   .pf-mx tr.on td{background:var(--brand-tint)}
   .pf-mx tr.tot td{border-top:2px solid var(--line);font-weight:800;color:var(--ink)}
   .pf-cell{display:inline-block;min-width:38px;padding:3px 6px;border-radius:6px;font-weight:800;font-size:12px}
+  /* A nine-column table must scroll INSIDE its card. Letting it drag the whole page sideways
+     is the single most common way a dense table ruins a phone. */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tw table{min-width:600px}
+  /* Overview strip: four compact metrics, not three tiles the size of a hand. */
+  .ov-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  @media(min-width:820px){.ov-strip{grid-template-columns:repeat(4,1fr)}}
+  .ov-m{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .ov-m.alert{border-color:#f3c9c9;background:#fffafa}
+  .ov-m .l{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800}
+  .ov-m .v{font-size:21px;font-weight:800;letter-spacing:-.7px;line-height:1.15;margin-top:2px}
+  .ov-m .s{font-size:10.5px;color:var(--muted);margin-top:1px}
+  .ov-m .s.r{color:var(--gR-tx);font-weight:700}.ov-m .s.a{color:var(--gA-tx);font-weight:700}.ov-m .s.g{color:var(--gG-tx);font-weight:700}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
   th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line)}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft)}
@@ -292,7 +305,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='7.6'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='7.7'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -869,6 +882,91 @@ function detailTLs(){
   if(list)return list;
   return '<div class="dhead"><div><div class="dh-name">'+T('Team leaders','ટીમ લીડર')+'</div></div></div><div class="card"><div class="empty">'+T('No team leaders yet.','હજુ કોઈ ટીમ લીડર નથી.')+'</div></div>';
 }
+/* The whole home screen used to be built around "today". On a Sunday or a holiday every count
+   read 0/46 and the screen said nothing at all - which is what it looked like on 9 August.
+   Fall back to the most recent working day and SAY which day it is, rather than reporting a
+   zero that is not a failure. */
+function overviewRefDay(){var d=realToday(),i;for(i=0;i<14;i++){if(isWorkday(d))return d;d=addDays(d,-1);}return realToday();}
+function overviewWorkdaysBack(from,n){var out=[],d=from,i;for(i=0;i<30&&out.length<n;i++){if(isWorkday(d))out.push(d);d=addDays(d,-1);}return out;}
+/* One row per team leader, everything on it. Each figure is computed over that TL's OWN
+   teachers, so the same teacher counted under two TLs (seesAlso) appears in both rows - which
+   is correct per row and is why the totals row is computed from the distinct roster instead
+   of by summing the column. */
+function overviewScoreboard(){
+  var ref=overviewRefDay(),win=overviewWorkdaysBack(ref,7);
+  var tls=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
+  if(!tls.length)return '';
+  var loggedOn=function(list,day){return list.filter(function(t){return DB.entries.some(function(e){return e.userId===t.id&&e.date===day&&hasDiary(e);});}).length;};
+  var pct7=function(list){if(!list.length||!win.length)return null;var hit=0;
+    list.forEach(function(t){win.forEach(function(d){if(DB.entries.some(function(e){return e.userId===t.id&&e.date===d&&hasDiary(e);}))hit++;});});
+    return Math.round(hit/(list.length*win.length)*100);};
+  var att=function(list){var p=0,tot=0;
+    list.forEach(function(t){DB.entries.forEach(function(e){if(e.userId===t.id&&win.indexOf(e.date)>-1&&e.present!=null&&e.present!==''&&e.total)  {p+=(+e.present);tot+=(+e.total);}});});
+    return tot?Math.round(p/tot*100):null;};
+  var subj=function(list,k){var v=[];
+    list.forEach(function(t){bridgeForTeacher(t).forEach(function(m){var n=bridgeNowLevel(m[k]);if(n!=null)v.push(n);});});
+    return v.length?(v.reduce(function(a,b){return a+b;},0)/v.length):null;};
+  var cell=function(v,fmt){return '<td><span class="pf-cell" style="'+bridgeLvlTint(v)+'">'+(v==null?'—':fmt(v))+'</span></td>';};
+  var lvl=function(v){return cell(v,bridgeF2);};
+  var ratio=function(a,b){if(!b)return '<td><span class="muted">—</span></td>';
+    var p=Math.round(a/b*100),t=p>=85?'background:var(--gG-bg);color:var(--gG-tx)':(p>=60?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gR-bg);color:var(--gR-tx)');
+    return '<td><span class="pf-cell" style="'+t+'">'+a+'/'+b+'</span></td>';};
+  var pctCell=function(p){if(p==null)return '<td><span class="muted">—</span></td>';
+    var t=p>=85?'background:var(--gG-bg);color:var(--gG-tx)':(p>=60?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gR-bg);color:var(--gR-tx)');
+    return '<td><span class="pf-cell" style="'+t+'">'+p+'%</span></td>';};
+  var countCell=function(n,bad){if(!n)return '<td><span class="muted">—</span></td>';
+    return '<td><span class="pf-cell" style="'+(bad?'background:var(--gR-bg);color:var(--gR-tx)':'background:var(--gA-bg);color:var(--gA-tx)')+'">'+n+'</span></td>';};
+  var data=tls.map(function(tl){
+    var info=tlInfo(tl.id)||{},tch=info.teachers||[];
+    return {tl:tl,info:info,tch:tch,logged:loggedOn(tch,ref),p7:pct7(tch),att:att(tch),
+      r:subj(tch,'reading'),m:subj(tch,'maths'),
+      flags:tch.filter(function(t){return t.flagged;}).length,
+      over:(info.tkOver||0)+(info.aOver||0)};});
+  /* Worst logging last: the row you need to act on should not require reading to the bottom. */
+  data.sort(function(a,b){return (a.p7==null?999:a.p7)-(b.p7==null?999:b.p7);});
+  var body=data.map(function(d){
+    var cl=clusterOf(d.tl)||'—';
+    return '<tr class="tap" onclick="selectItem(\''+escAJ(d.tl.id)+'\')">'
+      +'<td>'+escA(d.tl.name)+'<div class="pf-meta" style="font-weight:400">'+escA(cl)+'</div></td>'
+      +'<td>'+d.tch.length+'</td>'+ratio(d.logged,d.tch.length)+pctCell(d.p7)+pctCell(d.att)
+      +lvl(d.r)+lvl(d.m)+countCell(d.flags,false)+countCell(d.over,true)+'</tr>';}).join('');
+  /* Totals over the DISTINCT roster, not the sum of the rows: a teacher visible to two TLs
+     would otherwise be counted twice and the total could exceed the real headcount. */
+  var allT=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+  var tot='<tr class="tot"><td>'+T('All','બધા')+' '+tls.length+'</td><td>'+allT.length+'</td>'
+    +ratio(loggedOn(allT,ref),allT.length)+pctCell(pct7(allT))+pctCell(att(allT))
+    +lvl(subj(allT,'reading'))+lvl(subj(allT,'maths'))
+    +countCell(allT.filter(function(t){return t.flagged;}).length,false)
+    +countCell(DB.tasks.filter(function(t){return t.status==='open'&&overdue(t.due,t.status);}).length,true)+'</tr>';
+  var hol=(ref!==realToday())?('<div class="muted" style="font-size:11.5px;margin-bottom:7px;background:var(--brand-tint);border:1px solid #f6df91;border-radius:8px;padding:7px 10px;color:var(--brand-d);font-weight:700">'+T('Today is a holiday — showing the last working day,','આજે રજા છે — છેલ્લો કામકાજનો દિવસ:')+' '+fmtD(ref)+'</div>'):'';
+  return '<div class="card"><h3><i class="ti ti-users-group"></i> '+T('Team leaders','ટીમ લીડર')+'</h3>'+hol
+    +'<div class="tw"><table class="pf-mx"><tr><th>'+T('Team leader','ટીમ લીડર')+'</th><th>'+T('Tchr','શિક્ષક')+'</th><th>'+T('Logged','લોગ')+'</th><th>'+T('7-day','7 દિવસ')+'</th><th>'+T('Att.','હાજરી')+'</th><th>L2R</th><th>Math</th><th>'+T('Flags','ફ્લેગ')+'</th><th>'+T('Overdue','મુદત વીતી')+'</th></tr>'
+    +body+tot+'</table></div>'
+    +'<div class="muted" style="font-size:11px;margin-top:8px">'+T('Sorted by 7-day logging, weakest first. Tap a row for that team leader. Levels are out of 10.','7 દિવસના લોગ પ્રમાણે, નબળા પહેલા. વિગત માટે હરોળ દબાવો.')+'</div></div>';}
+/* Four compact metrics instead of three tiles the size of a hand. Each one is a number you
+   would act on, and each says WHAT it is measured against - "0/46" alone told you nothing
+   about whether that was a bad day or a holiday. */
+function overviewStrip(){
+  var ref=overviewRefDay(),win=overviewWorkdaysBack(ref,7);
+  var tch=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+  var loggedRef=tch.filter(function(t){return DB.entries.some(function(e){return e.userId===t.id&&e.date===ref&&hasDiary(e);});}).length;
+  var flags=tch.filter(function(t){return t.flagged;}).length;
+  var over=DB.tasks.filter(function(t){return t.status==='open'&&overdue(t.due,t.status);}).length;
+  var silent=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;})
+    .filter(function(tl){return !DB.entries.some(function(e){return e.userId===tl.id&&e.date===ref&&hasDiary(e);});}).length;
+  var marks=(DB.bridgeMarks||[]);
+  var noLatest=marks.filter(bridgeNoLatest);
+  var stu=noLatest.reduce(function(a,m){return a+(m.students||0);},0);
+  var st=marks.length?bridgePortfolioStats(marks):null;
+  var box=function(lab,val,sub,cls,click){
+    return '<div class="ov-m'+(cls==='r'?' alert':'')+'"'+(click?(' style="cursor:pointer" onclick="'+click+'"'):'')+'><div class="l">'+lab+'</div><div class="v"'+(cls==='r'?' style="color:var(--gR-tx)"':'')+'>'+val+'</div><div class="s '+(cls||'')+'">'+sub+'</div></div>';};
+  var need=flags+over+silent;
+  return '<div class="ov-strip">'
+    +box(T('Teachers logged','શિક્ષક લોગ'),loggedRef+'/'+tch.length,(ref===realToday()?T('today','આજે'):fmtD(ref)),(tch.length&&loggedRef/tch.length<0.6)?'r':'a','selectItem(\'teachers\')')
+    +box(T('Needs action','ધ્યાન જરૂરી'),need,flags+' '+T('flags','ફ્લેગ')+' · '+over+' '+T('overdue','મુદત વીતી')+' · '+silent+' '+T('silent TLs','TL ચૂપ'),need?'r':'g','setFilter(\'attention\')')
+    +(marks.length?box(T('Not measured','માપ્યું નથી'),noLatest.length+'/'+marks.length,stu+' '+T('students','વિદ્યાર્થી'),noLatest.length?'r':'g','selectItem(\'reports\')'):'')
+    +(st&&st.avgLevel!=null?box(T('Learning level','શીખવાનું સ્તર'),bridgeF2(st.avgLevel)+'<span style="font-size:12px;font-weight:600;color:var(--muted)">/10</span>',(st.avgGain==null?T('nothing measured twice','બે વાર માપ્યું નથી'):((st.avgGain>0?'+':'')+bridgeF2(st.avgGain)+' '+T('where measured','જ્યાં માપ્યું'))),st&&st.avgGain>0?'g':'a','selectItem(\'reports\')'):'')
+    +'</div>';}
 function detailOverview(){
   const all=allTL();
   const logged=all.filter(s=>s.todayLog).length;
@@ -881,14 +979,9 @@ function detailOverview(){
   rows.sort((a,b)=>(b.over-a.over)||a.due.localeCompare(b.due));
   const attn=all.filter(s=>s.rag==='r');
   return `<div class="dhead"><div><div class="dh-name">${T('Overview','ઝાંખી')}</div><div class="dh-sub">${T('Across','—')} ${all.length} ${T('team leaders · last 7 days','ટીમ લીડર · છેલ્લા 7 દિવસ')} · v${APP_VERSION}</div></div></div>
-    <div class="kpis">
-      <div class="kpi g" style="cursor:pointer" onclick="setFilter('nolog')"><div class="n">${logged}/${all.length}</div><div class="l">${T('TLs logged today','TL લોગ')}</div></div>
-      <div class="kpi b" style="cursor:pointer" onclick="selectItem('teachers')"><div class="n">${_tchLogged}/${_tch.length}</div><div class="l">${T('Teachers logged today','શિક્ષક લોગ')}</div></div>
-      <div class="kpi" style="background:${_ch?'#dc2626':'#6b7280'};cursor:pointer" onclick="selectItem('challenges')"><div class="n">${_ch}</div><div class="l">${T('Challenges today','આજે પડકાર')}</div></div>
-      
-    </div>
+    ${overviewStrip()}
     <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:11px" onclick="selectItem('insights')"><div style="width:34px;height:34px;border-radius:9px;background:#fdf0d5;color:#a16207;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="ti ti-bulb"></i></div><div style="flex:1"><div style="font-weight:700">${T('AI Insights','AI આંતરદૃષ્ટિ')}</div><div class="muted" style="font-size:12px">${T('Gemini reads the remarks','જેમિની રિમાર્ક વાંચે છે')}</div></div><i class="ti ti-chevron-right" style="color:var(--muted)"></i></div>
-    ${overviewTLList()}
+    ${overviewScoreboard()}
     ${overviewTeamBreakdown()}
     ${overviewInsights()}
     ${overviewActivity()}${overviewChallenges()}<div class="card"><h3><i class="ti ti-clipboard-list"></i>${T('All open action items & tasks','બધા ખુલ્લા આઇટમ અને કાર્ય')} · ${rows.length}</h3>
