@@ -132,6 +132,10 @@
      wrapped to two lines at 375px and made that one row visibly taller than the other four. */
   .pf-gain .pf-bar{grid-template-columns:minmax(66px,82px) 1fr 34px}
   .pf-gain .pf-bar>span{white-space:nowrap}
+  /* Subject rows carry a fourth column the band rows do not: the movement badge sits beside
+     the level, so one row answers "where is it" and "is it moving" together. */
+  .pf-sub{display:grid;grid-template-columns:minmax(52px,68px) 1fr 34px auto;gap:7px;align-items:center;margin:9px 0;font-size:12.5px}
+  .pf-sub>b{text-align:right}
   .pf-track{height:8px;background:#edf0f4;border-radius:8px;overflow:hidden}
   .pf-fill{height:100%;border-radius:8px;background:var(--brand)}
   .pf-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -153,6 +157,12 @@
   /* Six cards, so three across rather than the mock-up's four: at four, the last two would
      sit alone on a second row looking like an afterthought. */
   @media(min-width:760px){.pf-kpis{grid-template-columns:repeat(3,1fr)}}
+  /* Layout A. The three band charts side by side instead of stacked: on a 1400px screen the
+     block drops from about 850px to about 230px, and the bars stop stretching 1,200px to
+     draw the number 38. Below 900px they stack again, which is what a phone wants. */
+  .pf-three{display:grid;gap:12px;grid-template-columns:1fr}
+  .pf-three>.card{margin:0}
+  @media(min-width:900px){.pf-three{grid-template-columns:repeat(3,1fr)}}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
   th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line)}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft)}
@@ -267,7 +277,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='7.3'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='7.5'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -429,7 +439,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return (n||'').replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(function(w){return (w&&w[0])||'';}).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null,BRIDGE_BAND=null,BRIDGE_GBAND=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null,BRIDGE_BAND=null,BRIDGE_GBAND=null,BRIDGE_MISS=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -1145,6 +1155,10 @@ function detailReports(){
         bRows=bA.rows.filter(function(r){return bridgeInGainBand(r.m,BRIDGE_GBAND);});
         bWhat=(BRIDGE_GBAND===0?T('Showing schools that went down','ઘટાડો થયેલ શાળા'):(T('Showing schools that improved by','સુધારો')+' '+bridgeGainBandLabel(BRIDGE_GBAND)));
         bClear='bridgeSetGainBand('+BRIDGE_GBAND+')';}
+      else if(BRIDGE_MISS!=null){
+        bRows=bA.rows.filter(function(r){return bridgeNoLatest(r.m)&&(r.m.cluster||'—')===BRIDGE_MISS;});
+        bWhat=T('Showing schools with no latest figure in','તાજા આંકડા વગરની શાળા —')+' '+BRIDGE_MISS;
+        bClear='bridgeSetMiss(\''+escAJ(BRIDGE_MISS)+'\')';}
       if(bWhat)bBanner='<div class="card" style="margin:0 0 8px;padding:9px 11px;background:var(--brand-tint);border-color:#f6df91;display:flex;align-items:center;gap:9px;flex-wrap:wrap"><div style="flex:1;min-width:150px;font-size:12.5px;font-weight:700;color:var(--brand-d)">'+bWhat+' · '+bRows.length+' '+(bRows.length===1?T('school','શાળા'):T('schools','શાળા'))+'</div><span onclick="'+bClear+'" style="cursor:pointer;background:var(--brand-d);color:#fff;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;white-space:nowrap">'+T('Show all','બધી બતાવો')+'</span></div>';
       bInner=bBanner+bLinkBtn+'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Tap a column heading to sort. Tap a row for that school.','ક્રમમાં ગોઠવવા કૉલમનું નામ દબાવો. વિગત માટે હરોળ દબાવો.')+'</div>'+(bRows.length?bridgeTable(bRows):('<div class="empty">'+T('No school sits in this band.','આ બેન્ડમાં કોઈ શાળા નથી.')+'</div>'));}
     var bSchools=(BRIDGE_GROUP!=='teacher'&&bA.rows.length);
@@ -1413,7 +1427,7 @@ function bridgeReviewView(){var R=BRIDGE_REVIEW;if(!R)return '';
 function bridgeFileChange(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){try{BRIDGE_REVIEW=bridgeBuildReview(e.target.result);renderDetail();}catch(err){alert(T('Could not read this file: ','આ ફાઇલ વાંચી શકાઈ નહીં: ')+err.message);}ev.target.value='';};reader.readAsText(file);}
 function downloadBridgeTemplate(){dlCSV('bridge-course-template.csv',[['','','Reading','','','','Writing','','','Maths','',''],['Cluster','School Name','Students','Start Level','Mid July Level','July End Level','Start Level','Mid July Level','July End Level','Start Level','Mid July Level','July End Level'],['Nilesh Hathila','Vajelav','58','1.26','','2.31','0.36','','1.29','0.02','','0.41']]);}
 /* ---- bridge course: report rendering ---- */
-function setBridgeClus(c){BRIDGE_CLUS=c;BRIDGE_SEL=null;BRIDGE_BAND=null;BRIDGE_GBAND=null;renderDetail();}
+function setBridgeClus(c){BRIDGE_CLUS=c;BRIDGE_SEL=null;BRIDGE_BAND=null;BRIDGE_GBAND=null;BRIDGE_MISS=null;renderDetail();}
 function bridgeSpark(pts){var w=56,h=20,pad=3,vals=(pts||[]).filter(function(v){return v!=null;});
   if(vals.length<2)return '<svg width="'+w+'" height="'+h+'" style="flex-shrink:0"></svg>';
   var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);if(mx===mn){mn=mn-1;mx=mx+1;}
@@ -1595,7 +1609,7 @@ function bridgeQuadrant(rows){var pts=rows.map(function(r){return {r:r,x:bridgeR
   pts.forEach(function(p){var m=p.r.m,tn=bridgeTeacherNames(m);
     s+='<circle cx="'+X(Math.min(xmax,p.x)).toFixed(1)+'" cy="'+Y(Math.max(ymin,Math.min(ymax,p.y==null?0:p.y))).toFixed(1)+'" r="5.5" fill="'+bridgeDot(p.r.status)+'" opacity="0.85" style="cursor:pointer" onclick="bridgeOpen(\''+escAJ(m.id)+'\')"><title>'+escA(m.school)+(tn?(' — '+escA(tn)):'')+' — '+p.x.toFixed(2)+'/10'+(p.y==null?'':', '+(p.y>0?'+':'')+p.y.toFixed(2))+'</title></circle>';});
   return '<div class="card"><h3><i class="ti ti-search"></i> '+T('Where to look first','પહેલા ક્યાં જોવું')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('One dot per school. Right = further along. Up = moved more. Tap a dot to open it.','દરેક શાળા એક ટપકું. જમણે = આગળ. ઉપર = વધુ સુધારો. ખોલવા ટપકું દબાવો.')+'</div>'+s+'</svg></div>';}
-function setBridgeGroup(g){BRIDGE_GROUP=g;BRIDGE_SEL=null;BRIDGE_LINK=null;BRIDGE_BAND=null;BRIDGE_GBAND=null;renderDetail();}
+function setBridgeGroup(g){BRIDGE_GROUP=g;BRIDGE_SEL=null;BRIDGE_LINK=null;BRIDGE_BAND=null;BRIDGE_GBAND=null;BRIDGE_MISS=null;renderDetail();}
 /* NGOs stay pinned at the top rather than being a third option here, so the comparison
    is always in view while you read the list underneath. */
 function bridgeGroupToggle(){var o=[['school',T('Schools','શાળા')],['teacher',T('Teachers','શિક્ષક')]];
@@ -1621,7 +1635,37 @@ function bridgeForTeacher(t,list){if(!t)return [];return (list||DB.bridgeMarks||
   if(!list.length){
     if(!sc.length)return head+'<div class="muted" style="font-size:12.5px">'+T('No school is linked to this teacher yet, and they have not completed Setup, so nothing matched automatically.','આ શિક્ષક સાથે કોઈ શાળા જોડાયેલ નથી. Setup પૂર્ણ નથી, તેથી આપોઆપ મેળ થયો નથી.')+'</div>'+hint+'</div>';
     return head+'<div class="muted" style="font-size:12.5px">'+T('No bridge course data for this teacher’s schools yet.','આ શિક્ષકની શાળાઓ માટે હજુ ડેટા નથી.')+'</div><div class="muted" style="font-size:11.5px;margin-top:5px">'+T('Schools in Setup','Setup માં શાળા')+': '+sc.map(escA).join(' · ')+'</div>'+hint+'</div>';
-  }var g=[{name:t.name,sub:list.length+' '+(list.length===1?T('school','શાળા'):T('schools','શાળા'))+' · '+list.map(function(m){return m.school;}).join(', '),st:bridgeGroupStats(list)}];return head+'<div class="muted" style="font-size:11.5px">'+(BRIDGE_VIEW==='level'?T('Level reached so far, out of 10.','અત્યાર સુધીનું સ્તર, 10 માંથી.'):T('Start of course to July end, across this teacher’s schools.','શરૂઆતથી જુલાઈ-અંત સુધી.'))+'</div>'+bridgeViewToggle()+bridgeGroupView(g)+'</div>';}/* Two ways a school reaches a teacher. An explicit teacherId chosen by the PM wins;
+  }
+  /* Direction 3 of the mock-up, for one teacher. bridgePortfolioStats is reused unchanged -
+     it takes any list of marks, so the teacher card and the whole-programme overview can
+     never drift apart in how they count a student or an average. */
+  var st=bridgePortfolioStats(list),gs=bridgeGroupStats(list);
+  var un=list.length-st.measured.length;
+  var tile=function(v,l,cls){return '<div class="tile'+(cls?' '+cls:'')+'"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';};
+  var tiles='<div class="tiles" style="margin-bottom:10px">'
+    +tile(list.length,list.length===1?T('School','શાળા'):T('Schools','શાળા'))
+    +tile(st.students||'—',T('Students','વિદ્યાર્થી'))
+    +tile(bridgeF2(st.avgLevel)+'<span style="font-size:11px;font-weight:600;color:var(--muted)">/10</span>',T('Level now','હાલનું સ્તર'))
+    +tile(st.avgGain==null?'—':((st.avgGain>0?'+':'')+bridgeF2(st.avgGain)),T('Gain','સુધારો'),st.avgGain==null?'':(st.avgGain>0?'g':(st.avgGain<0?'r':'')))
+    +'</div>';
+  /* Each subject twice over: the bar is where it stands out of 10, the badge is how far it
+     moved. A subject nobody re-measured says so rather than showing a silent 0.00 gain. */
+  var subj=BRIDGE_SUBJ.map(function(k){var s=gs.subj[k];
+    var lv=s.ln?(s.ls/s.ln):null,gn=s.n?((s.b-s.a)/s.n):null;
+    var col=lv==null?'var(--line)':(lv<2?'var(--gR)':(lv<4?'var(--gA)':(lv<6?'var(--brand)':'var(--gG)')));
+    var badge=gn==null?('<span class="muted" style="font-size:10px">'+T('not re-measured','ફરી માપ્યું નથી')+'</span>')
+      :('<span class="pf-pill '+(gn>0?'g':(gn<0?'r':'a'))+'">'+(gn>0?'+':'')+bridgeF2(gn)+'</span>');
+    return '<div class="pf-sub"><span>'+bridgeSubjLabel(k)+'</span><div class="pf-track"><div class="pf-fill" style="width:'+(lv==null?0:Math.round(lv/BRIDGE_MAX*100))+'%;background:'+col+'"></div></div><b>'+(lv==null?'—':bridgeF2(lv))+'</b>'+badge+'</div>';}).join('');
+  var schools=list.slice().sort(function(a,b){var x=bridgeAvgLevel(b),y=bridgeAvgLevel(a);return (x==null?-1:x)-(y==null?-1:y);}).map(function(m){
+    var lv=bridgeAvgLevel(m),r=bridgeRow(m);
+    var right=r.avg==null?('<span class="pf-pill a">'+T('not re-measured','ફરી માપ્યું નથી')+'</span>')
+      :('<span class="pf-pill '+(r.avg>0?'g':(r.avg<0?'r':'a'))+'">'+(r.avg>0?'+':'')+bridgeF2(r.avg)+'</span>');
+    return '<div class="pf-row" style="cursor:pointer" onclick="bridgeGotoSchool(\''+escAJ(m.id)+'\')"><div class="pf-grow"><div class="pf-name">'+escA(m.school)+'</div><div class="pf-meta">'+escA(m.cluster||'—')+' · '+(m.students||0)+' '+T('students','વિદ્યાર્થી')+' · '+(lv==null?'—':bridgeF2(lv)+' /10')+'</div></div>'+right+'</div>';}).join('');
+  var caveat=un?('<div class="muted" style="font-size:11px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line)">'+un+' '+(un===1?T('of these schools has no follow-up figure, so it counts toward the level but not the gain.','શાળાનો ફોલો-અપ આંકડો નથી.'):T('of these schools have no follow-up figure, so they count toward the level but not the gain.','શાળાઓનો ફોલો-અપ આંકડો નથી.'))+'</div>'):'';
+  return head+tiles+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+T('Bar = level reached out of 10. Badge = how much it moved since the start.','બાર = 10 માંથી સ્તર. બેજ = શરૂઆતથી સુધારો.')+'</div>'+subj
+    +'<div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:14px 0 2px">'+T('School by school','શાળા પ્રમાણે')+'</div>'+schools+caveat+hint+'</div>';}
+/* Jumps from a teacher's profile straight into that school's own page in Reports. */
+function bridgeGotoSchool(id){REPORT_MODE='bridge';BRIDGE_LINK=null;BRIDGE_REVIEW=null;BRIDGE_BAND=null;BRIDGE_GBAND=null;BRIDGE_SEL=id;selectItem('reports');}/* Two ways a school reaches a teacher. An explicit teacherId chosen by the PM wins;
    otherwise fall back to matching the school names the teacher typed into their own Setup.
    The explicit link lives on the bridgeMarks record itself, so it needs no new collection
    and therefore no new security rule. */
@@ -1820,6 +1864,7 @@ function bridgeBandsView(st){
 function bridgeSetBand(i){
   BRIDGE_BAND=(BRIDGE_BAND===i?null:i);
   BRIDGE_GBAND=null;
+  BRIDGE_MISS=null;
   /* A band is a set of SCHOOLS, so the table has to be showing schools to receive it. */
   if(BRIDGE_BAND!=null)BRIDGE_GROUP='school';
   BRIDGE_SEL=null;renderDetail();
@@ -1834,6 +1879,7 @@ function bridgeInGainBand(m,i){var r=bridgeRow(m);return r.avg!=null&&bridgeGain
 function bridgeSetGainBand(i){
   BRIDGE_GBAND=(BRIDGE_GBAND===i?null:i);
   BRIDGE_BAND=null;
+  BRIDGE_MISS=null;
   if(BRIDGE_GBAND!=null)BRIDGE_GROUP='school';
   BRIDGE_SEL=null;renderDetail();
   var el=document.getElementById('bridgeSchools');
@@ -1851,6 +1897,44 @@ function bridgeGainBandsView(st){
   var noGain=st.n-st.measured.length;
   if(noGain)out+='<div class="muted" style="font-size:11.5px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">'+noGain+' '+T('more schools cannot be placed here — they have no follow-up figure, so no improvement can be worked out.','શાળાઓ અહીં નથી — તેમનો ફોલો-અપ આંકડો નથી, તેથી સુધારો ગણી શકાય નહીં.')+'</div>';
   return out;}
+/* A school has NO LATEST DATA when not one of its three subjects carries a July-end figure.
+   That is different from a partly-filled row, where somebody started entering and stopped -
+   the two are counted separately because they need different chasing. */
+function bridgeNoLatest(m){if(!m)return false;var e=0;BRIDGE_SUBJ.forEach(function(k){if((m[k]||{}).end!=null)e++;});return e===0;}
+function bridgePartialLatest(m){if(!m)return false;var e=0,s=0;BRIDGE_SUBJ.forEach(function(k){var x=m[k]||{};if(x.end!=null)e++;if(x.start!=null)s++;});return e>0&&e<s;}
+/* Grouped by NGO, the unit the filter chips already use, but the cluster HEAD is named too:
+   they are the person who owes the figure, and chasing is the whole point of this panel. */
+function bridgeMissingStats(list){
+  var by={},order=[];
+  (list||[]).forEach(function(m){
+    var c=m.cluster||'—';
+    if(!by[c]){by[c]={cluster:c,total:0,missing:0,partial:0,students:0,heads:[]};order.push(c);}
+    var o=by[c];o.total++;
+    if(bridgeNoLatest(m)){o.missing++;o.students+=(m.students||0);if(m.head&&o.heads.indexOf(m.head)<0)o.heads.push(m.head);}
+    else if(bridgePartialLatest(m))o.partial++;});
+  return order.map(function(c){return by[c];}).filter(function(o){return o.missing||o.partial;})
+    .sort(function(a,b){return (b.missing-a.missing)||(b.partial-a.partial);});}
+function bridgeSetMiss(c){
+  BRIDGE_MISS=(BRIDGE_MISS===c?null:c);
+  BRIDGE_BAND=null;BRIDGE_GBAND=null;
+  if(BRIDGE_MISS!=null)BRIDGE_GROUP='school';
+  BRIDGE_SEL=null;renderDetail();
+  var el=document.getElementById('bridgeSchools');
+  if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});}
+function bridgeMissingView(list){
+  var rows=bridgeMissingStats(list);
+  if(!rows.length)return '';
+  var tm=0,ts=0,tp=0;
+  rows.forEach(function(o){tm+=o.missing;ts+=o.students;tp+=o.partial;});
+  if(!tm&&!tp)return '';
+  var body=rows.map(function(o){
+    var pct=o.total?Math.round(o.missing/o.total*100):0;
+    var on=(BRIDGE_MISS===o.cluster);
+    var sub=o.missing+' '+T('of','માંથી')+' '+o.total+' '+T('schools','શાળા')+(o.students?(' · '+o.students+' '+T('students','વિદ્યાર્થી')):'')
+      +(o.partial?(' · '+o.partial+' '+T('part-filled','અધૂરું')):'');
+    var who=o.heads.length?('<div class="pf-meta">'+escA(o.heads.join(' · '))+'</div>'):'';
+    return '<div class="pf-row'+(on?' on':'')+'" style="cursor:pointer"'+(o.missing?(' onclick="bridgeSetMiss(\''+escAJ(o.cluster)+'\')"'):'')+'><div class="pf-grow"><div class="pf-name">'+escA(o.cluster)+'</div><div class="pf-meta">'+sub+'</div>'+who+'</div><span class="pf-pill '+(pct>=80?'r':(pct>=40?'a':'g'))+'">'+pct+'%</span></div>';}).join('');
+  return '<div class="card"><h3><i class="ti ti-alert-triangle"></i> '+T('Waiting for the latest figures','તાજા આંકડાની રાહ')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:8px">'+tm+' '+T('schools have no July-end figure at all','શાળાનો જુલાઈ-અંતનો આંકડો નથી')+(ts?(' · '+ts+' '+T('students','વિદ્યાર્થી')):'')+(tp?(' · '+tp+' '+(tp===1?T('more is part-filled','અધૂરું ભરેલું'):T('more are part-filled','અધૂરાં ભરેલાં'))):'')+'. '+T('Tap an NGO to list its schools.','શાળા જોવા NGO દબાવો.')+'</div>'+body+'</div>';}
 function bridgePortfolio(bA){
   var list=bA.rows.map(function(r){return r.m;});
   if(!list.length)return '';
@@ -1899,7 +1983,10 @@ function bridgePortfolio(bA){
   if(st.falling)tips+='<div class="pf-tip bad" style="margin-top:8px"><b>'+st.falling+' '+(st.falling===1?T('school went down.','શાળામાં ઘટાડો.'):T('schools went down.','શાળામાં ઘટાડો.'))+'</b><br>'+T('Listed under Needs attention below.','નીચે "ધ્યાન જરૂરી" માં છે.')+'</div>';
   var insight=tips?('<div class="card"><h3><i class="ti ti-bulb"></i> '+T('What the numbers say','આંકડા શું કહે છે')+'</h3>'+tips+'</div>'):'';
   var gains=st.measured.length?('<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('How much schools improved','શાળાઓમાં કેટલો સુધારો')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:8px">'+T('Average gain in marks, across the schools measured twice. Tap a row to see which schools.','બે વાર માપેલ શાળાઓનો સરેરાશ સુધારો. કઈ શાળા તે જોવા દબાવો.')+'</div>'+'<div class="pf-gain">'+bridgeGainBandsView(st)+'</div></div>'):'';
-  return kpis+bands+gains+ngoRows+movers+insight;}
+  /* Layout A: the three band charts share a row on a wide screen, stack on a phone. The
+     missing-data panel is NOT in that row - it carries a list rather than five bars, and it
+     is the one panel you act on rather than read. */
+  return kpis+'<div class="pf-three">'+bands+gains+ngoRows+'</div>'+bridgeMissingView(list)+movers+insight;}
 function bridgeNgoChart(){var all=(DB.bridgeMarks||[]);if(!all.length)return '';var g=bridgeNgoGroups(all);if(!g.length)return '';return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Compare NGOs','NGO સરખામણી')+'</h3>'+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+(BRIDGE_VIEW==='level'?T('Average level now, out of 10, across each NGO’s schools.','દરેક NGO ની શાળાઓનું સરેરાશ સ્તર, 10 માંથી.'):T('Average gain across each NGO’s schools. Hollow dot = start, solid dot = July end.','દરેક NGO ની શાળાઓનો સરેરાશ સુધારો.'))+'</div>'+bridgeGroupView(g)+'</div>';}
 function bridgeCardHTML(r){var m=r.m;
   var dot={red:'#b3261e',amber:'#eda100',green:'#1baf7a',grey:'#c3c8d0'}[r.status];
