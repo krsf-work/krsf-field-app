@@ -163,6 +163,21 @@
   .pf-three{display:grid;gap:12px;grid-template-columns:1fr}
   .pf-three>.card{margin:0}
   @media(min-width:900px){.pf-three{grid-template-columns:repeat(3,1fr)}}
+  .pf-two{display:grid;gap:12px;grid-template-columns:1fr}
+  .pf-two>.card{margin:0}
+  @media(min-width:900px){.pf-two{grid-template-columns:1fr 1fr}}
+  /* Compact matrices. A table beats five bar rows here: it fits a whole extra dimension
+     (the three subjects) in less height than the bars used for one number each. */
+  .pf-mx{width:100%;border-collapse:collapse;font-size:12.5px}
+  .pf-mx th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;padding:4px 5px;text-align:right;white-space:nowrap}
+  .pf-mx th:first-child{text-align:left}
+  .pf-mx td{padding:5px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+  .pf-mx td:first-child{text-align:left;font-weight:700}
+  .pf-mx tr.tap{cursor:pointer}
+  .pf-mx tr.tap:hover td{background:var(--brand-tint)}
+  .pf-mx tr.on td{background:var(--brand-tint)}
+  .pf-mx tr.tot td{border-top:2px solid var(--line);font-weight:800;color:var(--ink)}
+  .pf-cell{display:inline-block;min-width:38px;padding:3px 6px;border-radius:6px;font-weight:800;font-size:12px}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
   th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line)}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft)}
@@ -277,7 +292,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='7.5'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='7.6'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1434,6 +1449,18 @@ function bridgeSpark(pts){var w=56,h=20,pad=3,vals=(pts||[]).filter(function(v){
   var n=pts.length,seg=[],i;
   for(i=0;i<n;i++){if(pts[i]==null)continue;var x=pad+i*((w-2*pad)/Math.max(1,n-1));var y=h-pad-((pts[i]-mn)/(mx-mn))*(h-2*pad);seg.push(x.toFixed(1)+','+y.toFixed(1));}
   return '<svg width="'+w+'" height="'+h+'" style="flex-shrink:0"><polyline points="'+seg.join(' ')+'" fill="none" stroke="#c9a05a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
+/* The programme's own short names, used as column headings where a full word will not fit.
+   The long labels stay everywhere else. */
+function bridgeSubjShort(k){return k==='reading'?'L2R':(k==='writing'?'L2W':'Math');}
+/* One tint per level, shared by every matrix cell so the same number is always the same
+   colour whichever table it appears in. */
+function bridgeLvlTint(v){
+  if(v==null)return 'background:#f2f4f7;color:#aab0ba';
+  if(v<1)return 'background:var(--gR-bg);color:var(--gR-tx)';
+  if(v<2)return 'background:#fde8e0;color:#b3401e';
+  if(v<4)return 'background:var(--gA-bg);color:var(--gA-tx)';
+  if(v<6)return 'background:var(--brand-tint);color:var(--brand-d)';
+  return 'background:var(--gG-bg);color:var(--gG-tx)';}
 function bridgeSubjLabel(k){return k==='reading'?T('Reading','વાંચન'):(k==='writing'?T('Writing','લેખન'):T('Maths','ગણિત'));}
 var BRIDGE_RGB={reading:'42,120,214',writing:'235,104,52',maths:'27,175,122'};
 function bridgeDot(s){return {red:'#b3261e',amber:'#eda100',green:'#1baf7a',grey:'#c3c8d0'}[s]||'#c3c8d0';}
@@ -1927,14 +1954,21 @@ function bridgeMissingView(list){
   var tm=0,ts=0,tp=0;
   rows.forEach(function(o){tm+=o.missing;ts+=o.students;tp+=o.partial;});
   if(!tm&&!tp)return '';
+  /* A table, not five stacked rows each with a pill. The same four facts per NGO in roughly
+     a third of the height, which is what lets it sit BESIDE the NGO matrix rather than under
+     it. The cluster head stays on the row: they are who owes the figure. */
   var body=rows.map(function(o){
     var pct=o.total?Math.round(o.missing/o.total*100):0;
     var on=(BRIDGE_MISS===o.cluster);
-    var sub=o.missing+' '+T('of','માંથી')+' '+o.total+' '+T('schools','શાળા')+(o.students?(' · '+o.students+' '+T('students','વિદ્યાર્થી')):'')
-      +(o.partial?(' · '+o.partial+' '+T('part-filled','અધૂરું')):'');
-    var who=o.heads.length?('<div class="pf-meta">'+escA(o.heads.join(' · '))+'</div>'):'';
-    return '<div class="pf-row'+(on?' on':'')+'" style="cursor:pointer"'+(o.missing?(' onclick="bridgeSetMiss(\''+escAJ(o.cluster)+'\')"'):'')+'><div class="pf-grow"><div class="pf-name">'+escA(o.cluster)+'</div><div class="pf-meta">'+sub+'</div>'+who+'</div><span class="pf-pill '+(pct>=80?'r':(pct>=40?'a':'g'))+'">'+pct+'%</span></div>';}).join('');
-  return '<div class="card"><h3><i class="ti ti-alert-triangle"></i> '+T('Waiting for the latest figures','તાજા આંકડાની રાહ')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:8px">'+tm+' '+T('schools have no July-end figure at all','શાળાનો જુલાઈ-અંતનો આંકડો નથી')+(ts?(' · '+ts+' '+T('students','વિદ્યાર્થી')):'')+(tp?(' · '+tp+' '+(tp===1?T('more is part-filled','અધૂરું ભરેલું'):T('more are part-filled','અધૂરાં ભરેલાં'))):'')+'. '+T('Tap an NGO to list its schools.','શાળા જોવા NGO દબાવો.')+'</div>'+body+'</div>';}
+    var tint=pct>=80?'background:var(--gR-bg);color:var(--gR-tx)':(pct>=40?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gG-bg);color:var(--gG-tx)');
+    return '<tr class="'+(o.missing?'tap':'')+(on?' on':'')+'"'+(o.missing?(' onclick="bridgeSetMiss(\''+escAJ(o.cluster)+'\')"'):'')+'>'
+      +'<td>'+escA(o.cluster)+(o.heads.length?('<div class="pf-meta" style="font-weight:400">'+escA(o.heads.join(' · '))+'</div>'):'')+'</td>'
+      +'<td><span class="pf-cell" style="'+tint+'">'+o.missing+'/'+o.total+'</span></td>'
+      +'<td>'+(o.students||'—')+'</td>'
+      +'<td>'+(o.partial?o.partial:'<span class="muted">—</span>')+'</td></tr>';}).join('');
+  return '<div class="card"><h3><i class="ti ti-alert-triangle"></i> '+T('Waiting for the latest figures','તાજા આંકડાની રાહ')+'</h3>'
+    +'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+tm+' '+T('schools have no July-end figure at all','શાળાનો જુલાઈ-અંતનો આંકડો નથી')+(ts?(' · '+ts+' '+T('students','વિદ્યાર્થી')):'')+'. '+T('Tap a row to list its schools.','શાળા જોવા હરોળ દબાવો.')+'</div>'
+    +'<table class="pf-mx"><tr><th>'+T('NGO','NGO')+'</th><th>'+T('Missing','બાકી')+'</th><th>'+T('Students','વિદ્યાર્થી')+'</th><th>'+T('Part-filled','અધૂરું')+'</th></tr>'+body+'</table></div>';}
 function bridgePortfolio(bA){
   var list=bA.rows.map(function(r){return r.m;});
   if(!list.length)return '';
@@ -1956,20 +1990,36 @@ function bridgePortfolio(bA){
      one - so on this data the bars are the panel that actually says something. Tapping one
      applies the NGO filter, which is the chip row at the top of the screen. */
   var ngoRows=(function(){
+    /* NGOs down, subjects across. The bar version showed ONE number per NGO and spent five
+       rows doing it; this fits the same averages plus the three subjects in the same height.
+       It is also the only place in the report where the subjects appear at portfolio level -
+       before this they lived on a teacher's own profile and nowhere else. */
     /* Built from EVERY school, not the filtered list. Using the filtered one collapsed the
        panel to a single row the moment you tapped an NGO - removing the only control that
        could take you back out of the filter you had just applied. */
     var all=(DB.bridgeMarks||[]),by={},order=[];
     all.forEach(function(m){var c=m.cluster||'—';if(!by[c]){by[c]=[];order.push(c);}by[c].push(m);});
     if(order.length<2)return '';
-    var stats=order.sort().map(function(c){
-      var lv=by[c].map(bridgeAvgLevel).filter(function(v){return v!=null;});
-      return {c:c,n:by[c].length,avg:lv.length?(lv.reduce(function(a,b){return a+b;},0)/lv.length):null};});
-    return '<div class="card"><h3><i class="ti ti-building-community"></i> '+T('Compare NGOs by level','NGO સરખામણી — સ્તર')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:8px">'+T('Average level now, out of 10. Tap one to filter the whole page to it.','હાલનું સરેરાશ સ્તર, 10 માંથી. ફિલ્ટર કરવા દબાવો.')+'</div>'+stats.map(function(s){
-      var pct=s.avg==null?0:Math.round(s.avg/BRIDGE_MAX*100);
-      var col=s.avg==null?'var(--line)':(s.avg<2?'var(--gR)':(s.avg<4?'var(--gA)':(s.avg<6?'var(--brand)':'var(--gG)')));
-      var on=(BRIDGE_CLUS===s.c);
-      return '<div class="pf-bar tap'+(on?' on':'')+'" onclick="setBridgeClus(\''+(on?'all':escAJ(s.c))+'\')"><span>'+escA(s.c)+'</span><div class="pf-track"><div class="pf-fill" style="width:'+pct+'%;background:'+col+'"></div></div><b>'+(s.avg==null?'—':bridgeF2(s.avg))+'</b></div>';}).join('')+'</div>';})();
+    var mean=function(a){return a.length?(a.reduce(function(x,y){return x+y;},0)/a.length):null;};
+    var subjAvg=function(ms,k){return mean(ms.map(function(m){return bridgeNowLevel(m[k]);}).filter(function(v){return v!=null;}));};
+    var lvls=function(ms){return ms.map(bridgeAvgLevel).filter(function(v){return v!=null;});};
+    var row=function(name,ms,cls,click){
+      var cells=BRIDGE_SUBJ.map(function(k){var v=subjAvg(ms,k);
+        return '<td><span class="pf-cell" style="'+bridgeLvlTint(v)+'">'+(v==null?'—':bridgeF2(v))+'</span></td>';}).join('');
+      var avg=mean(lvls(ms));
+      return '<tr class="'+cls+'"'+(click?(' onclick="'+click+'"'):'')+'><td>'+escA(name)+'</td>'+cells
+        +'<td><span class="pf-cell" style="'+bridgeLvlTint(avg)+'">'+(avg==null?'—':bridgeF2(avg))+'</span></td></tr>';};
+    /* Weakest first: the NGO that needs attention should not be buried alphabetically. */
+    var sorted=order.slice().sort(function(a,b){
+      var x=mean(lvls(by[a])),y=mean(lvls(by[b]));
+      return (x==null?99:x)-(y==null?99:y);});
+    var body=sorted.map(function(c){
+      var on=(BRIDGE_CLUS===c);
+      /* Tapping the selected NGO clears the filter, so one row is both on and off. */
+      return row(c,by[c],'tap'+(on?' on':''),'setBridgeClus(\''+(on?'all':escAJ(c))+'\')');}).join('');
+    return '<div class="card"><h3><i class="ti ti-building-community"></i> '+T('Compare NGOs by subject','NGO સરખામણી')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Level reached now, out of 10. Tap a row to filter the page to that NGO.','હાલનું સ્તર, 10 માંથી.')+'</div>'
+      +'<table class="pf-mx"><tr><th>'+T('NGO','NGO')+'</th>'+BRIDGE_SUBJ.map(function(k){return '<th>'+bridgeSubjShort(k)+'</th>';}).join('')+'<th>'+T('Avg','સરેરાશ')+'</th></tr>'
+      +body+row(T('All schools','બધી શાળા'),all,'tot','')+'</table></div>';})();
   var top=st.measured.slice().sort(function(a,b){return b.avg-a.avg;}).filter(function(r){return r.avg>0;}).slice(0,3);
   var movers=top.length?('<div class="card"><h3><i class="ti ti-user-star"></i> '+T('Strongest improvement','સૌથી વધુ સુધારો')+'</h3>'+top.map(function(r,i){
     return '<div class="pf-row" onclick="bridgeOpen(\''+escAJ(r.m.id)+'\')" style="cursor:pointer"><div class="pf-rank">'+(i+1)+'</div><div class="pf-grow"><div class="pf-name">'+escA(r.m.school)+'</div><div class="pf-meta">'+escA(r.m.cluster||'—')+' · '+(r.m.students||0)+' '+T('students','વિદ્યાર્થી')+'</div></div><span class="pf-pill g">+'+bridgeF2(r.avg)+'</span></div>';}).join('')+'</div>'):'';
@@ -1986,7 +2036,10 @@ function bridgePortfolio(bA){
   /* Layout A: the three band charts share a row on a wide screen, stack on a phone. The
      missing-data panel is NOT in that row - it carries a list rather than five bars, and it
      is the one panel you act on rather than read. */
-  return kpis+'<div class="pf-three">'+bands+gains+ngoRows+'</div>'+bridgeMissingView(list)+movers+insight;}
+  /* The two band charts share a row; the two TABLES share the row below it. Both tables are
+     things you act on rather than skim, and both are now compact enough to sit side by side. */
+  return kpis+'<div class="pf-three">'+bands+gains+'</div>'
+    +'<div class="pf-two">'+ngoRows+bridgeMissingView(list)+'</div>'+movers+insight;}
 function bridgeNgoChart(){var all=(DB.bridgeMarks||[]);if(!all.length)return '';var g=bridgeNgoGroups(all);if(!g.length)return '';return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Compare NGOs','NGO સરખામણી')+'</h3>'+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+(BRIDGE_VIEW==='level'?T('Average level now, out of 10, across each NGO’s schools.','દરેક NGO ની શાળાઓનું સરેરાશ સ્તર, 10 માંથી.'):T('Average gain across each NGO’s schools. Hollow dot = start, solid dot = July end.','દરેક NGO ની શાળાઓનો સરેરાશ સુધારો.'))+'</div>'+bridgeGroupView(g)+'</div>';}
 function bridgeCardHTML(r){var m=r.m;
   var dot={red:'#b3261e',amber:'#eda100',green:'#1baf7a',grey:'#c3c8d0'}[r.status];
