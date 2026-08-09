@@ -305,7 +305,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='7.7'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='7.8'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -888,64 +888,71 @@ function detailTLs(){
    zero that is not a failure. */
 function overviewRefDay(){var d=realToday(),i;for(i=0;i<14;i++){if(isWorkday(d))return d;d=addDays(d,-1);}return realToday();}
 function overviewWorkdaysBack(from,n){var out=[],d=from,i;for(i=0;i<30&&out.length<n;i++){if(isWorkday(d))out.push(d);d=addDays(d,-1);}return out;}
-/* One row per team leader, everything on it. Each figure is computed over that TL's OWN
-   teachers, so the same teacher counted under two TLs (seesAlso) appears in both rows - which
-   is correct per row and is why the totals row is computed from the distinct roster instead
-   of by summing the column. */
+/* One row per NGO, not per team leader. The rest of the report is organised by NGO, and a team
+   leader is not a unit anybody plans around - Jignesh Raut spans two trusts, so his row could
+   never be attributed to one. Per-TL detail still lives on the TLs tab.
+   All THREE subjects are shown: an earlier version carried L2R and Math and quietly dropped
+   writing, which made "which subject is weakest" impossible to read. */
 function overviewScoreboard(){
   var ref=overviewRefDay(),win=overviewWorkdaysBack(ref,7);
-  var tls=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
-  if(!tls.length)return '';
+  var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+  var marks=(DB.bridgeMarks||[]);
+  /* Union of every source, and the NGO MASTER comes first. An NGO you have just created has no
+     teacher and no school yet, so inferring the list from users and marks alone would leave it
+     off the screen entirely - which is what happened to GST. A retired NGO is excluded: it is
+     deactivated rather than deleted, and a retired row would sit there forever. */
+  var set={},order=[];
+  var add=function(c){if(c&&!set[c]){set[c]=1;order.push(c);}};
+  (typeof ngoActive==='function'?ngoActive():[]).forEach(function(n){add(n&&n.code);});
+  teachers.forEach(function(t){add(clusterOf(t));});
+  DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;}).forEach(function(t){add(clusterOf(t));});
+  marks.forEach(function(m){add(m.cluster);});
+  if(!order.length)return '';
   var loggedOn=function(list,day){return list.filter(function(t){return DB.entries.some(function(e){return e.userId===t.id&&e.date===day&&hasDiary(e);});}).length;};
   var pct7=function(list){if(!list.length||!win.length)return null;var hit=0;
     list.forEach(function(t){win.forEach(function(d){if(DB.entries.some(function(e){return e.userId===t.id&&e.date===d&&hasDiary(e);}))hit++;});});
     return Math.round(hit/(list.length*win.length)*100);};
-  var att=function(list){var p=0,tot=0;
-    list.forEach(function(t){DB.entries.forEach(function(e){if(e.userId===t.id&&win.indexOf(e.date)>-1&&e.present!=null&&e.present!==''&&e.total)  {p+=(+e.present);tot+=(+e.total);}});});
-    return tot?Math.round(p/tot*100):null;};
-  var subj=function(list,k){var v=[];
-    list.forEach(function(t){bridgeForTeacher(t).forEach(function(m){var n=bridgeNowLevel(m[k]);if(n!=null)v.push(n);});});
+  /* Student attendance from the daily diary - children present out of children on roll, summed
+     across the window. NOT teacher attendance, which is what the old "Att." heading read as. */
+  var att=function(list){var pr=0,tot=0;
+    list.forEach(function(t){DB.entries.forEach(function(e){if(e.userId===t.id&&win.indexOf(e.date)>-1&&e.present!=null&&e.present!==''&&e.total){pr+=(+e.present);tot+=(+e.total);}});});
+    return tot?Math.round(pr/tot*100):null;};
+  var subj=function(ms,k){var v=[];ms.forEach(function(m){var n=bridgeNowLevel(m[k]);if(n!=null)v.push(n);});
     return v.length?(v.reduce(function(a,b){return a+b;},0)/v.length):null;};
-  var cell=function(v,fmt){return '<td><span class="pf-cell" style="'+bridgeLvlTint(v)+'">'+(v==null?'—':fmt(v))+'</span></td>';};
-  var lvl=function(v){return cell(v,bridgeF2);};
+  var lvl=function(v){return '<td><span class="pf-cell" style="'+bridgeLvlTint(v)+'">'+(v==null?'—':bridgeF2(v))+'</span></td>';};
+  var band=function(p){return p>=85?'background:var(--gG-bg);color:var(--gG-tx)':(p>=60?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gR-bg);color:var(--gR-tx)');};
   var ratio=function(a,b){if(!b)return '<td><span class="muted">—</span></td>';
-    var p=Math.round(a/b*100),t=p>=85?'background:var(--gG-bg);color:var(--gG-tx)':(p>=60?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gR-bg);color:var(--gR-tx)');
-    return '<td><span class="pf-cell" style="'+t+'">'+a+'/'+b+'</span></td>';};
-  var pctCell=function(p){if(p==null)return '<td><span class="muted">—</span></td>';
-    var t=p>=85?'background:var(--gG-bg);color:var(--gG-tx)':(p>=60?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gR-bg);color:var(--gR-tx)');
-    return '<td><span class="pf-cell" style="'+t+'">'+p+'%</span></td>';};
-  var countCell=function(n,bad){if(!n)return '<td><span class="muted">—</span></td>';
-    return '<td><span class="pf-cell" style="'+(bad?'background:var(--gR-bg);color:var(--gR-tx)':'background:var(--gA-bg);color:var(--gA-tx)')+'">'+n+'</span></td>';};
-  var data=tls.map(function(tl){
-    var info=tlInfo(tl.id)||{},tch=info.teachers||[];
-    return {tl:tl,info:info,tch:tch,logged:loggedOn(tch,ref),p7:pct7(tch),att:att(tch),
-      r:subj(tch,'reading'),m:subj(tch,'maths'),
-      flags:tch.filter(function(t){return t.flagged;}).length,
-      over:(info.tkOver||0)+(info.aOver||0)};});
-  /* Worst logging last: the row you need to act on should not require reading to the bottom. */
-  data.sort(function(a,b){return (a.p7==null?999:a.p7)-(b.p7==null?999:b.p7);});
-  var body=data.map(function(d){
-    var cl=clusterOf(d.tl)||'—';
-    return '<tr class="tap" onclick="selectItem(\''+escAJ(d.tl.id)+'\')">'
-      +'<td>'+escA(d.tl.name)+'<div class="pf-meta" style="font-weight:400">'+escA(cl)+'</div></td>'
-      +'<td>'+d.tch.length+'</td>'+ratio(d.logged,d.tch.length)+pctCell(d.p7)+pctCell(d.att)
-      +lvl(d.r)+lvl(d.m)+countCell(d.flags,false)+countCell(d.over,true)+'</tr>';}).join('');
-  /* Totals over the DISTINCT roster, not the sum of the rows: a teacher visible to two TLs
-     would otherwise be counted twice and the total could exceed the real headcount. */
-  var allT=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
-  var tot='<tr class="tot"><td>'+T('All','બધા')+' '+tls.length+'</td><td>'+allT.length+'</td>'
-    +ratio(loggedOn(allT,ref),allT.length)+pctCell(pct7(allT))+pctCell(att(allT))
-    +lvl(subj(allT,'reading'))+lvl(subj(allT,'maths'))
-    +countCell(allT.filter(function(t){return t.flagged;}).length,false)
-    +countCell(DB.tasks.filter(function(t){return t.status==='open'&&overdue(t.due,t.status);}).length,true)+'</tr>';
+    return '<td><span class="pf-cell" style="'+band(Math.round(a/b*100))+'">'+a+'/'+b+'</span></td>';};
+  var pctCell=function(pv){if(pv==null)return '<td><span class="muted">—</span></td>';
+    return '<td><span class="pf-cell" style="'+band(pv)+'">'+pv+'%</span></td>';};
+  var flagCell=function(n){return n?('<td><span class="pf-cell" style="background:var(--gA-bg);color:var(--gA-tx)">'+n+'</span></td>'):'<td><span class="muted">—</span></td>';};
+  var num=function(n){return '<td>'+(n||'<span class="muted">—</span>')+'</td>';};
+  var rowFor=function(name,tch,ms,cls,click){
+    var stu=ms.reduce(function(a,m){return a+(m.students||0);},0);
+    return '<tr class="'+cls+'"'+(click?(' onclick="'+click+'"'):'')+'>'
+      +'<td>'+escA(name)+'</td>'+num(stu)+num(tch.length)
+      +ratio(loggedOn(tch,ref),tch.length)+pctCell(pct7(tch))+pctCell(att(tch))
+      +lvl(subj(ms,'reading'))+lvl(subj(ms,'writing'))+lvl(subj(ms,'maths'))
+      +flagCell(tch.filter(function(t){return t.flagged;}).length)+'</tr>';};
+  var data=order.map(function(c){return {c:c,
+    tch:teachers.filter(function(t){return clusterOf(t)===c;}),
+    ms:marks.filter(function(m){return (m.cluster||'')===c;})};});
+  /* Weakest learning level first. Alphabetical order buries the NGO that needs attention. */
+  var lvlOf=function(d){var v=d.ms.map(bridgeAvgLevel).filter(function(x){return x!=null;});
+    return v.length?(v.reduce(function(a,b){return a+b;},0)/v.length):null;};
+  data.sort(function(a,b){var x=lvlOf(a),y=lvlOf(b);return (x==null?99:x)-(y==null?99:y);});
+  var body=data.map(function(d){return rowFor(d.c,d.tch,d.ms,'tap','bridgeGotoNgo(\''+escAJ(d.c)+'\')');}).join('');
+  var tot=rowFor(T('All','બધા'),teachers,marks,'tot','');
   var hol=(ref!==realToday())?('<div class="muted" style="font-size:11.5px;margin-bottom:7px;background:var(--brand-tint);border:1px solid #f6df91;border-radius:8px;padding:7px 10px;color:var(--brand-d);font-weight:700">'+T('Today is a holiday — showing the last working day,','આજે રજા છે — છેલ્લો કામકાજનો દિવસ:')+' '+fmtD(ref)+'</div>'):'';
-  return '<div class="card"><h3><i class="ti ti-users-group"></i> '+T('Team leaders','ટીમ લીડર')+'</h3>'+hol
-    +'<div class="tw"><table class="pf-mx"><tr><th>'+T('Team leader','ટીમ લીડર')+'</th><th>'+T('Tchr','શિક્ષક')+'</th><th>'+T('Logged','લોગ')+'</th><th>'+T('7-day','7 દિવસ')+'</th><th>'+T('Att.','હાજરી')+'</th><th>L2R</th><th>Math</th><th>'+T('Flags','ફ્લેગ')+'</th><th>'+T('Overdue','મુદત વીતી')+'</th></tr>'
+  return '<div class="card"><h3><i class="ti ti-building-community"></i> '+T('NGO scoreboard','NGO સ્કોરબોર્ડ')+'</h3>'+hol
+    +'<div class="tw"><table class="pf-mx"><tr>'
+    +'<th>'+T('NGO','NGO')+'</th><th>'+T('Students','વિદ્યાર્થી')+'</th><th>'+T('Teachers','શિક્ષક')+'</th>'
+    +'<th>'+T('Logged','લોગ')+'</th><th>'+T('7-day','7 દિવસ')+'</th><th>'+T('Attendance','હાજરી')+'</th>'
+    +'<th>L2R</th><th>L2W</th><th>Math</th><th>'+T('Flags','ફ્લેગ')+'</th></tr>'
     +body+tot+'</table></div>'
-    +'<div class="muted" style="font-size:11px;margin-top:8px">'+T('Sorted by 7-day logging, weakest first. Tap a row for that team leader. Levels are out of 10.','7 દિવસના લોગ પ્રમાણે, નબળા પહેલા. વિગત માટે હરોળ દબાવો.')+'</div></div>';}
-/* Four compact metrics instead of three tiles the size of a hand. Each one is a number you
-   would act on, and each says WHAT it is measured against - "0/46" alone told you nothing
-   about whether that was a bad day or a holiday. */
+    +'<div class="muted" style="font-size:11px;margin-top:8px">'+T('Sorted by learning level, weakest first. Tap a row to open that NGO in Reports. Levels are out of 10. Attendance is children present out of children on roll, from the daily diary, over the last 7 working days.','સ્તર પ્રમાણે, નબળા પહેલા. હાજરી = ડાયરી માંથી, છેલ્લા 7 કામકાજના દિવસ.')+'</div></div>';}
+/* Opens Reports with the bridge course filtered to one NGO. */
+function bridgeGotoNgo(c){REPORT_MODE='bridge';BRIDGE_SEL=null;BRIDGE_LINK=null;BRIDGE_REVIEW=null;BRIDGE_BAND=null;BRIDGE_GBAND=null;BRIDGE_MISS=null;BRIDGE_CLUS=c;selectItem('reports');}
 function overviewStrip(){
   var ref=overviewRefDay(),win=overviewWorkdaysBack(ref,7);
   var tch=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
