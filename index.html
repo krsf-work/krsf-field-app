@@ -22,6 +22,12 @@
     --gI:#eab308;--gA:#d97706;--gR:#dc2626;--gB:#2563eb;
     --gI-bg:#fef7e0;--gA-bg:#fdf0dd;--gR-bg:#fbe9e9;--gB-bg:#e9f0fd;
     --gI-tx:#a16207;--gA-tx:#b45309;--gR-tx:#b91c1c;--gB-tx:#1d4ed8;
+    /* green had no token — every "good" state was a hardcoded hex. The portfolio overview
+       needs the same green in five places, so it earns one. Deliberately built from the
+       app's OWN status green rather than the two greens in the mock-up: those are the ones
+       the yellow rebrand removed, and a guard in the smoke test still greps the raw file
+       for them. Naming them even inside a comment trips it. */
+    --gG:#1baf7a;--gG-bg:#e6f7f0;--gG-tx:#0e7a55;
     --r:12px;--r2:9px;
   }
   /* animated login wordmark — solid dark-gold ink with a single warm gold light sweeping across (plays once on login) */
@@ -107,6 +113,40 @@
   .item .x{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
   .item.r .x{color:var(--gR-tx)}
   .empty{text-align:center;color:var(--muted);font-size:13.5px;padding:22px}
+  /* ---- portfolio overview (Direction 1). Ported from the mock-up, which was already
+     drawn on these same tokens, so the only real change is the grid: the mock-up puts
+     4 KPIs across a 1280px desktop, and this app is used on a 375px phone. ---- */
+  .pf-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+  .pf-k{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+  .pf-k .lab{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+  .pf-k .val{font-size:25px;line-height:1.1;font-weight:800;letter-spacing:-1px;margin-top:4px}
+  .pf-k .dlt{font-size:11.5px;font-weight:700;margin-top:4px;color:var(--muted)}
+  .pf-k .dlt.up{color:var(--gG-tx)}.pf-k .dlt.warn{color:var(--gA-tx)}.pf-k .dlt.down{color:var(--gR-tx)}
+  .pf-bar{display:grid;grid-template-columns:minmax(48px,62px) 1fr 54px;gap:8px;align-items:center;margin:10px 0;font-size:12.5px}
+  /* Padded and negatively-margined so the tap target covers the whole row rather than just
+     the text, without shifting the layout of the non-tappable (empty) bands. */
+  .pf-bar.tap{cursor:pointer;border-radius:8px;padding:5px 7px;margin:5px -7px}
+  .pf-bar.tap:hover{background:var(--brand-tint)}
+  .pf-bar.tap.on{background:var(--brand-tint);box-shadow:inset 0 0 0 1.5px var(--brand)}
+  .pf-track{height:8px;background:#edf0f4;border-radius:8px;overflow:hidden}
+  .pf-fill{height:100%;border-radius:8px;background:var(--brand)}
+  .pf-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .pf-row:last-child{border:0;padding-bottom:0}
+  .pf-rank{width:22px;height:22px;flex:0 0 22px;border-radius:50%;display:grid;place-items:center;background:var(--brand-tint);color:var(--brand-d);font-size:11px;font-weight:800}
+  .pf-grow{flex:1;min-width:0}
+  .pf-name{font-weight:700;font-size:13px}
+  .pf-meta{font-size:11px;color:var(--muted);margin-top:1px}
+  .pf-pill{font-size:10px;border-radius:20px;padding:4px 8px;font-weight:800;white-space:nowrap}
+  .pf-pill.g{color:var(--gG-tx);background:var(--gG-bg)}
+  .pf-pill.r{color:var(--gR-tx);background:var(--gR-bg)}
+  .pf-pill.a{color:var(--gA-tx);background:var(--gA-bg)}
+  .pf-tip{background:var(--brand-tint);border:1px solid #f6df91;border-radius:10px;padding:11px;font-size:12px;line-height:1.5}
+  .pf-tip.bad{background:#fffafa;border-color:#f4c7c7}
+  .pf-tip b{color:var(--brand-d)}.pf-tip.bad b{color:var(--gR-tx)}
+  .pf-chart{height:150px;position:relative;padding:6px 0 0;border-bottom:1px solid var(--line)}
+  .pf-chart svg{width:100%;height:100%;overflow:visible;display:block}
+  .pf-axis{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-top:5px}
+  @media(min-width:760px){.pf-kpis{grid-template-columns:repeat(4,1fr)}}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
   th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line)}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--soft)}
@@ -221,7 +261,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='6.9'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='7.1'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -369,7 +409,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return (n||'').replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(function(w){return (w&&w[0])||'';}).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null,BRIDGE_BAND=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -1056,7 +1096,6 @@ function detailReports(){
     var bA=bridgeAgg(BRIDGE_CLUS);
     var bBtns='<div style="display:flex;gap:8px;align-items:center"><button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="downloadBridgeTemplate()">⬇ '+T('Download template','ટેમ્પલેટ ડાઉનલોડ')+'</button><button class="btn" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="document.getElementById(\'bridgeFile\').click()">⬆ '+T('Upload CSV','CSV અપલોડ')+'</button><input type="file" id="bridgeFile" accept=".csv" style="display:none" onchange="bridgeFileChange(event)"></div>';
     var bChips=bClus.length>1?('<div class="chips"><span class="chip '+(BRIDGE_CLUS==='all'?'on':'')+'" onclick="setBridgeClus(\'all\')">'+T('All','બધા')+'</span>'+bClus.map(function(c){return '<span class="chip '+(BRIDGE_CLUS===c?'on':'')+'" onclick="setBridgeClus(\''+escAJ(c)+'\')">'+escA(c)+'</span>';}).join('')+'</div>'):'';
-    var bKpi='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"><div class="card" style="margin:0;padding:10px 12px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">'+T('Students','વિદ્યાર્થી')+'</div><div style="font-size:20px;font-weight:700">'+(bA.total?bA.students:'—')+'</div></div><div class="card" style="margin:0;padding:10px 12px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">'+T('July-end data complete','જુલાઈ-અંતનો ડેટા પૂર્ણ')+'</div><div style="font-size:20px;font-weight:700">'+(bA.total?(bA.complete+'/'+bA.total):'—')+'</div></div></div>';
     var att=[];
     if(bA.declines.length)att.push('<div style="font-size:13px;margin-top:3px"><b style="color:#b3261e">'+T('Went down','ઘટાડો')+':</b> '+bA.declines.map(function(r){return escA(r.m.school);}).join(', ')+'</div>');
     if(bA.missing.length)att.push('<div style="font-size:13px;margin-top:3px"><b>'+T('No July-end data yet','હજુ જુલાઈ-અંતનો ડેટા નથી')+':</b> '+bA.missing.length+' '+T('schools','શાળા')+'</div>');
@@ -1074,10 +1113,19 @@ function detailReports(){
        toggle is meaningless here — it only applies to the aggregated Teacher and NGO views. */
     else{var bUn=bridgeUnlinked(bA.rows.map(function(r){return r.m;}));
       var bLinkBtn='<button class="btn'+(bUn.length?'':' ghost')+' block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+(bUn.length?(T('Link teachers to','શિક્ષક જોડો —')+' '+bUn.length+' '+(bUn.length===1?T('school','શાળા'):T('schools','શાળા'))):T('Change teacher links','શિક્ષક બદલો'))+'</button>';
-      bInner=bLinkBtn+'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Tap a column heading to sort. Tap a row for that school.','ક્રમમાં ગોઠવવા કૉલમનું નામ દબાવો. વિગત માટે હરોળ દબાવો.')+'</div>'+bridgeTable(bA.rows);}
+      /* Band filter applies to the TABLE only. If it ever empties the table the banner still
+         renders, so there is always a visible way back out of the filter. */
+      var bRows=bA.rows,bBanner='';
+      if(BRIDGE_BAND!=null){
+        bRows=bA.rows.filter(function(r){return bridgeInBand(r.m,BRIDGE_BAND);});
+        bBanner='<div class="card" style="margin:0 0 8px;padding:9px 11px;background:var(--brand-tint);border-color:#f6df91;display:flex;align-items:center;gap:9px;flex-wrap:wrap"><div style="flex:1;min-width:150px;font-size:12.5px;font-weight:700;color:var(--brand-d)">'+T('Showing schools at','બતાવેલ સ્તર')+' '+bridgeBandLabel(BRIDGE_BAND)+' '+T('out of 10','10 માંથી')+' · '+bRows.length+' '+(bRows.length===1?T('school','શાળા'):T('schools','શાળા'))+'</div><span onclick="bridgeSetBand('+BRIDGE_BAND+')" style="cursor:pointer;background:var(--brand-d);color:#fff;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;white-space:nowrap">'+T('Show all','બધી બતાવો')+'</span></div>';}
+      bInner=bBanner+bLinkBtn+'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Tap a column heading to sort. Tap a row for that school.','ક્રમમાં ગોઠવવા કૉલમનું નામ દબાવો. વિગત માટે હરોળ દબાવો.')+'</div>'+(bRows.length?bridgeTable(bRows):('<div class="empty">'+T('No school sits in this band.','આ બેન્ડમાં કોઈ શાળા નથી.')+'</div>'));}
     var bSchools=(BRIDGE_GROUP!=='teacher'&&bA.rows.length);
-    var bList='<div class="card">'+(bA.rows.length?bridgeGroupToggle()+(bSchools?'':bridgeViewToggle()):'')+bInner+'</div>';
-    return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ')+'</div></div>'+bBtns+'</div>'+modeToggle+bridgeNgoChart()+bChips+bKpi+bAtt+bList;
+    var bList='<div class="card" id="bridgeSchools">'+(bA.rows.length?bridgeGroupToggle()+(bSchools?'':bridgeViewToggle()):'')+bInner+'</div>';
+    /* The overview sits above the NGO comparison, not below it: the mock-up's own order is
+       headline numbers first, breakdowns after, and bChips scopes the overview so the filter
+       has to come before the numbers it changes. */
+    return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ')+'</div></div>'+bBtns+'</div>'+modeToggle+bChips+bridgePortfolio(bA)+bridgeNgoChart()+bAtt+bList;
   }
   if(REPORT_MODE==='hours'){
     var hClusters=clustersInScope();
@@ -1338,7 +1386,7 @@ function bridgeReviewView(){var R=BRIDGE_REVIEW;if(!R)return '';
 function bridgeFileChange(ev){var file=ev.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){try{BRIDGE_REVIEW=bridgeBuildReview(e.target.result);renderDetail();}catch(err){alert(T('Could not read this file: ','આ ફાઇલ વાંચી શકાઈ નહીં: ')+err.message);}ev.target.value='';};reader.readAsText(file);}
 function downloadBridgeTemplate(){dlCSV('bridge-course-template.csv',[['','','Reading','','','','Writing','','','Maths','',''],['Cluster','School Name','Students','Start Level','Mid July Level','July End Level','Start Level','Mid July Level','July End Level','Start Level','Mid July Level','July End Level'],['Nilesh Hathila','Vajelav','58','1.26','','2.31','0.36','','1.29','0.02','','0.41']]);}
 /* ---- bridge course: report rendering ---- */
-function setBridgeClus(c){BRIDGE_CLUS=c;BRIDGE_SEL=null;renderDetail();}
+function setBridgeClus(c){BRIDGE_CLUS=c;BRIDGE_SEL=null;BRIDGE_BAND=null;renderDetail();}
 function bridgeSpark(pts){var w=56,h=20,pad=3,vals=(pts||[]).filter(function(v){return v!=null;});
   if(vals.length<2)return '<svg width="'+w+'" height="'+h+'" style="flex-shrink:0"></svg>';
   var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);if(mx===mn){mn=mn-1;mx=mx+1;}
@@ -1520,7 +1568,7 @@ function bridgeQuadrant(rows){var pts=rows.map(function(r){return {r:r,x:bridgeR
   pts.forEach(function(p){var m=p.r.m,tn=bridgeTeacherNames(m);
     s+='<circle cx="'+X(Math.min(xmax,p.x)).toFixed(1)+'" cy="'+Y(Math.max(ymin,Math.min(ymax,p.y==null?0:p.y))).toFixed(1)+'" r="5.5" fill="'+bridgeDot(p.r.status)+'" opacity="0.85" style="cursor:pointer" onclick="bridgeOpen(\''+escAJ(m.id)+'\')"><title>'+escA(m.school)+(tn?(' — '+escA(tn)):'')+' — '+p.x.toFixed(2)+'/10'+(p.y==null?'':', '+(p.y>0?'+':'')+p.y.toFixed(2))+'</title></circle>';});
   return '<div class="card"><h3><i class="ti ti-search"></i> '+T('Where to look first','પહેલા ક્યાં જોવું')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('One dot per school. Right = further along. Up = moved more. Tap a dot to open it.','દરેક શાળા એક ટપકું. જમણે = આગળ. ઉપર = વધુ સુધારો. ખોલવા ટપકું દબાવો.')+'</div>'+s+'</svg></div>';}
-function setBridgeGroup(g){BRIDGE_GROUP=g;BRIDGE_SEL=null;BRIDGE_LINK=null;renderDetail();}
+function setBridgeGroup(g){BRIDGE_GROUP=g;BRIDGE_SEL=null;BRIDGE_LINK=null;BRIDGE_BAND=null;renderDetail();}
 /* NGOs stay pinned at the top rather than being a third option here, so the comparison
    is always in view while you read the list underneath. */
 function bridgeGroupToggle(){var o=[['school',T('Schools','શાળા')],['teacher',T('Teachers','શિક્ષક')]];
@@ -1668,6 +1716,91 @@ function bridgeDetailView(){var m=(DB.bridgeMarks||[]).filter(function(x){return
    +avgBox+'<div class="card"><div class="muted" style="font-size:11.5px;margin-bottom:2px">'+T('Hollow dot = start of course · solid dot = July end','ખાલી ટપકું = શરૂઆત · ભરેલું ટપકું = જુલાઈ અંત')+'</div>'+lines+'</div>'+flag
    +bridgeTeacherBox(m)+(m.head?('<div class="card"><div class="muted" style="font-size:12px">'+T('Cluster head in the uploaded file','અપલોડ ફાઇલમાં ક્લસ્ટર હેડ')+'</div><div style="font-weight:700">'+escA(m.head)+'</div>'+(m.schoolRef&&m.schoolRef!==m.school?('<div class="muted" style="font-size:12px;margin-top:6px">'+T('Linked to Pragati school','પ્રગતિ શાળા સાથે જોડાયેલ')+': '+escA(m.schoolRef)+'</div>'):'')+'</div>'):'');}
 /* Always spans every cluster, ignoring the chip filter — the point is the comparison. */
+/* ---- portfolio overview (Direction 1 of the mock-up) ----
+   Two numbers here look alike and are not. "Level now" is the best available reading for
+   EVERY school - bridgeNowLevel falls back to the start figure when nobody has re-measured
+   one - while "gain" can only exist for a school measured twice. On the real upload that is
+   12 schools out of 65, so averaging the two into one headline would report a portfolio-wide
+   trend built from 18% of the schools. They get separate cards carrying their own
+   denominators instead. */
+function bridgeF2(v){return v==null?'—':(Math.round(v*100)/100).toFixed(2);}
+function bridgeStartLevel(m){var v=[];BRIDGE_SUBJ.forEach(function(k){var s=m[k]||{};if(s.start!=null)v.push(s.start);});return v.length?(v.reduce(function(a,b){return a+b;},0)/v.length):null;}
+/* Five bands of two marks. 10 must land in the top band, not a sixth one off the end. */
+function bridgeBand(v){var i=Math.floor(v/2);return i>4?4:(i<0?0:i);}
+function bridgePortfolioStats(list){
+  var rows=(list||[]).map(bridgeRow),o={n:rows.length,students:0,measured:[],levels:[],bandsNow:[0,0,0,0,0],bandsStart:[0,0,0,0,0],subj:{}};
+  BRIDGE_SUBJ.forEach(function(k){o.subj[k]={g:0,gn:0,l:0,ln:0};});
+  rows.forEach(function(r){var m=r.m;
+    o.students+=(m.students||0);
+    if(r.avg!=null)o.measured.push(r);
+    var lv=bridgeAvgLevel(m);if(lv!=null){o.levels.push(lv);o.bandsNow[bridgeBand(lv)]++;}
+    var sv=bridgeStartLevel(m);if(sv!=null)o.bandsStart[bridgeBand(sv)]++;
+    BRIDGE_SUBJ.forEach(function(k){var s=m[k]||{},g=bridgeGain(s),nl=bridgeNowLevel(s);
+      if(g!=null){o.subj[k].g+=g;o.subj[k].gn++;}
+      if(nl!=null){o.subj[k].l+=nl;o.subj[k].ln++;}});});
+  o.avgLevel=o.levels.length?(o.levels.reduce(function(a,b){return a+b;},0)/o.levels.length):null;
+  o.avgGain=o.measured.length?(o.measured.reduce(function(a,r){return a+r.avg;},0)/o.measured.length):null;
+  o.falling=o.measured.filter(function(r){return r.decline;}).length;
+  return o;}
+/* The mock-up's centrepiece was a six-week trend line. It is not built here, and not because
+   of effort: the upload carries three time points, the middle one is empty in every row, and
+   only 12 of 65 schools have a July-end figure at all. A line drawn through two points, one
+   of which covers 18% of the schools, renders a confident slope out of almost no evidence -
+   the same mistake the per-school sparklines made in v6.0. This distribution occupies the
+   same slot and answers the same question ("are we moving?") using data that exists. */
+function bridgeBandsView(st){
+  var labs=['0–2','2–4','4–6','6–8','8–10'],cols=['var(--gR)','var(--gA)','var(--brand)','var(--gG)','var(--gG)'],mx=1,i,out='',moved=0;
+  for(i=0;i<5;i++)mx=Math.max(mx,st.bandsNow[i],st.bandsStart[i]);
+  for(i=0;i<5;i++){var now=st.bandsNow[i],d=now-st.bandsStart[i];
+    if(d!==0)moved++;
+    var chg=d===0?'':('<span style="font-size:10px;font-weight:800;color:'+(d>0?'var(--gG-tx)':'var(--gR-tx)')+'">'+(d>0?'+':'')+d+'</span>');
+    /* An empty band is NOT clickable: tapping it would filter the table down to nothing and
+       read as a broken screen rather than an empty band. */
+    var live=now>0,on=(BRIDGE_BAND===i);
+    out+='<div class="pf-bar'+(live?' tap':'')+(on?' on':'')+'"'+(live?(' onclick="bridgeSetBand('+i+')" title="'+escA(T('Show these schools','આ શાળાઓ બતાવો'))+'"'):'')+'><span>'+labs[i]+'</span><div class="pf-track"><div class="pf-fill" style="width:'+Math.round(now/mx*100)+'%;background:'+cols[i]+'"></div></div><b>'+now+' '+chg+'</b></div>';}
+  /* On the real upload every band is unchanged, so all five change figures come out blank and
+     the panel reads as though it failed to load. It did not - nothing has moved. Say so,
+     otherwise silence gets mistaken for a bug. Narrower bands do not rescue it either: at
+     one mark per band exactly one school in 65 crosses a line. */
+  if(!moved)out+='<div class="muted" style="font-size:11.5px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">'+T('No school has moved into a different band yet.','હજુ કોઈ શાળા બીજા બેન્ડમાં ગઈ નથી.')+'</div>';
+  return out;}
+/* Tapping a band filters the school table below to it. The band SUMMARY deliberately keeps
+   showing all five bands at their full counts - filtering the chart by its own filter would
+   leave one bar and nothing to compare it against. Only the table narrows. */
+function bridgeSetBand(i){
+  BRIDGE_BAND=(BRIDGE_BAND===i?null:i);
+  /* A band is a set of SCHOOLS, so the table has to be showing schools to receive it. */
+  if(BRIDGE_BAND!=null)BRIDGE_GROUP='school';
+  BRIDGE_SEL=null;renderDetail();
+  var el=document.getElementById('bridgeSchools');
+  if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});}
+function bridgeBandLabel(i){return ['0–2','2–4','4–6','6–8','8–10'][i]||'';}
+function bridgeInBand(m,i){var lv=bridgeAvgLevel(m);return lv!=null&&bridgeBand(lv)===i;}
+function bridgePortfolio(bA){
+  var list=bA.rows.map(function(r){return r.m;});
+  if(!list.length)return '';
+  var st=bridgePortfolioStats(list),unmeasured=st.n-st.measured.length;
+  var k=function(lab,val,dlt,cls){return '<div class="pf-k"><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="dlt '+(cls||'')+'">'+dlt+'</div></div>';};
+  var kpis='<div class="pf-kpis">'
+    +k(T('Students assessed','મૂલ્યાંકન થયેલ વિદ્યાર્થી'),st.students||'—',st.n+' '+T('schools','શાળા'))
+    +k(T('Average level now','હાલનું સરેરાશ સ્તર'),bridgeF2(st.avgLevel)+' <span style="font-size:13px;font-weight:600;color:var(--muted)">/10</span>',T('best reading for all','બધા માટે ઉપલબ્ધ')+' '+st.n)
+    +k(T('Measured twice','બે વાર માપેલ'),st.measured.length+' / '+st.n,unmeasured?(unmeasured+' '+T('have no follow-up yet','ને હજુ ફોલો-અપ નથી')):T('all followed up','બધાનું ફોલો-અપ થયું'),unmeasured?'warn':'up')
+    +k(T('Average gain','સરેરાશ સુધારો'),st.avgGain==null?'—':((st.avgGain>0?'+':'')+bridgeF2(st.avgGain)),st.measured.length?(T('across the','આ')+' '+st.measured.length+' '+T('measured','માપેલ')):T('nothing to compare yet','હજુ સરખામણી શક્ય નથી'),st.avgGain==null?'':(st.avgGain>0?'up':(st.avgGain<0?'down':'warn')))
+    +'</div>';
+  var bands='<div class="card"><h3><i class="ti ti-table"></i> '+T('Where schools stand, out of 10','શાળાઓ ક્યાં છે, 10 માંથી')+'</h3><div class="muted" style="font-size:11.5px;margin-bottom:8px">'+T('Number of schools in each band. The small figure is the change since the start of the course.','દરેક બેન્ડમાં શાળાની સંખ્યા. નાનો આંકડો કોર્સની શરૂઆતથી થયેલો ફેરફાર.')+'</div>'+bridgeBandsView(st)+'</div>';
+  var top=st.measured.slice().sort(function(a,b){return b.avg-a.avg;}).filter(function(r){return r.avg>0;}).slice(0,3);
+  var movers=top.length?('<div class="card"><h3><i class="ti ti-user-star"></i> '+T('Strongest improvement','સૌથી વધુ સુધારો')+'</h3>'+top.map(function(r,i){
+    return '<div class="pf-row" onclick="bridgeOpen(\''+escAJ(r.m.id)+'\')" style="cursor:pointer"><div class="pf-rank">'+(i+1)+'</div><div class="pf-grow"><div class="pf-name">'+escA(r.m.school)+'</div><div class="pf-meta">'+escA(r.m.cluster||'—')+' · '+(r.m.students||0)+' '+T('students','વિદ્યાર્થી')+'</div></div><span class="pf-pill g">+'+bridgeF2(r.avg)+'</span></div>';}).join('')+'</div>'):'';
+  var best=null,worst=null;
+  BRIDGE_SUBJ.forEach(function(key){var s=st.subj[key];
+    if(s.gn){var g=s.g/s.gn;if(!best||g>best.g)best={k:key,g:g};}
+    if(s.ln){var l=s.l/s.ln;if(!worst||l<worst.l)worst={k:key,l:l};}});
+  var tips='';
+  if(best)tips+='<div class="pf-tip"><b>'+bridgeSubjLabel(best.k)+' '+T('is moving fastest.','સૌથી ઝડપી સુધરે છે.')+'</b><br>'+T('Average gain of','સરેરાશ સુધારો')+' '+bridgeF2(best.g)+' '+T('marks across the schools measured twice.','માર્ક — બે વાર માપેલ શાળાઓમાં.')+'</div>';
+  if(worst)tips+='<div class="pf-tip bad" style="margin-top:8px"><b>'+bridgeSubjLabel(worst.k)+' '+T('sits lowest.','સૌથી નીચે છે.')+'</b><br>'+T('Average level','સરેરાશ સ્તર')+' '+bridgeF2(worst.l)+' /10 '+T('across all schools.','બધી શાળાઓમાં.')+'</div>';
+  if(st.falling)tips+='<div class="pf-tip bad" style="margin-top:8px"><b>'+st.falling+' '+(st.falling===1?T('school went down.','શાળામાં ઘટાડો.'):T('schools went down.','શાળામાં ઘટાડો.'))+'</b><br>'+T('Listed under Needs attention below.','નીચે "ધ્યાન જરૂરી" માં છે.')+'</div>';
+  var insight=tips?('<div class="card"><h3><i class="ti ti-bulb"></i> '+T('What the numbers say','આંકડા શું કહે છે')+'</h3>'+tips+'</div>'):'';
+  return kpis+bands+movers+insight;}
 function bridgeNgoChart(){var all=(DB.bridgeMarks||[]);if(!all.length)return '';var g=bridgeNgoGroups(all);if(!g.length)return '';return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Compare NGOs','NGO સરખામણી')+'</h3>'+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+(BRIDGE_VIEW==='level'?T('Average level now, out of 10, across each NGO’s schools.','દરેક NGO ની શાળાઓનું સરેરાશ સ્તર, 10 માંથી.'):T('Average gain across each NGO’s schools. Hollow dot = start, solid dot = July end.','દરેક NGO ની શાળાઓનો સરેરાશ સુધારો.'))+'</div>'+bridgeGroupView(g)+'</div>';}
 function bridgeCardHTML(r){var m=r.m;
   var dot={red:'#b3261e',amber:'#eda100',green:'#1baf7a',grey:'#c3c8d0'}[r.status];
