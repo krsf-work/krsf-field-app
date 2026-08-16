@@ -305,7 +305,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='7.8'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='8.0'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -769,16 +769,47 @@ function overviewInsights(){
   var cc={};DB.entries.forEach(function(e){if(e.role!=='Teacher')return;var dd=Math.round((Date.parse(td)-Date.parse(e.date))/864e5);if(dd>14)return;var c=e.challenge;if(!c||c==='None.'||c==='None')return;KW.forEach(function(k){if(k[1].test(c))cc[k[0]]=(cc[k[0]]||0)+1;});});
   var ca=Object.keys(cc).map(function(k){return {k:k,n:cc[k]};}).sort(function(a,b){return b.n-a.n;}).slice(0,3);
   var chalRows=ca.length?ca.map(function(c){return '<span style="background:var(--gA-bg);color:var(--gA-tx);border-radius:20px;padding:3px 10px;font-size:12px;margin:0 6px 6px 0;display:inline-block">'+escA(c.k)+' · '+c.n+'</span>';}).join(''):'<span class="muted" style="font-size:12px">'+T('No recurring themes','કોઈ થીમ નથી')+'</span>';
-  /* 4. cluster leaderboard (today logging %) */
-  var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});var g={};teachers.forEach(function(t){var c=clusterOf(t)||'—';if(!g[c])g[c]={total:0,logged:0};g[c].total++;if(DB.entries.some(function(e){return e.userId===t.id&&e.date===today()&&hasDiary(e);}))g[c].logged++;});
-  var ck=Object.keys(g).map(function(c){return {c:c,pct:g[c].total?Math.round(g[c].logged/g[c].total*100):0};}).sort(function(a,b){return b.pct-a.pct;});
-  var clusRows=ck.map(function(x){var col=x.pct>=80?'#a16207':(x.pct>=40?'#d97706':'#dc2626');return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:48px;font-weight:600">'+escA(x.c)+'</span><div style="flex:1;height:7px;background:var(--line);border-radius:4px"><div style="height:7px;width:'+x.pct+'%;background:'+col+';border-radius:4px"></div></div><span style="color:'+col+';font-weight:700;width:38px;text-align:right">'+x.pct+'%</span></div>';}).join('');
+  /* 4. cluster leaderboard.
+     Was: percentage of each NGO's teachers who logged TODAY. Two faults. On a Sunday or a
+     holiday that is 0% for everyone, so the panel was blank on every non-working day; and it
+     called today() while the rest of this card uses realToday(), so the two could disagree.
+     It also became redundant the moment the NGO scoreboard grew a 7-day column - a ranked bar
+     of a number printed in the table above is decoration.
+     Now: the same 7-working-day rate, PLUS how it moved against the 7 workdays before that.
+     The scoreboard says where each NGO stands; this says which way it is heading, which is the
+     one thing the table cannot show. A 7-workday window always contains working days, so the
+     panel can never be blanked by a holiday again. */
+  var lbWin=overviewWorkdaysBack(overviewRefDay(),7);
+  var lbPrev=overviewWorkdaysBack(addDays(lbWin[lbWin.length-1]||overviewRefDay(),-1),7);
+  var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+  var lbRate=function(list,days){if(!list.length||!days.length)return null;var hit=0;
+    list.forEach(function(t){days.forEach(function(d){if(DB.entries.some(function(e){return e.userId===t.id&&e.date===d&&hasDiary(e);}))hit++;});});
+    return Math.round(hit/(list.length*days.length)*100);};
+  var lbSet={},lbOrder=[];
+  teachers.forEach(function(t){var c=clusterOf(t)||'—';if(!lbSet[c]){lbSet[c]=[];lbOrder.push(c);}lbSet[c].push(t);});
+  /* "No baseline" is not the same as "a genuine zero". An NGO that filed nothing last week but
+     has filed before really did improve by that much; an NGO that has never filed anything is
+     not improving - it is starting. Only the second gets "new", or a first upload would be
+     reported as a triumphant rise from nowhere. */
+  var lbFirstDay=lbWin[lbWin.length-1]||overviewRefDay();
+  var lbEverBefore=function(list){return list.some(function(t){return DB.entries.some(function(e){return e.userId===t.id&&e.date<lbFirstDay&&hasDiary(e);});});};
+  var ck=lbOrder.map(function(c){return {c:c,pct:lbRate(lbSet[c],lbWin),prev:lbEverBefore(lbSet[c])?lbRate(lbSet[c],lbPrev):null};})
+    .sort(function(a,b){return (b.pct==null?-1:b.pct)-(a.pct==null?-1:a.pct);});
+  var clusRows=ck.map(function(x){
+    var p=(x.pct==null?0:x.pct);
+    var col=p>=80?'#a16207':(p>=40?'#d97706':'#dc2626');
+    /* No arrow when there is nothing to compare against - a first week is not a decline. */
+    var d=(x.pct==null||x.prev==null)?null:(x.pct-x.prev);
+    var chip=d==null?'<span class="muted" style="font-size:10.5px;width:44px;text-align:right;display:inline-block">'+T('new','નવું')+'</span>'
+      :('<span style="font-size:10.5px;font-weight:700;width:44px;text-align:right;display:inline-block;color:'+(d>0?'var(--gG-tx)':(d<0?'var(--gR-tx)':'var(--muted)'))+'">'+(d>0?'▲ +':(d<0?'▼ ':''))+(d===0?'—':Math.abs(d)+'')+(d===0?'':'')+'</span>');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:48px;font-weight:600">'+escA(x.c)+'</span><div style="flex:1;height:7px;background:var(--line);border-radius:4px"><div style="height:7px;width:'+p+'%;background:'+col+';border-radius:4px"></div></div><span style="color:'+col+';font-weight:700;width:38px;text-align:right">'+(x.pct==null?'—':x.pct+'%')+'</span>'+chip+'</div>';}).join('');
+  var lbNote='<div class="muted" style="font-size:10.5px;margin-top:6px">'+T('Share of diaries filed over the last 7 working days, and the change against the 7 before that.','છેલ્લા 7 કામકાજના દિવસમાં ભરાયેલી ડાયરી, અને તે પહેલાંના 7 સામે ફેરફાર.')+'</div>';
   function mod(label,body){return '<div style="margin-top:11px;padding-top:10px;border-top:0.5px solid var(--line)"><div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.3px;margin-bottom:7px">'+label+'</div>'+body+'</div>';}
   return '<div class="card"><h3><i class="ti ti-bulb"></i> '+T('Insights','આંતરદૃષ્ટિ')+'</h3>'
     +'<div><div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.3px;margin-bottom:7px">'+T('LOGGING THIS WEEK','આ અઠવાડિયે લોગ')+'</div>'+(streakRows||'<span class="muted" style="font-size:12px">'+T('No team leaders','કોઈ TL નથી')+'</span>')+'</div>'
     +mod(T('VS LAST WEEK','ગયા અઠવાડિયા સામે'),trendRows)
     +mod(T('RECURRING CHALLENGES','વારંવારની સમસ્યાઓ'),chalRows)
-    +mod(T('CLUSTER LEADERBOARD','ક્લસ્ટર ક્રમ'),clusRows||'<span class="muted" style="font-size:12px">—</span>')
+    +mod(T('CLUSTER LEADERBOARD','ક્લસ્ટર ક્રમ'),(clusRows?(clusRows+lbNote):'<span class="muted" style="font-size:12px">—</span>'))
     +'</div>';
 }
 function overviewTeamBreakdown(){
@@ -887,7 +918,82 @@ function detailTLs(){
    Fall back to the most recent working day and SAY which day it is, rather than reporting a
    zero that is not a failure. */
 function overviewRefDay(){var d=realToday(),i;for(i=0;i<14;i++){if(isWorkday(d))return d;d=addDays(d,-1);}return realToday();}
-function overviewWorkdaysBack(from,n){var out=[],d=from,i;for(i=0;i<30&&out.length<n;i++){if(isWorkday(d))out.push(d);d=addDays(d,-1);}return out;}
+/* The guard has to scale with n. It was a flat 30 calendar days, which is fine for a 7-day
+   window but silently returns only 26 of the 30 working days the trend chart asks for - so its
+   oldest "week" was a single day, and a rate measured over one day was plotted as though it
+   were a week. Weekends and holidays mean n working days need roughly 1.5n calendar days. */
+function overviewWorkdaysBack(from,n){var out=[],d=from,i,lim=n*3+14;for(i=0;i<lim&&out.length<n;i++){if(isWorkday(d))out.push(d);d=addDays(d,-1);}return out;}
+/* A multi-line trend chart, built the way the rest of this app is built: inline SVG, no
+   library. The requested component needed React, Recharts, shadcn/ui and lucide - four
+   dependencies a single self-contained HTML file with no build step cannot take, and the icon
+   font here is a subset with no runtime CDN allowed.
+   The DATA is the real constraint though. DB.marks is empty, so a marks-over-time chart would
+   draw nothing; the daily diary is the only series with enough points to justify a line. */
+function overviewWeeks(nWeeks,perWeek){
+  var days=overviewWorkdaysBack(overviewRefDay(),nWeeks*perWeek),out=[],i;
+  /* Only FULL weeks. A short trailing chunk - which is all that exists when the app has less
+     than nWeeks of history - would be a rate measured over one or two days sitting on the axis
+     next to five-day weeks, and would read as a collapse rather than as missing history. */
+  for(i=0;i<nWeeks;i++){var chunk=days.slice(i*perWeek,(i+1)*perWeek);if(chunk.length===perWeek)out.push(chunk);}
+  return out.reverse();}
+function overviewTrend(){
+  var WEEKS=6,PER=5;
+  var weeks=overviewWeeks(WEEKS,PER);
+  if(weeks.length<2)return '';
+  var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+  if(!teachers.length)return '';
+  var by={},order=[];
+  teachers.forEach(function(t){var c=clusterOf(t)||'—';if(!by[c]){by[c]=[];order.push(c);}by[c].push(t);});
+  var rate=function(list,days){if(!list.length||!days.length)return null;var hit=0;
+    list.forEach(function(t){days.forEach(function(d){if(DB.entries.some(function(e){return e.userId===t.id&&e.date===d&&hasDiary(e);}))hit++;});});
+    return Math.round(hit/(list.length*days.length)*100);};
+  var series=order.map(function(c){return {c:c,v:weeks.map(function(w){return rate(by[c],w);})};});
+  /* A line through one point is not a trend. If only one week carries any diary at all, this
+     draws nothing rather than inventing a slope - the same reason the bridge course has no
+     six-week line. */
+  var weeksWithData=weeks.filter(function(w,i){return series.some(function(s){return s.v[i];});}).length;
+  if(weeksWithData<2)return '';
+  var W=640,H=190,padL=32,padR=10,padT=10,padB=26;
+  var plotW=W-padL-padR,plotH=H-padT-padB;
+  var x=function(i){return padL+(weeks.length===1?plotW/2:(i/(weeks.length-1))*plotW);};
+  var y=function(v){return padT+plotH-(Math.max(0,Math.min(100,v))/100)*plotH;};
+  var COL=['#a16207','#2563eb','#0e7a55','#b91c1c','#7c3aed','#b45309'];
+  /* Horizontal rules only, matching the reference: vertical grid lines add nothing when the
+     x axis is six labelled points. */
+  var grid='',gl;
+  for(gl=0;gl<=4;gl++){var gy=padT+(gl/4)*plotH;
+    grid+='<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+gy.toFixed(1)+'" stroke="var(--line)" stroke-width="1"/>'
+      +'<text x="'+(padL-6)+'" y="'+(gy+3.5).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--muted)">'+(100-gl*25)+'</text>';}
+  var lines='',dots='';
+  series.forEach(function(s,si){
+    var col=COL[si%COL.length],pts=[];
+    s.v.forEach(function(v,i){if(v!=null)pts.push({i:i,v:v});});
+    if(pts.length<2)return;
+    lines+='<polyline fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="'
+      +pts.map(function(p){return x(p.i).toFixed(1)+','+y(p.v).toFixed(1);}).join(' ')+'"/>';
+    /* The reference hides the dots. They are kept here but drawn small, because without a
+       hover target on a touch screen there is no way to read a value off the line at all. */
+    pts.forEach(function(p){
+      dots+='<circle cx="'+x(p.i).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="8" fill="transparent"><title>'+escA(s.c)+' · '+fmtD(weeks[p.i][0])+' · '+p.v+'%</title></circle>'
+        +'<circle cx="'+x(p.i).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="2.4" fill="'+col+'" pointer-events="none"/>';});});
+  if(!lines)return '';
+  var xl='';
+  weeks.forEach(function(w,i){xl+='<text x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="var(--muted)">'+fmtD(w[0]).slice(0,5)+'</text>';});
+  var legend=series.map(function(s,si){return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px"><i style="width:9px;height:2.5px;border-radius:2px;background:'+COL[si%COL.length]+';display:inline-block"></i>'+escA(s.c)+'</span>';}).join('');
+  /* Footer trend, over ALL teachers rather than per NGO, so it answers "are we improving" once
+     instead of six times. */
+  var first=rate(teachers,weeks[0]),last=rate(teachers,weeks[weeks.length-1]);
+  var d=(first==null||last==null)?null:(last-first);
+  var foot=d==null?T('Not enough history to say which way this is going.','દિશા કહેવા પૂરતો ઇતિહાસ નથી.')
+    :(d>0?('<span style="color:var(--gG-tx);font-weight:700">'+T('Up','વધ્યું')+' '+d+' '+T('points across the six weeks','પોઈન્ટ છ અઠવાડિયામાં')+'</span>')
+     :(d<0?('<span style="color:var(--gR-tx);font-weight:700">'+T('Down','ઘટ્યું')+' '+Math.abs(d)+' '+T('points across the six weeks','પોઈન્ટ છ અઠવાડિયામાં')+'</span>')
+      :('<span style="font-weight:700">'+T('Flat across the six weeks','છ અઠવાડિયામાં કોઈ ફેરફાર નહીં')+'</span>')));
+  return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Diary logging, week by week','ડાયરી લોગ, અઠવાડિયા પ્રમાણે')+'</h3>'
+    +'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Share of diaries filed, one line per NGO. Each point is a working week.','ભરાયેલી ડાયરીનો હિસ્સો, દરેક NGO ની એક લાઇન.')+'</div>'
+    +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;overflow:visible" preserveAspectRatio="none">'+grid+lines+dots+xl+'</svg>'
+    +'<div class="muted" style="font-size:11px;margin-top:9px">'+legend+'</div>'
+    +'<div style="font-size:12px;margin-top:7px;padding-top:8px;border-top:1px solid var(--line)">'+foot
+    +'<div class="muted" style="font-size:11px;margin-top:2px">'+T('Six working weeks to','છ કામકાજ સપ્તાહ —')+' '+fmtD(overviewRefDay())+'. '+T('Tap a point for its value.','મૂલ્ય જોવા બિંદુ પર દબાવો.')+'</div></div></div>';}
 /* One row per NGO, not per team leader. The rest of the report is organised by NGO, and a team
    leader is not a unit anybody plans around - Jignesh Raut spans two trusts, so his row could
    never be attributed to one. Per-TL detail still lives on the TLs tab.
@@ -989,6 +1095,7 @@ function detailOverview(){
     ${overviewStrip()}
     <div class="card" style="cursor:pointer;display:flex;align-items:center;gap:11px" onclick="selectItem('insights')"><div style="width:34px;height:34px;border-radius:9px;background:#fdf0d5;color:#a16207;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="ti ti-bulb"></i></div><div style="flex:1"><div style="font-weight:700">${T('AI Insights','AI આંતરદૃષ્ટિ')}</div><div class="muted" style="font-size:12px">${T('Gemini reads the remarks','જેમિની રિમાર્ક વાંચે છે')}</div></div><i class="ti ti-chevron-right" style="color:var(--muted)"></i></div>
     ${overviewScoreboard()}
+    ${overviewTrend()}
     ${overviewTeamBreakdown()}
     ${overviewInsights()}
     ${overviewActivity()}${overviewChallenges()}<div class="card"><h3><i class="ti ti-clipboard-list"></i>${T('All open action items & tasks','બધા ખુલ્લા આઇટમ અને કાર્ય')} · ${rows.length}</h3>
