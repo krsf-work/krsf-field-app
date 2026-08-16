@@ -305,7 +305,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='8.0'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='8.1'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -948,11 +948,19 @@ function overviewTrend(){
     list.forEach(function(t){days.forEach(function(d){if(DB.entries.some(function(e){return e.userId===t.id&&e.date===d&&hasDiary(e);}))hit++;});});
     return Math.round(hit/(list.length*days.length)*100);};
   var series=order.map(function(c){return {c:c,v:weeks.map(function(w){return rate(by[c],w);})};});
-  /* A line through one point is not a trend. If only one week carries any diary at all, this
-     draws nothing rather than inventing a slope - the same reason the bridge course has no
-     six-week line. */
-  var weeksWithData=weeks.filter(function(w,i){return series.some(function(s){return s.v[i];});}).length;
-  if(weeksWithData<2)return '';
+  /* Count a week as HAVING data if any diary exists in it, rather than asking whether its
+     rounded rate is non-zero. With 46 teachers over 5 days a handful of entries rounds to 0%,
+     and the week was being written off as empty. */
+  var anyIn=function(days){return DB.entries.some(function(e){return days.indexOf(e.date)>-1&&hasDiary(e);});};
+  var weeksWithData=weeks.filter(anyIn).length;
+  /* A line through one point is not a trend. But saying so out loud beats rendering nothing:
+     an invisible panel is indistinguishable from a version that never shipped, which is exactly
+     how this looked the first time it went live. */
+  if(weeksWithData<2){
+    var why=weeksWithData===0
+      ?T('No diaries have been filed in the last six working weeks, so there is nothing to plot yet.','છેલ્લા છ કામકાજ સપ્તાહમાં કોઈ ડાયરી ભરાઈ નથી.')
+      :T('Only one of the last six working weeks has any diary in it. A line needs at least two, so this chart appears once a second week has data.','છેલ્લા છ સપ્તાહમાંથી ફક્ત એકમાં ડાયરી છે. લાઇન માટે ઓછામાં ઓછા બે જોઈએ.');
+    return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Diary logging, week by week','ડાયરી લોગ, અઠવાડિયા પ્રમાણે')+'</h3><div class="muted" style="font-size:12px">'+why+'</div></div>';}
   var W=640,H=190,padL=32,padR=10,padT=10,padB=26;
   var plotW=W-padL-padR,plotH=H-padT-padB;
   var x=function(i){return padL+(weeks.length===1?plotW/2:(i/(weeks.length-1))*plotW);};
