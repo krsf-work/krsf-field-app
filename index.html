@@ -88,6 +88,7 @@
   .dhead .ava{width:52px;height:52px;font-size:18px}
   .dh-name{font-size:21px;font-weight:700;line-height:1.1}
   .dh-sub{font-size:13px;color:var(--muted);margin-top:3px}
+  .dh-person{min-width:0}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
   .card h3{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--brand-d);margin-bottom:12px;display:flex;align-items:center;gap:8px}
   .card h3 i{font-size:15px}
@@ -228,7 +229,7 @@
     #bottomNav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:8000;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));box-shadow:0 -3px 14px rgba(20,40,30,.07)}
     select#userSel{max-width:38vw}
   }
-@media(max-width:880px){#topbar{height:auto;min-height:54px;padding:8px 12px;gap:10px}.brand .s{display:none}#identName{display:none}.ctrls{gap:8px}}
+@media(max-width:880px){#topbar{height:auto;min-height:54px;padding:8px 12px;gap:10px}.brand .s{display:none}#identName{display:none}.ctrls{gap:8px}#syncLbl,#logoutLbl{display:none}.dhead .ava{display:none}.dh-person{min-width:190px}}
 .log-box{background:var(--gA-bg,#fef7e0);border-radius:9px;padding:10px 12px;font-size:14px;line-height:1.6}
 .challenge-line{margin-top:6px;font-size:13px;color:#dc2626;font-weight:600}
 .log-empty{font-style:italic;font-size:13px}
@@ -247,9 +248,9 @@
   <div class="ctrls">
     
     <button id="syncBtn" onclick="syncNow(true)" title="Sync now" style="margin-right:8px;padding:7px 10px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;gap:6px"><span id="netDot" style="width:9px;height:9px;border-radius:50%;background:#a16207;display:inline-block"></span><i class="ti ti-refresh"></i><span id="syncLbl">Sync</span></button>
-    <button id="bellBtn" onclick="toggleNotif()" title="Notifications" style="position:relative;margin-right:8px;padding:7px 11px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-bell"></i><span>Alerts</span><span id="bellBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px"></span></button>
+    <button id="bellBtn" onclick="toggleNotif()" title="Notifications" style="position:relative;margin-right:8px;padding:7px 11px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;gap:5px"><i class="ti ti-bell"></i><span id="bellLbl">Notifications</span><span id="bellBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;line-height:16px;text-align:center;padding:0 3px"></span></button>
     <span id="identName" style="font-size:13px;font-weight:600;color:var(--ink);max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <button id="logoutBtn" onclick="logout()" title="Log out" style="margin-left:8px;padding:7px 11px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-logout"></i><span>Logout</span></button>
+    <button id="logoutBtn" onclick="logout()" title="Log out" style="margin-left:8px;padding:7px 11px;border:1px solid var(--line2);background:var(--panel);border-radius:9px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i class="ti ti-logout"></i><span id="logoutLbl">Logout</span></button>
   </div>
 </div>
 <div id="notifPanel" style="display:none;position:fixed;top:58px;right:14px;width:330px;max-height:65vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.2);z-index:9000"></div>
@@ -305,7 +306,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='8.2'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='8.4'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -546,15 +547,25 @@ window.addEventListener('online',function(){updateNetStatus();syncNow(false);});
 window.addEventListener('offline',updateNetStatus);
 function myNotifications(){
   if(!CUR||!u(CUR))return [];
-  const role=u(CUR).role, out=[];
-  DB.tasks.filter(t=>t.tlid===CUR&&t.status==='open').forEach(t=>{var from=t.byRole==='TL'?T('your Team Leader','તમારા ટીમ લીડર'):T('the PM','PM');out.push({key:t.id+':open',icon:'ti-checklist',title:T('New task from','નવું કાર્ય —')+' '+from,detail:t.text,sub:T('Due ','મુદત ')+fmtD(t.due)});});
-  DB.tasks.filter(t=>t.status==='done'&&t.assignedBy===CUR).forEach(t=>{const who=u(t.tlid);out.push({key:t.id+':done',icon:'ti-check',title:(who?who.name:'')+' '+T('completed a task','એ કાર્ય પૂર્ણ કર્યું'),detail:t.text+(t.reply?(' — "'+t.reply+'"'):''),sub:fmtD(t.closedOn)||''});});
+  const role=u(CUR).role, out=[], goOpen=(role==='PM'?'assigned':'tasks');
+  DB.tasks.filter(t=>t.tlid===CUR&&t.status==='open').forEach(t=>{var from=t.byRole==='TL'?T('your Team Leader','તમારા ટીમ લીડર'):T('the PM','PM');out.push({key:t.id+':open',tid:t.id,go:goOpen,day:t.created||'',clock:tkClock(t.id),icon:'ti-checklist',title:T('New task from','નવું કાર્ય —')+' '+from,detail:t.text,sub:T('Due ','મુદત ')+fmtD(t.due)});});
+  DB.tasks.filter(t=>t.status==='done'&&t.assignedBy===CUR).forEach(t=>{const who=u(t.tlid);out.push({key:t.id+':done',tid:t.id,go:'assigned',day:t.closedOn||'',clock:tkClock(t.id),icon:'ti-check',title:(who?who.name:'')+' '+T('completed a task','એ કાર્ય પૂર્ણ કર્યું'),detail:t.text+(t.reply?(' — "'+t.reply+'"'):''),sub:fmtD(t.closedOn)||''});});
+  /* DB.tasks is append-ordered, so walking it gave oldest-first, and walking it twice put
+     every completed task below every open one however recent. Both passes now carry a day
+     and a clock, and the two are merged into one newest-first timeline. No build since
+     Pragati 4.4 sorted this list at all. */
+  out.sort(function(a,b){if(a.day!==b.day)return (b.day||'').localeCompare(a.day||'');return b.clock-a.clock;});
   return out;
 }
+/* Dates here are day-granularity. uniqueTaskId mints 'tk'+Date.now()+..., so the id
+   itself carries the millisecond the task was created - the only tiebreak available. */
+function tkClock(id){var m=/^tk(\d{10,})/.exec(String(id||''));return m?+m[1]:0;}
+/* Every row used to be an inert div: tapping a task notification did nothing. */
+function notifGo(sel){var p=document.getElementById('notifPanel');if(p)p.style.display='none';selectItem(sel);}
 function notifSeen(){try{return JSON.parse(localStorage.getItem('krsf_seen_'+CUR)||'[]');}catch(e){return [];}}
 function renderBell(){const badge=document.getElementById('bellBadge');if(!badge)return;const n=myNotifications(),seen=notifSeen();const unread=n.filter(x=>seen.indexOf(x.key)<0).length;if(unread>0){badge.style.display='block';badge.textContent=unread>9?'9+':unread;}else{badge.style.display='none';}}
 function toggleNotif(){const p=document.getElementById('notifPanel');if(!p)return;if(p.style.display==='block'){p.style.display='none';return;}const n=myNotifications();
-  p.innerHTML='<div style="padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)">'+T('Notifications','નોટિફિકેશન')+'</div>'+(n.length?n.map(x=>'<div style="padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:flex-start"><i class="ti '+x.icon+'" style="color:var(--brand);margin-top:2px"></i><div style="min-width:0"><div style="font-weight:600;font-size:13px">'+escA(x.title)+'</div><div style="font-size:13px;color:var(--ink)">'+escA(x.detail||'')+'</div><div style="font-size:11.5px;color:var(--muted)">'+escA(x.sub||'')+'</div></div></div>').join(''):'<div style="padding:18px;color:var(--muted);font-size:13px;text-align:center">'+T('No notifications','કોઈ નોટિફિકેશન નથી')+'</div>');
+  p.innerHTML='<div style="padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)">'+T('Notifications','નોટિફિકેશન')+'</div>'+(n.length?n.map(x=>'<div style="padding:10px 14px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:flex-start;cursor:pointer" onclick="notifGo(\''+x.go+'\')"><i class="ti '+x.icon+'" style="color:var(--brand);margin-top:2px"></i><div style="min-width:0"><div style="font-weight:600;font-size:13px">'+escA(x.title)+'</div><div style="font-size:13px;color:var(--ink)">'+escA(x.detail||'')+'</div><div style="font-size:11.5px;color:var(--muted)">'+escA(x.sub||'')+'</div></div></div>').join(''):'<div style="padding:18px;color:var(--muted);font-size:13px;text-align:center">'+T('No notifications','કોઈ નોટિફિકેશન નથી')+'</div>');
   p.style.display='block';
   localStorage.setItem('krsf_seen_'+CUR,JSON.stringify(n.map(x=>x.key)));renderBell();}
 function showLogin(){const o=document.getElementById('loginOverlay');if(o)o.style.display='flex';var _bm=document.querySelector('.brandmark');if(_bm){_bm.style.animation='none';void _bm.offsetWidth;_bm.style.animation='';}const e=document.getElementById('lg_err');if(e)e.textContent='';const p=document.getElementById('lg_phone'),pw=document.getElementById('lg_pwd');if(p)p.value='';if(pw){pw.value='';pw.type='password';}const ic=document.getElementById('lg_show_ic');if(ic)ic.className='ti ti-eye';const btn=document.getElementById('lg_btn');if(btn){btn.disabled=false;btn.style.opacity='';}if(p)p.focus();}
@@ -1237,7 +1248,7 @@ function detailTeacher(tid){
     var composer=composerOpen?('<div style="margin-top:9px;padding-top:9px;border-top:0.5px solid var(--line)"><textarea id="tt_text_'+tid+'" placeholder="'+T('Task for','કાર્ય')+' '+escA(t.name)+'…" style="min-height:42px"></textarea><div style="display:flex;gap:8px;align-items:center;margin-top:7px"><label style="margin:0;font-size:12px;color:var(--muted)">'+T('Due','મુદત')+'</label><input type="date" id="tt_due_'+tid+'" value="'+addDays(tdR,5)+'" style="width:auto"><button class="btn sm" style="margin-left:auto;width:auto" onclick="assignTeacherTask(\''+tid+'\')">'+T('Assign','સોંપો')+'</button></div></div>'):'';
     var taskCard='<div class="card"><h3><i class="ti ti-checklist"></i> '+T('Tasks','કાર્ય')+' ('+openTks.length+' '+T('open','ઓપન')+')</h3>'+tkRows+assignBtn+composer+'</div>';
     var backBtn='<button class="btn ghost" style="width:auto;padding:6px 11px;flex-shrink:0" onclick="selectItem(TEACH_BACK||\'teachers\')">← '+T('Back','પાછળ')+'</button>';
-    return '<div class="dhead">'+backBtn+'<div class="ava g">'+initials(t.name)+'</div><div style="flex:1;min-width:0"><div class="dh-name">'+escA(t.name)+(t.flagged?'<i class="ti ti-flag-filled" style="color:#dc2626;font-size:14px;margin-left:6px"></i>':'')+(t.gflag?'<i class="ti ti-flag-filled" style="color:#059669;font-size:14px;margin-left:6px"></i>':'')+'</div><div class="dh-sub">'+T('Teacher','શિક્ષક')+' · '+(cl?escA(cl)+' · ':'')+T('under','હેઠળ')+' '+(tl?escA(tl.name):'-')+'</div></div>'+flagBtnD+'</div>'+tiles+ttCard+bridgeTeacherResultCard(t)+taskCard+'<div class="card"><h3><i class="ti ti-history"></i> '+T('Daily diary entries','દૈનિક ડાયરી')+'</h3>'+list+'</div>';
+    return '<div class="dhead">'+backBtn+'<div class="ava g">'+initials(t.name)+'</div><div class="dh-person" style="flex:1"><div class="dh-name">'+escA(t.name)+(t.flagged?'<i class="ti ti-flag-filled" style="color:#dc2626;font-size:14px;margin-left:6px"></i>':'')+(t.gflag?'<i class="ti ti-flag-filled" style="color:#059669;font-size:14px;margin-left:6px"></i>':'')+'</div><div class="dh-sub">'+T('Teacher','શિક્ષક')+' · '+(cl?escA(cl)+' · ':'')+T('under','હેઠળ')+' '+(tl?escA(tl.name):'-')+'</div></div>'+flagBtnD+'</div>'+tiles+ttCard+bridgeTeacherResultCard(t)+taskCard+'<div class="card"><h3><i class="ti ti-history"></i> '+T('Daily diary entries','દૈનિક ડાયરી')+'</h3>'+list+'</div>';
   }
 /* ---- TL / Teacher detail ---- */
 function myToday(){return DB.entries.find(e=>e.userId===CUR&&e.date===selDate());}
