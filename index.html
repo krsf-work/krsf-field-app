@@ -93,8 +93,10 @@
   .card h3{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--brand-d);margin-bottom:12px;display:flex;align-items:center;gap:8px}
   .card h3 i{font-size:15px}
   .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:11px}
-  .tch-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
-  .tch-pair>.card{margin-bottom:0}
+  .tch-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:stretch}
+  .tch-pair>.card{margin-bottom:0;display:flex;flex-direction:column}
+  .tch-grow{flex:1;display:flex;align-items:flex-end;gap:3px;min-height:66px;max-height:190px}
+  .tch-foot{margin-top:auto;padding-top:8px}
   .tile{background:#f7f9fb;border:1px solid var(--line);border-radius:var(--r2);padding:12px 13px}
   .tile .v{font-size:22px;font-weight:800;line-height:1}
   .tile .l{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.25}
@@ -308,7 +310,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.0'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.1'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1239,6 +1241,18 @@ function teacherDayBlocks(t,school){
   while(out.length&&!out[out.length-1].subject)out.pop();
   return out;
 }
+function teacherDayHours(t,school){
+  var blocks=teacherDayBlocks(t,school),by={},order=[],total=0,breaks=0;
+  blocks.forEach(function(b){var m=b.slabs*30;
+    if(!b.subject){breaks+=m;return;}
+    total+=m;
+    if(!(b.subject in by)){by[b.subject]={subject:b.subject,std:b.std,minutes:0};order.push(b.subject);}
+    by[b.subject].minutes+=m;
+    /* a subject taught to more standards at different times keeps every one of them */
+    if(b.std&&by[b.subject].std.indexOf(b.std)<0)by[b.subject].std=(by[b.subject].std?by[b.subject].std+', ':'')+b.std;});
+  var subjects=order.map(function(k){return by[k];}).sort(function(a,b){return b.minutes-a.minutes;});
+  return {total:total,breaks:breaks,subjects:subjects};
+}
 function teacherStats(t){
   var es=DB.entries.filter(function(e){return e.userId===t.id;}).sort(function(a,b){return b.date.localeCompare(a.date);});
   var att=es.filter(function(e){return e.present!==''&&e.present!=null&&e.total!==''&&e.total!=null&&(+e.total)>0;});
@@ -1302,6 +1316,19 @@ function teacherDayStrip(t){
   }).filter(function(x){return !!x;}).join('');
   return out||('<div class="muted" style="font-size:12.5px">'+T('Timetable not set up yet.','સમયપત્રક હજુ સેટ નથી.')+'</div>');
 }
+/* How much of the day is actually spent teaching, and on what. The break is reported
+   separately rather than folded into the total - that distinction is the point. */
+function teacherHoursLine(t){
+  var schools=schoolsOf(t)||[];if(!schools.length)return '';
+  var rows=schools.map(function(sch){var x=teacherDayHours(t,sch);
+    if(!x.total)return '';
+    var parts=x.subjects.map(function(s){return '<span style="font-size:12px;padding:3px 9px;border-radius:999px;background:#f7f9fb;border:1px solid var(--line);color:var(--muted);white-space:nowrap">'+escA(s.subject)+(s.std?(' <span style="color:var(--soft)">'+escA(s.std)+'</span>'):'')+' <b style="color:var(--ink)">'+fmtMin(s.minutes)+'</b></span>';});
+    if(x.breaks)parts.push('<span style="font-size:12px;padding:3px 9px;border-radius:999px;background:#f2f4f7;color:var(--soft);white-space:nowrap">'+fmtMin(x.breaks)+' '+T('break','વિરામ')+'</span>');
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">'
+      +'<span style="font-size:13px;font-weight:700;color:var(--brand-d);white-space:nowrap">'+fmtMin(x.total)+' '+T('teaching','ભણાવવાનું')+(schools.length>1?(' · '+escA(sch)):'')+'</span>'
+      +parts.join('')+'</div>';}).join('');
+  return rows;
+}
 function teacherHero(t){
   var s=teacherStats(t);
   var TONE={a:{bg:'var(--gA-bg)',tx:'var(--gA-tx)'},b:{bg:'var(--gI-bg)',tx:'var(--gI-tx)'}};
@@ -1326,7 +1353,7 @@ function teacherHero(t){
   if(s.n)chips.push(tchChip('ti-history',s.n+' '+T('entries','નોંધ')));
   return '<div class="card">'
     +'<div style="font-size:11px;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:6px"><i class="ti ti-table" style="font-size:13px;vertical-align:-2px;margin-right:4px"></i>'+T('Timetable','સમયપત્રક')+'</div>'
-    +teacherDayStrip(t)+tiles
+    +teacherDayStrip(t)+teacherHoursLine(t)+tiles
     +(chips.length?('<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:13px;padding-top:11px;border-top:1px solid var(--line)">'+chips.join('')+'</div>'):'')
     +'</div>';
 }
@@ -1337,10 +1364,18 @@ function teacherAttendanceCard(t){
   var out='<div class="card"><div style="font-size:11px;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:6px"><i class="ti ti-users" style="font-size:13px;vertical-align:-2px;margin-right:4px"></i>'+T('Attendance','હાજરી')+'</div>';
   if(s.att.enough){
     var last=s.att.rows.slice(0,20).reverse();
-    out+='<div style="display:flex;align-items:flex-end;gap:3px;height:66px">'
+    out+='<div class="tch-grow">'
       +last.map(function(e){var p=(+e.present)/(+e.total);
         return '<div title="'+escA(fmtD(e.date)+' · '+e.present+'/'+e.total)+'" style="flex:1;min-width:4px;height:'+Math.max(6,Math.round(p*100))+'%;background:'+(p<0.5?'var(--gA)':'var(--gI)')+';border-radius:2px"></div>';}).join('')
-      +'</div><div style="font-size:11px;color:var(--soft);margin-top:6px">'+last.length+' '+T('school days · amber = under half the class','શાળા દિવસ · કેસરી = અડધાથી ઓછા')+(s.att.below?(' · '+s.att.below+' '+T('below half','અડધાથી ઓછા')):'')+'</div>';
+      +'</div>';
+    var worst=s.att.rows.slice().sort(function(a,b){return ((+a.present)/(+a.total))-((+b.present)/(+b.total));}).slice(0,3);
+    var best=s.att.rows.slice().sort(function(a,b){return ((+b.present)/(+b.total))-((+a.present)/(+a.total));})[0];
+    out+='<div style="margin-top:10px;font-size:12.5px">'
+      +'<div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line)"><span class="muted">'+T('Fullest day','સૌથી વધુ હાજરી')+'</span><span style="font-weight:700">'+escA(fmtD(best.date))+' · '+best.present+'/'+best.total+'</span></div>'
+      +worst.map(function(e){var p=(+e.present)/(+e.total);
+        return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line)"><span class="muted">'+escA(fmtD(e.date))+'</span><span style="font-weight:700;color:'+(p<0.5?'var(--gA-tx)':'var(--ink)')+'">'+e.present+'/'+e.total+'</span></div>';}).join('')
+      +'</div>';
+    out+='<div class="tch-foot" style="font-size:11px;color:var(--soft)">'+last.length+' '+T('school days · amber = under half the class','શાળા દિવસ · કેસરી = અડધાથી ઓછા')+(s.att.below?(' · '+s.att.below+' '+T('below half','અડધાથી ઓછા')):'')+'</div>';
   } else {
     out+='<div class="muted" style="font-size:12.5px">'+T('Attendance is not being filled in on most days, so there is nothing to chart.','મોટાભાગના દિવસે હાજરી ભરાતી નથી, તેથી ચાર્ટ નથી.')+'</div>'
       +'<div style="font-size:11px;color:var(--soft);margin-top:4px">'+s.att.rows.length+' '+T('of','માંથી')+' '+s.n+' '+T('entries carry a count','નોંધમાં સંખ્યા છે')+'</div>';
