@@ -306,7 +306,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='8.4'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='8.5'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1513,23 +1513,98 @@ function bridgeSlug(s){var t=String(s==null?'':s).trim();var out=t.toLowerCase()
      1500-byte limit and .doc() throws inside a swallowed try. Hash both cases. */
   if(!out||out.length>120)out='x'+bridgeHash(t);return out;}
 function bridgeId(cluster,school){return bridgeSlug(cluster)+'|'+bridgeSlug(school);}
-function parseBridgeCSV(text){var lines=String(text==null?'':text).split(/\r?\n/),hdr=-1,i;
-  for(i=0;i<lines.length;i++){if(!lines[i].trim())continue;if(bridgeNorm(csvSplit(lines[i])[0])==='cluster'){hdr=i;break;}}
+/* Columns are identified by NAME, not by counting. The export the field team produces carries
+   a school-id column the app has no use for, five measurement periods where the app stores
+   three, and its own names for the subjects (L2R/L2W/L2A) - counting columns made every one
+   of those fatal. A file already shaped like the template is mapped exactly as it was. */
+function bridgeIsHeadCol(n){return n.indexOf('cluster')>-1||n==='head'||n==='ngo';}
+function bridgeIsSchoolCol(n){return n==='schoolname'||n==='school';}
+function bridgeIsStudentCol(n){return n.indexOf('student')>-1;}
+function bridgeIsPeriodCol(n){return /start|mid|end|level|baseline/.test(n);}
+function bridgeColSubject(n){if(!n)return null;
+  if(n.indexOf('read')>-1||n==='l2r')return 'reading';
+  if(n.indexOf('writ')>-1||n==='l2w')return 'writing';
+  if(n.indexOf('math')>-1||n.indexOf('arith')>-1||n==='l2a'||n==='l2m')return 'maths';
+  return null;}
+/* Start, plus the two periods most recently REPORTED. "Reported" needs a floor: the field
+   export carries an August End column holding one value across 65 schools, and treating that
+   as "now" would leave every other school with no current level at all. Three columns or
+   fewer are mapped straight through, so the template behaves exactly as it always did. */
+function bridgePickPeriods(n,counts,rows){
+  if(n<=1)return {start:n?0:null,mid:null,end:null};
+  if(n===2)return {start:0,mid:null,end:1};
+  if(n===3)return {start:0,mid:1,end:2};
+  var floor=Math.max(1,Math.ceil((rows||0)*0.1)),live=[],i;
+  for(i=1;i<n;i++)if((counts[i]||0)>=floor)live.push(i);
+  if(!live.length)return {start:0,mid:null,end:null};
+  if(live.length===1)return {start:0,mid:null,end:live[0]};
+  return {start:0,mid:live[live.length-2],end:live[live.length-1]};}
+function parseBridgeCSV(text){
+  var lines=String(text==null?'':text).split(/\r?\n/),hdr=-1,i,j,head=null;
+  /* a header row is one that names BOTH a cluster and a school - "Cluster" alone was too
+     narrow, since the field export heads that column "clusterheadname" */
+  for(i=0;i<lines.length;i++){if(!lines[i].trim())continue;
+    var cn=csvSplit(lines[i]).map(bridgeNorm),hasH=false,hasS=false;
+    for(j=0;j<cn.length;j++){if(bridgeIsHeadCol(cn[j]))hasH=true;if(bridgeIsSchoolCol(cn[j]))hasS=true;}
+    if((hasH&&hasS)||cn[0]==='cluster'){hdr=i;head=cn;break;}}
   if(hdr===-1)throw new Error(T('Could not find the header row — the first column should be headed "Cluster".','હેડર હરોળ મળી નથી — પહેલા કૉલમનું નામ "Cluster" હોવું જોઈએ.'));
-  var rows=[],skipped=[],heads=[],seen={},total=0;
+  var raw=csvSplit(lines[hdr]);
+  /* the subject normally lives in a spanning row above the header, so each label is carried
+     rightwards until the next one begins */
+  var groups=[];
+  if(hdr>0){var gi=hdr-1;while(gi>=0&&!lines[gi].trim())gi--;
+    if(gi>=0){var g=csvSplit(lines[gi]).map(bridgeNorm),last=null;
+      for(j=0;j<Math.max(g.length,head.length);j++){var gs=bridgeColSubject(g[j]||'');if(gs)last=gs;groups[j]=last;}}}
+  var cHead=-1,cSchool=-1,cStud=-1,per={reading:[],writing:[],maths:[]},loose=[];
+  for(j=0;j<head.length;j++){var n=head[j];if(!n)continue;
+    if(cHead<0&&bridgeIsHeadCol(n)){cHead=j;continue;}
+    if(cSchool<0&&bridgeIsSchoolCol(n)){cSchool=j;continue;}
+    if(cStud<0&&bridgeIsStudentCol(n)){cStud=j;continue;}
+    if(!bridgeIsPeriodCol(n))continue;
+    var sub=bridgeColSubject(n)||groups[j]||null;
+    if(sub)per[sub].push({col:j,label:raw[j]||''});else loose.push({col:j,label:raw[j]||''});}
+  /* no subject named anywhere: fall back to three equal blocks, which is the old layout */
+  if(!per.reading.length&&!per.writing.length&&!per.maths.length&&loose.length>=3){
+    var blk=Math.floor(loose.length/3);
+    per.reading=loose.slice(0,blk);per.writing=loose.slice(blk,2*blk);per.maths=loose.slice(2*blk,3*blk);}
+  /* an older file names only its first column, so head/school/students sit where they
+     always sat and the nine level columns follow in three blocks of three */
+  if(cSchool<0){cHead=0;cSchool=1;cStud=2;}
+  if(!per.reading.length&&!per.writing.length&&!per.maths.length&&!loose.length){
+    var mk=function(a,b){var o=[],q;for(q=a;q<=b;q++)o.push({col:q,label:raw[q]||''});return o;};
+    per.reading=mk(3,5);per.writing=mk(6,8);per.maths=mk(9,11);}
+  var SUBS=['reading','writing','maths'];
+  var rows=[],skipped=[],heads=[],seen={},total=0,data=[];
   for(i=hdr+1;i<lines.length;i++){if(!lines[i].trim())continue;
-    var c=csvSplit(lines[i]),head=(c[0]||'').trim(),school=(c[1]||'').trim();
+    var c=csvSplit(lines[i]),hd=(cHead>=0?(c[cHead]||''):'').trim(),school=(cSchool>=0?(c[cSchool]||''):'').trim();
     /* a concatenated per-region export repeats its header block; without this a phantom
        school called "School Name" under a phantom head called "Cluster" gets ingested */
-    if(bridgeNorm(head)==='cluster'&&bridgeNorm(school)==='schoolname'){skipped.push({row:i+1,reason:'repeated header row'});continue;}
+    if(bridgeIsHeadCol(bridgeNorm(hd))&&bridgeIsSchoolCol(bridgeNorm(school))){skipped.push({row:i+1,reason:'repeated header row'});continue;}
     if(!school){skipped.push({row:i+1,reason:'no school name'});continue;}
     total++;
-    if(!head){skipped.push({row:i+1,reason:'no cluster for '+school});continue;}
-    var num=function(k){var v=(c[k]||'').trim().replace(/,/g,'');if(v==='')return null;var n=parseFloat(v);return (isNaN(n)||n<0)?null:n;};
-    var st=parseInt((c[2]||'').trim().replace(/[\s,]/g,''),10);if(isNaN(st)||st<0)st=0;
-    rows.push({head:head,school:school,students:st,reading:{start:num(3),mid:num(4),end:num(5)},writing:{start:num(6),mid:num(7),end:num(8)},maths:{start:num(9),mid:num(10),end:num(11)}});
-    if(!seen[head]){seen[head]=1;heads.push(head);}}
-  return {rows:rows,heads:heads,skipped:skipped,total:total};}
+    if(!hd){skipped.push({row:i+1,reason:'no cluster for '+school});continue;}
+    data.push({head:hd,school:school,cells:c});
+    if(!seen[hd]){seen[hd]=1;heads.push(hd);}}
+  /* how many schools actually carry a figure in each period, counted per subject: L2A is one
+     column shorter than the other two, and picking globally would shift its figures */
+  var pick={},periods={};
+  SUBS.forEach(function(k){var counts=[];
+    per[k].forEach(function(p,idx){var cnt=0;
+      data.forEach(function(d){if(String(d.cells[p.col]==null?'':d.cells[p.col]).trim()!=='')cnt++;});
+      counts[idx]=cnt;});
+    pick[k]=bridgePickPeriods(per[k].length,counts,data.length);
+    periods[k]={start:null,mid:null,end:null};
+    ['start','mid','end'].forEach(function(slot){var ix=pick[k][slot];
+      periods[k][slot]=(ix==null||!per[k][ix])?null:(per[k][ix].label||null);});});
+  data.forEach(function(d){var c=d.cells;
+    var num=function(col){if(col==null)return null;var v=String(c[col]==null?'':c[col]).trim().replace(/,/g,'');if(v==='')return null;var x=parseFloat(v);return (isNaN(x)||x<0)?null:x;};
+    var slot=function(k,s){var ix=pick[k][s];if(ix==null||!per[k][ix])return null;return num(per[k][ix].col);};
+    var st=parseInt(String(cStud>=0&&c[cStud]!=null?c[cStud]:'').trim().replace(/[\s,]/g,''),10);if(isNaN(st)||st<0)st=0;
+    rows.push({head:d.head,school:d.school,students:st,
+      reading:{start:slot('reading','start'),mid:slot('reading','mid'),end:slot('reading','end')},
+      writing:{start:slot('writing','start'),mid:slot('writing','mid'),end:slot('writing','end')},
+      maths:{start:slot('maths','start'),mid:slot('maths','mid'),end:slot('maths','end')}});});
+  return {rows:rows,heads:heads,skipped:skipped,total:total,periods:periods};}
 /* ---- bridge course: matching (people exact-only, schools fuzzy) ---- */
 function bridgeResolveHead(head){var h=(head==null?'':String(head)).trim();if(!h)return null;var k=bridgeNorm(h),i;
   /* recognising a code is broader than offering it: a retired NGO, or one that predates
@@ -1554,7 +1629,7 @@ function bridgeMatchSchools(rows){var cands=bridgeSchoolCandidates(),map=DB.brid
 /* ---- bridge course: review state + the only write path ---- */
 function bridgeBuildReview(text){var p=parseBridgeCSV(text),headMap={},headVia={};
   p.heads.forEach(function(h){var r=bridgeResolveHead(h);if(r){headMap[h]=r.cluster;headVia[h]=r.via;}});
-  return {rows:p.rows,heads:p.heads,matches:bridgeMatchSchools(p.rows),headMap:headMap,headVia:headVia,linked:{},skipped:p.skipped,total:p.total};}
+  return {rows:p.rows,heads:p.heads,matches:bridgeMatchSchools(p.rows),headMap:headMap,headVia:headVia,linked:{},skipped:p.skipped,total:p.total,periods:p.periods};}
 function bridgeSetHead(head,cluster){if(!BRIDGE_REVIEW)return;cluster=(cluster==null?'':String(cluster)).trim();if(!cluster||cluster.length>24)return;BRIDGE_REVIEW.headMap[head]=cluster;BRIDGE_REVIEW.headVia[head]='manual';renderDetail();}
 function bridgeNewCluster(head){if(!BRIDGE_REVIEW)return;var v=(prompt(T('New NGO / cluster code (e.g. GST)','નવો NGO / ક્લસ્ટર કોડ (દા.ત. GST)'))||'').trim();if(!v)return;
   if(v.length>24){toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return;}
@@ -1601,6 +1676,10 @@ function bridgeAgg(scope){var list=(DB.bridgeMarks||[]).filter(function(m){retur
     declines:rows.filter(function(r){return r.decline;}),missing:noEnd,flat:rows.filter(function(r){return r.flat;}),
     clusters:Object.keys(cl)};}
 /* ---- bridge course: review screen ---- */
+function bridgePeriodNote(P){if(!P)return '';
+  var rows=['reading','writing','maths'].map(function(k){var p=P[k]||{};
+    return '<div style="display:flex;gap:8px;font-size:12.5px;padding:2px 0"><span style="width:46px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span><span style="flex:1">'+escA(p.start||'—')+' → '+escA(p.mid||'—')+' → '+escA(p.end||'—')+'</span></div>';}).join('');
+  return '<div class="card"><h3><i class="ti ti-table"></i> '+T('Columns used from your file','તમારી ફાઇલમાંથી વપરાયેલ કૉલમ')+'</h3><div class="muted" style="font-size:12.5px;margin-bottom:4px">'+T('starting point → earlier → now','શરૂઆત → અગાઉ → હાલ')+'</div>'+rows+'</div>';}
 function bridgeReviewView(){var R=BRIDGE_REVIEW;if(!R)return '';
   var heads=R.heads.map(function(h){var cur=R.headMap[h],via=(R.headVia||{})[h];
     var how=!cur?'':(via==='tl'?T('matched to team leader','ટીમ લીડર સાથે મેળ'):(via==='saved'?T('remembered from last time','ગયા વખતથી યાદ'):(via==='manual'?T('you chose this','તમે પસંદ કર્યું'):T('typed in the file','ફાઇલમાં લખેલ'))));
@@ -1616,6 +1695,7 @@ function bridgeReviewView(){var R=BRIDGE_REVIEW;if(!R)return '';
   var saveBtn='<button class="btn block'+(blocked?' bridge-save-off':'')+'"'+(blocked?' disabled style="opacity:.5"':'')+' onclick="bridgeConfirmSave()">'+T('Save','સાચવો')+' '+R.rows.length+' '+T('schools','શાળા')+'</button>';
   var skipNote=R.skipped.length?('<div class="muted" style="font-size:12px;margin-top:6px">'+R.skipped.length+' '+T('rows skipped','હરોળ છોડી')+'</div>'):'';
   return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Check before saving','સાચવતા પહેલા તપાસો')+'</div><div class="dh-sub">'+R.rows.length+' '+T('schools in this file','શાળા આ ફાઇલમાં')+'</div></div></div>'
+    +bridgePeriodNote(R.periods)
     +(heads?('<div class="card"><h3><i class="ti ti-users"></i> '+T('Cluster heads','ક્લસ્ટર હેડ')+'</h3>'+heads+'</div>'):'')
     +(closes?('<div class="card"><h3><i class="ti ti-alert-triangle"></i> '+T('Check these school names','આ શાળાનાં નામ તપાસો')+'</h3>'+closes+'</div>'):'')
     +newBlock
