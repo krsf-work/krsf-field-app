@@ -313,7 +313,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.3'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.4'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -587,7 +587,7 @@ function doLogin(){const ph=(document.getElementById('lg_phone').value||'').trim
 function startSession(id){CUR=id;BRIDGE_REVIEW=null;BRIDGE_SEL=null;BRIDGE_LINK=null;const r=u(id).role;LANG=(r==='Teacher')?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');var _lb=document.getElementById('langBtn');if(_lb)_lb.textContent=(LANG==='en'?'ગુજરાતી':'English');SEL=r==='PM'?'overview':r==='Teacher'?'home':'diary';SELDATE=null;SETUP_TT=null;buildUserSel();const el=document.getElementById('identName');if(el){const us=u(CUR);el.textContent=us?us.name:'';}renderAll();if(FS){loadSharedLogs();loadSharedTasks();loadSharedSchools();loadSharedSetup();loadSharedUsers();loadSharedMarks();loadSharedBridgeMarks();loadSharedNgos();}}
 function logout(){if(AUTH)AUTH.signOut();CUR=null;BRIDGE_REVIEW=null;BRIDGE_SEL=null;BRIDGE_LINK=null;showLogin();}
 var TEACH_BACK='teachers';
-function selectItem(k,extra){if(DIRTY&&SEL!==k&&!confirm(T('You have unsaved changes. Leave without saving?','સાચવ્યા વગરના ફેરફાર છે. સાચવ્યા વગર જવું?')))return;DIRTY=false;SETUP_TT=null;if(u(k)&&u(k).role==='Teacher'&&!(u(SEL)&&u(SEL).role==='Teacher'))TEACH_BACK=SEL||'teachers';if(k==='reports'&&SEL!=='reports'){REPORT_LEVEL=null;REPORT_ID=null;}SEL=k;if(k==='teacherLogs'&&extra)SELTEACHER=extra;if(k==='tlLogs'&&extra)SELTL=extra;document.getElementById('detail').scrollTop=0;renderAll();}
+function selectItem(k,extra){if(DIRTY&&SEL!==k&&!confirm(T('You have unsaved changes. Leave without saving?','સાચવ્યા વગરના ફેરફાર છે. સાચવ્યા વગર જવું?')))return;DIRTY=false;SETUP_TT=null;if(u(k)&&u(k).role==='Teacher'&&!(u(SEL)&&u(SEL).role==='Teacher'))TEACH_BACK=SEL||'teachers';if(k==='reports'&&SEL!=='reports'){REPORT_LEVEL=null;REPORT_ID=null;if(scopeIsTL())REPORT_MODE='bridge';}SEL=k;if(k==='teacherLogs'&&extra)SELTEACHER=extra;if(k==='tlLogs'&&extra)SELTL=extra;document.getElementById('detail').scrollTop=0;renderAll();}
 
 /* ----- MASTER ----- */
 function renderMaster(){
@@ -642,9 +642,10 @@ function masterNav(role){
   let openTk=0,openAc=0;
   DB.tasks.filter(t=>t.tlid===CUR&&t.status==='open').forEach(()=>openTk++);
   DB.entries.filter(x=>x.userId===CUR).forEach(x=>(x.actions||[]).forEach(a=>{if(a.status==='open')openAc++;}));
-  const items=role==='Teacher'?[['home','ti-home',T('Home','હોમ'),''],['diary','ti-clipboard-text',T('Daily diary','દૈનિક ડાયરી'),''],['tasks','ti-checklist',T('Tasks','કાર્ય'),openTk]]:[['diary','ti-clipboard-text',T('Punch & Diary','પંચ અને ડાયરી'),'']];
+  const items=role==='Teacher'?[['home','ti-home',T('Home','હોમ'),''],['diary','ti-clipboard-text',T('Daily diary','દૈનિક ડાયરી'),''],['tasks','ti-checklist',T('Tasks','કાર્ય'),openTk]]:(role==='TL'?[['dash','ti-layout-dashboard',T('Dashboard','ડેશબોર્ડ'),''],['diary','ti-clipboard-text',T('Punch & Diary','પંચ અને ડાયરી'),'']]:[['diary','ti-clipboard-text',T('Punch & Diary','પંચ અને ડાયરી'),'']]);
   if(role==='TL'){items.push(['tasks','ti-checklist',T('Tasks from PM','PM તરફથી કાર્ય'),openTk]);
     items.push(['teachers','ti-users',T('My teachers','મારા શિક્ષકો'),'']);
+    items.push(['reports','ti-file-spreadsheet',T('Reports','રિપોર્ટ'),'']);
     var _peers=peerTLs(CUR);
     if(_peers.length){
       if(_peers.length===1){var _p=tlInfo(_peers[0]);items.push([_peers[0],'ti-user-star',_p?_p.name:'',_p?(_p.aOver+_p.tkOver):0]);}
@@ -1080,6 +1081,85 @@ function detailOverview(){
     </div>`;
 }
 
+/* ---- Team Leader dashboard ----
+   The PM's Overview is a list of TEAM LEADERS, so a TL cannot reuse it: their dashboard has to
+   be a list of TEACHERS. Every figure below is read through scopeTeachers/scopeMarks, so a TL
+   sees their own team and nothing else. The table deliberately mirrors the PM's NGO scoreboard
+   - same columns, same weakest-first order - one row per teacher instead of one per NGO. */
+function tlDashStrip(){
+  var ref=overviewRefDay();
+  var tch=scopeTeachers(),ids=tch.map(function(x){return x.id;});
+  var loggedRef=tch.filter(function(t){return DB.entries.some(function(e){return e.userId===t.id&&e.date===ref&&hasDiary(e);});}).length;
+  var flags=tch.filter(function(t){return t.flagged;}).length;
+  var over=DB.tasks.filter(function(k){return k.status==='open'&&overdue(k.due,k.status)&&ids.indexOf(k.tlid)>-1;}).length;
+  var marks=scopeMarks(),noLatest=marks.filter(bridgeNoLatest);
+  var stu=noLatest.reduce(function(a,m){return a+(m.students||0);},0);
+  var st=marks.length?bridgePortfolioStats(marks):null;
+  var box=function(lab,val,sub,cls,click){
+    return '<div class="ov-m'+(cls==='r'?' alert':'')+'"'+(click?(' style="cursor:pointer" onclick="'+click+'"'):'')+'><div class="l">'+lab+'</div><div class="v"'+(cls==='r'?' style="color:var(--gR-tx)"':'')+'>'+val+'</div><div class="s '+(cls||'')+'">'+sub+'</div></div>';};
+  var need=flags+over;
+  return '<div class="ov-strip">'
+    +box(T('Teachers logged','શિક્ષક લોગ'),loggedRef+'/'+tch.length,(ref===realToday()?T('today','આજે'):fmtD(ref)),(tch.length&&loggedRef/tch.length<0.6)?'r':'a','selectItem(\'teachers\')')
+    +box(T('Needs action','ધ્યાન જરૂરી'),need,flags+' '+T('flags','ફ્લેગ')+' · '+over+' '+T('overdue','મુદત વીતી'),need?'r':'g','selectItem(\'teachers\')')
+    +(marks.length?box(T('Not measured','માપ્યું નથી'),noLatest.length+'/'+marks.length,stu+' '+T('students','વિદ્યાર્થી'),noLatest.length?'r':'g','selectItem(\'reports\')'):'')
+    +(st&&st.avgLevel!=null?box(T('Learning level','શીખવાનું સ્તર'),bridgeF2(st.avgLevel)+'<span style="font-size:12px;font-weight:600;color:var(--muted)">/'+BRIDGE_MAX+'</span>',(st.avgGain==null?T('nothing measured twice','બે વાર માપ્યું નથી'):((st.avgGain>0?'+':'')+bridgeF2(st.avgGain)+' '+T('where measured','જ્યાં માપ્યું'))),(st.avgGain!=null&&st.avgGain>0)?'g':'a','selectItem(\'reports\')'):'')
+    +'</div>';}
+function tlDashTeachers(){
+  var ref=overviewRefDay(),win=overviewWorkdaysBack(ref,7);
+  var tch=scopeTeachers();
+  if(!tch.length)return '<div class="card"><h3><i class="ti ti-users"></i> '+T('My teachers','મારા શિક્ષકો')+'</h3><div class="empty">'+T('No teachers assigned to you yet.','તમને હજુ કોઈ શિક્ષક સોંપાયા નથી.')+'</div></div>';
+  var marks=scopeMarks();
+  var loggedOn=function(t,day){return DB.entries.some(function(e){return e.userId===t.id&&e.date===day&&hasDiary(e);});};
+  var pct7=function(t){if(!win.length)return null;var hit=0;win.forEach(function(d){if(loggedOn(t,d))hit++;});return Math.round(hit/win.length*100);};
+  /* Children present out of children on roll, from the daily diary. Clamped for the same
+     reason the NGO scoreboard clamps: nothing stops a bad figure arriving from the server. */
+  var att=function(t){var pr=0,tot=0;DB.entries.forEach(function(e){if(e.userId===t.id&&win.indexOf(e.date)>-1&&e.present!=null&&e.present!==''&&e.total){pr+=(+e.present);tot+=(+e.total);}});return tot?Math.min(100,Math.round(pr/tot*100)):null;};
+  var subj=function(ms,k){var v=[];ms.forEach(function(m){var n=bridgeNowLevel(m[k]);if(n!=null)v.push(n);});return v.length?(v.reduce(function(a,b){return a+b;},0)/v.length):null;};
+  var band=function(p){return p>=85?'background:var(--gG-bg);color:var(--gG-tx)':(p>=60?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gR-bg);color:var(--gR-tx)');};
+  var pctCell=function(pv){if(pv==null)return '<td><span class="muted">—</span></td>';return '<td><span class="pf-cell" style="'+band(pv)+'">'+pv+'%</span></td>';};
+  var lvl=function(v){return '<td><span class="pf-cell" style="'+bridgeLvlTint(v)+'">'+(v==null?'—':bridgeF2(v))+'</span></td>';};
+  var data=tch.map(function(t){return {t:t,ms:bridgeForTeacher(t,marks)};});
+  var lvlOf=function(d){var v=d.ms.map(bridgeAvgLevel).filter(function(x){return x!=null;});return v.length?(v.reduce(function(a,b){return a+b;},0)/v.length):null;};
+  /* Weakest learning level first, exactly as the NGO scoreboard sorts. A teacher with no
+     bridge figures at all sorts last rather than reading as the weakest. */
+  data.sort(function(a,b){var x=lvlOf(a),y=lvlOf(b);return (x==null?99:x)-(y==null?99:y);});
+  var body=data.map(function(d){var t=d.t,ms=d.ms;
+    var stu=ms.reduce(function(a,m){return a+(m.students||0);},0);
+    var yes=loggedOn(t,ref);
+    var todayCell='<td><span class="pf-cell" style="'+(yes?'background:var(--gG-bg);color:var(--gG-tx)':'background:var(--gR-bg);color:var(--gR-tx)')+'">'+(yes?T('Yes','હા'):T('No','ના'))+'</span></td>';
+    return '<tr class="tap" onclick="selectItem(\''+t.id+'\')"><td>'+escA(t.name)+(t.flagged?' <span class="pill r" style="font-size:9px;padding:1px 5px">!</span>':'')+'</td>'
+      +'<td>'+(stu||'<span class="muted">—</span>')+'</td>'+todayCell+pctCell(pct7(t))+pctCell(att(t))
+      +lvl(subj(ms,'reading'))+lvl(subj(ms,'writing'))+lvl(subj(ms,'maths'))+'</tr>';}).join('');
+  var hol=(ref!==realToday())?('<div class="muted" style="font-size:11.5px;margin-bottom:7px;background:var(--brand-tint);border:1px solid #f6df91;border-radius:8px;padding:7px 10px;color:var(--brand-d);font-weight:700">'+T('Today is a holiday — showing the last working day,','આજે રજા છે — છેલ્લો કામકાજનો દિવસ:')+' '+fmtD(ref)+'</div>'):'';
+  return '<div class="card"><h3><i class="ti ti-users"></i> '+T('My teachers','મારા શિક્ષકો')+'</h3>'+hol
+    +'<div class="tw"><table class="pf-mx"><tr><th>'+T('Teacher','શિક્ષક')+'</th><th>'+T('Students','વિદ્યાર્થી')+'</th><th>'+T('Logged','લોગ')+'</th><th>'+T('7-day','7 દિવસ')+'</th><th>'+T('Attendance','હાજરી')+'</th><th>L2R</th><th>L2W</th><th>Math</th></tr>'+body+'</table></div>'
+    +'<div class="muted" style="font-size:11px;margin-top:8px">'+T('Sorted by learning level, weakest first. Tap a row to open that teacher. Levels are out of 10. Attendance is children present out of children on roll, from the daily diary, over the last 7 working days.','સ્તર પ્રમાણે, નબળા પહેલા. શિક્ષક ખોલવા હરોળ દબાવો. સ્તર 10 માંથી. હાજરી = ડાયરી માંથી, છેલ્લા 7 કામકાજના દિવસ.')+'</div></div>';}
+function tlDashOpen(){
+  var ids=scopeTeachers().map(function(x){return x.id;});
+  var rows=DB.tasks.filter(function(k){return k.status==='open'&&ids.indexOf(k.tlid)>-1;}).map(function(k){
+    return {id:k.tlid,name:((u(k.tlid)||{}).name||''),text:k.text,due:k.due,over:overdue(k.due,k.status)};});
+  rows.sort(function(a,b){return (b.over-a.over)||String(a.due||'').localeCompare(String(b.due||''));});
+  var table=rows.length?('<table><thead><tr><th>'+T('Teacher','શિક્ષક')+'</th><th>'+T('Item','આઇટમ')+'</th><th>'+T('Due','મુદત')+'</th></tr></thead><tbody>'+rows.map(function(r){
+    return '<tr><td><a style="color:var(--brand-d);cursor:pointer;font-weight:600" onclick="selectItem(\''+r.id+'\')">'+escA(r.name)+'</a></td><td>'+escA(r.text||'')+'</td><td>'+(r.over?('<span class="pill r">'+T('Overdue','મુદત વીતી')+' '+escA(r.due||'')+'</span>'):escA(r.due||''))+'</td></tr>';
+  }).join('')+'</tbody></table>'):('<div class="empty">'+T('Nothing open with your teachers.','તમારા શિક્ષકો પાસે કંઈ બાકી નથી.')+'</div>');
+  return '<div class="card"><h3><i class="ti ti-clipboard-list"></i> '+T('Open tasks with my teachers','મારા શિક્ષકોના ખુલ્લા કાર્ય')+' · '+rows.length+'</h3>'+table+'</div>';}
+/* On a phone the sidebar is hidden and the bottom bar holds five tabs, so anything that lost
+   its tab has to be reachable from here or it becomes unreachable on a phone entirely. */
+function tlDashShortcuts(){
+  var out=[],peers=peerTLs(CUR);
+  var row=function(icon,name,sub,go){
+    return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px" onclick="'+go+'"><div class="ava n" style="background:#fdf0d5;color:#a16207;border-radius:10px;font-size:18px"><i class="ti '+icon+'"></i></div><div class="mr-mid"><div class="mr-name">'+name+'</div><div class="mr-sub">'+sub+'</div></div><i class="ti ti-chevron-right muted" style="font-size:14px"></i></div>';};
+  if(peers.length){
+    var pOpen=DB.tasks.filter(function(t){return t.assignedBy===CUR&&t.status==='open';}).length;
+    if(peers.length===1){var p=u(peers[0]);if(p)out.push(row('ti-user-star',escA(p.name),T('Team leader I monitor','હું મોનિટર કરું છું તે TL'),"selectItem('"+peers[0]+"')"));}
+    else out.push(row('ti-user-star',T('Team Leaders I monitor','હું મોનિટર કરું છું તે TL'),peers.length+' '+T('team leaders','ટીમ લીડર'),"selectItem('home')"));
+    out.push(row('ti-send',T('Tasks assigned','સોંપેલ કાર્ય'),pOpen+' '+T('open','ઓપન'),"selectItem('assigned')"));}
+  out.push(row('ti-history',T('My logs','મારા લોગ'),T('Everything I have filled in','મેં ભરેલું બધું'),"selectItem('logs')"));
+  return '<div class="card"><h3><i class="ti ti-list-check"></i> '+T('More','વધુ')+'</h3>'+out.join('')+'</div>';}
+function detailTLDash(){
+  var me=u(CUR)||{},n=scopeTeachers().length;
+  return '<div class="dhead"><div><div class="dh-name">'+T('Dashboard','ડેશબોર્ડ')+'</div><div class="dh-sub">'+escA(me.name||'')+' · '+n+' '+(n===1?T('teacher','શિક્ષક'):T('teachers','શિક્ષકો'))+' · '+T('last 7 working days','છેલ્લા 7 કામકાજના દિવસ')+' · v'+APP_VERSION+'</div></div></div>'
+    +tlDashStrip()+tlDashTeachers()+tlDashOpen()+overviewActivity()+overviewChallenges()+tlDashShortcuts();}
 /* ---- PM per-TL detail ---- */
 function detailTL(tlid,peerMode){
   const s=tlInfo(tlid);if(!s)return '';
@@ -1474,11 +1554,37 @@ function coTLs(tlid){var t=u(tlid);var set={};set[tlid]=1;(t&&t.seesAlso||[]).fo
    logIdsForRole excludes their ids, so their diaries are never even fetched - while the PM's
    scoreboard, which does filter, reported a different team size for the same team. */
 function tlSees(t,tlid){return t&&t.role==='Teacher'&&t.active!==false&&coTLs(tlid).indexOf(t.tl)>-1;}
+/* ---- what the signed-in person is allowed to see on Dashboard and Reports ----
+   The PM sees the whole programme, so every one of these returns the unfiltered set and the
+   PM's screens are byte-identical to before. A Team Leader sees the teachers they manage -
+   exactly the set the My teachers screen has always shown, their own plus any seesAlso - and
+   the bridge course schools those teachers run.
+   A bridge row also counts as theirs when the row's cluster head IS them. The import splits
+   the CSV's clusterheadname column in two - `cluster` holds the resolved NGO code and `head`
+   holds the person - so it is `head` that a Team Leader's name can match, never `cluster`.
+   Without that clause a TL would lose every unlinked school, and most schools in the current
+   upload are unlinked. */
+function scopeIsTL(){var me=u(CUR);return !!(me&&me.role==='TL');}
+function scopeTeachers(){
+  if(!scopeIsTL())return DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+  return DB.users.filter(function(x){return tlSees(x,CUR);});}
+function scopeTLs(){
+  if(!scopeIsTL())return DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
+  var ids=coTLs(CUR);
+  return DB.users.filter(function(x){return x.role==='TL'&&x.active!==false&&ids.indexOf(x.id)>-1;});}
+function scopeMarks(){
+  var all=(DB.bridgeMarks||[]);
+  if(!scopeIsTL())return all;
+  var tch=scopeTeachers(),mine=bridgeNorm((u(CUR)||{}).name||'');
+  return all.filter(function(m){
+    if(!m)return false;
+    if(mine&&bridgeNorm(m.head||'')===mine)return true;
+    return tch.some(function(t){return bridgeOwnsSchool(t,m);});});}
 function schoolsForTL(tlid){var set={};DB.users.forEach(function(t){if(t.role==='Teacher'&&tlSees(t,tlid)){var sc=(t.setupSchools&&t.setupSchools.length)?t.setupSchools:(t.setupSchool?[t.setupSchool]:[]);sc.forEach(function(s){if(s)set[s]=1;});}});return Object.keys(set).sort();}function peerTLs(tlid){var t=u(tlid);return (t&&t.monitorsTLs)||[];}
-function overviewActivity(){var es=DB.entries.filter(function(e){return e.role==='Teacher'&&hasDiary(e)&&!(u(e.userId)&&u(e.userId).active===false);});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,15);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';var att=(e.present!=null&&e.present!==''&&e.total!=null&&e.total!=='')?(' · '+e.present+'/'+e.total):'';var work=escN(e.summary||'');var chal=(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?('<div style="color:#b3261e;font-size:12px;margin-top:3px">⚠ '+escN(e.challenge)+'</div>'):'';return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+'</span></div><div class="muted" style="font-size:12.5px">'+sch+att+'</div>'+(work?('<div style="font-size:13px;margin-top:2px">'+work+'</div>'):'')+chal+'</div>';}).join(''):('<div class="empty">'+T('No teacher activity yet','હજુ કોઈ પ્રવૃત્તિ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-activity"></i> '+T('Recent activity','તાજેતરની પ્રવૃત્તિ')+'</h3>'+rows+'</div>';}function overviewChallenges(){var es=DB.entries.filter(function(e){return e.role==='Teacher'&&e.challenge&&String(e.challenge).trim()&&e.challenge!=='None.'&&e.challenge!=='None';});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,20);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';return '<div class="mrow" style="border:1px solid var(--line);border-left:3px solid #b3261e;margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+(sch?(' · '+escA(sch)):'')+'</span></div><div style="font-size:13px;margin-top:2px">'+escA(e.challenge)+'</div></div>';}).join(''):('<div class="empty">'+T('No challenges reported','કોઈ સમસ્યા નોંધાઈ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-flag"></i> '+T('Challenges from teachers','શિક્ષકોની સમસ્યાઓ')+'</h3>'+rows+'</div>';}function clusterOf(t){if(!t)return '';var MAP={tl_nilesh:'Dahod',tl_yogesh:'SVT',tl_falguni:'SVT',tl_bhargav:'KCT',tl_martin:'JCT',tl_jignesh:'JCT'};if(t.role==='TL')return t.cluster||MAP[t.id]||'';var tl=u(t.tl);return (tl&&tl.cluster)||MAP[t.tl]||'';}function clTag(x){var c=x?clusterOf(x):'';return c?' <span class="pill b" style="font-size:10px;padding:1px 6px;vertical-align:middle">'+escA(c)+'</span>':'';}
-function teachersInScope(level,id){var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});if(level==='cluster')teachers=teachers.filter(function(t){return clusterOf(t)===id;});if(level==='tl')teachers=teachers.filter(function(t){return t.tl===id;});return teachers;}
-function tlsInScope(clusterId){return DB.users.filter(function(x){return x.role==='TL'&&x.active!==false&&clusterOf(x)===clusterId;});}
-function clustersInScope(){var set={};DB.users.forEach(function(x){if((x.role==='TL'||x.role==='Teacher')&&x.active!==false){var c=clusterOf(x);if(c)set[c]=1;}});return Object.keys(set).sort();}
+function overviewActivity(){var _sc=scopeIsTL()?scopeTeachers().map(function(x){return x.id;}):null;var es=DB.entries.filter(function(e){return e.role==='Teacher'&&hasDiary(e)&&!(u(e.userId)&&u(e.userId).active===false)&&(!_sc||_sc.indexOf(e.userId)>-1);});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,15);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';var att=(e.present!=null&&e.present!==''&&e.total!=null&&e.total!=='')?(' · '+e.present+'/'+e.total):'';var work=escN(e.summary||'');var chal=(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?('<div style="color:#b3261e;font-size:12px;margin-top:3px">⚠ '+escN(e.challenge)+'</div>'):'';return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+'</span></div><div class="muted" style="font-size:12.5px">'+sch+att+'</div>'+(work?('<div style="font-size:13px;margin-top:2px">'+work+'</div>'):'')+chal+'</div>';}).join(''):('<div class="empty">'+T('No teacher activity yet','હજુ કોઈ પ્રવૃત્તિ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-activity"></i> '+T('Recent activity','તાજેતરની પ્રવૃત્તિ')+'</h3>'+rows+'</div>';}function overviewChallenges(){var _sc=scopeIsTL()?scopeTeachers().map(function(x){return x.id;}):null;var es=DB.entries.filter(function(e){return e.role==='Teacher'&&e.challenge&&String(e.challenge).trim()&&e.challenge!=='None.'&&e.challenge!=='None'&&(!_sc||_sc.indexOf(e.userId)>-1);});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,20);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';return '<div class="mrow" style="border:1px solid var(--line);border-left:3px solid #b3261e;margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+(sch?(' · '+escA(sch)):'')+'</span></div><div style="font-size:13px;margin-top:2px">'+escA(e.challenge)+'</div></div>';}).join(''):('<div class="empty">'+T('No challenges reported','કોઈ સમસ્યા નોંધાઈ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-flag"></i> '+T('Challenges from teachers','શિક્ષકોની સમસ્યાઓ')+'</h3>'+rows+'</div>';}function clusterOf(t){if(!t)return '';var MAP={tl_nilesh:'Dahod',tl_yogesh:'SVT',tl_falguni:'SVT',tl_bhargav:'KCT',tl_martin:'JCT',tl_jignesh:'JCT'};if(t.role==='TL')return t.cluster||MAP[t.id]||'';var tl=u(t.tl);return (tl&&tl.cluster)||MAP[t.tl]||'';}function clTag(x){var c=x?clusterOf(x):'';return c?' <span class="pill b" style="font-size:10px;padding:1px 6px;vertical-align:middle">'+escA(c)+'</span>':'';}
+function teachersInScope(level,id){var teachers=scopeTeachers();if(level==='cluster')teachers=teachers.filter(function(t){return clusterOf(t)===id;});if(level==='tl')teachers=teachers.filter(function(t){return t.tl===id;});return teachers;}
+function tlsInScope(clusterId){return scopeTLs().filter(function(x){return clusterOf(x)===clusterId;});}
+function clustersInScope(){var set={};scopeTeachers().concat(scopeTLs()).forEach(function(x){var c=clusterOf(x);if(c)set[c]=1;});return Object.keys(set).sort();}
 function marksAgg(teacherIds){var rows=DB.marks.filter(function(m){return teacherIds.indexOf(m.teacherId)>-1;});var bySub={};rows.forEach(function(m){var k=m.teacherId+'|'+m.subject;(bySub[k]=bySub[k]||[]).push(m);});var scores=[],deltas=[];Object.keys(bySub).forEach(function(k){var arr=bySub[k].slice().sort(function(a,b){return a.examDate.localeCompare(b.examDate);});var last=arr[arr.length-1],prev=arr.length>1?arr[arr.length-2]:null;scores.push(last.score);if(prev)deltas.push(last.score-prev.score);});var n=rows.length;var avg=scores.length?scores.reduce(function(a,b){return a+b;},0)/scores.length:0;var delta=deltas.length?deltas.reduce(function(a,b){return a+b;},0)/deltas.length:0;var flag=!deltas.length?'green':delta<0?'red':delta<5?'amber':'green';var byDate={};rows.forEach(function(m){(byDate[m.examDate]=byDate[m.examDate]||[]).push(m.score);});var series=Object.keys(byDate).sort().map(function(d){var a=byDate[d];return {date:d,avg:a.reduce(function(x,y){return x+y;},0)/a.length};});return {n:n,avg:avg,delta:delta,flag:flag,series:series,hasData:n>0};}
 function marksMonthlySeries(clusterId){var ids=teachersInScope('cluster',clusterId).map(function(x){return x.id;});var rows=DB.marks.filter(function(m){return ids.indexOf(m.teacherId)>-1;});var byMonth={};rows.forEach(function(m){var mk=String(m.examDate).slice(0,7);(byMonth[mk]=byMonth[mk]||[]).push(m.score);});return Object.keys(byMonth).sort().map(function(mk){var a=byMonth[mk];return {month:mk,avg:a.reduce(function(x,y){return x+y;},0)/a.length};});}
 function teacherSubjectRows(tid){var rows=DB.marks.filter(function(m){return m.teacherId===tid;});var bySub={};rows.forEach(function(m){(bySub[m.subject]=bySub[m.subject]||[]).push(m);});return Object.keys(bySub).sort().map(function(subj){var arr=bySub[subj].slice().sort(function(a,b){return a.examDate.localeCompare(b.examDate);});var last=arr[arr.length-1],prev=arr.length>1?arr[arr.length-2]:null;return {subject:subj,score:last.score,delta:prev?(last.score-prev.score):null,series:arr.map(function(m){return {date:m.examDate,score:m.score};})};});}
@@ -1523,7 +1629,7 @@ function detailReports(){
     var bClus=bridgeAgg('all').clusters.slice().sort();
     if(BRIDGE_CLUS!=='all'&&bClus.indexOf(BRIDGE_CLUS)<0)BRIDGE_CLUS='all';
     var bA=bridgeAgg(BRIDGE_CLUS);
-    var bBtns='<div style="display:flex;gap:8px;align-items:center"><button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="downloadBridgeTemplate()">⬇ '+T('Bridge template','બ્રિજ ટેમ્પલેટ')+'</button><button class="btn" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="document.getElementById(\'bridgeFile\').click()">⬆ '+T('Upload bridge course','બ્રિજ કોર્સ અપલોડ')+'</button><input type="file" id="bridgeFile" accept=".csv" style="display:none" onchange="bridgeFileChange(event)"></div>';
+    var bBtns=scopeIsTL()?'':'<div style="display:flex;gap:8px;align-items:center"><button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="downloadBridgeTemplate()">⬇ '+T('Bridge template','બ્રિજ ટેમ્પલેટ')+'</button><button class="btn" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="document.getElementById(\'bridgeFile\').click()">⬆ '+T('Upload bridge course','બ્રિજ કોર્સ અપલોડ')+'</button><input type="file" id="bridgeFile" accept=".csv" style="display:none" onchange="bridgeFileChange(event)"></div>';
     var bChips=bClus.length>1?('<div class="chips"><span class="chip '+(BRIDGE_CLUS==='all'?'on':'')+'" onclick="setBridgeClus(\'all\')">'+T('All','બધા')+'</span>'+bClus.map(function(c){return '<span class="chip '+(BRIDGE_CLUS===c?'on':'')+'" onclick="setBridgeClus(\''+escAJ(c)+'\')">'+escA(c)+'</span>';}).join('')+'</div>'):'';
     var att=[];
     if(bA.declines.length)att.push('<div style="font-size:13px;margin-top:3px"><b style="color:#b3261e">'+T('Went down','ઘટાડો')+':</b> '+bA.declines.map(function(r){return escA(r.m.school);}).join(', ')+'</div>');
@@ -1532,7 +1638,7 @@ function detailReports(){
     var bAtt=att.length?('<div class="card"><h3><i class="ti ti-flag"></i> '+T('Needs attention','ધ્યાન જરૂરી')+'</h3>'+att.join('')+'</div>'):'';
     var bHint=(BRIDGE_VIEW==='level')?T('Level reached so far, out of 10. Darker = higher. Tap a school for its detail.','અત્યાર સુધીનું સ્તર, 10 માંથી. ઘાટો = વધારે. વિગત માટે શાળા પર દબાવો.'):T('Gain from start of course to the latest figure. Darker = bigger gain. Tap a school for its detail.','શરૂઆતથી છેલ્લા આંકડા સુધીનો સુધારો. ઘાટો = વધુ સુધારો. વિગત માટે શાળા પર દબાવો.');
     var bInner;
-    if(!bA.rows.length){bInner='<div class="empty">'+T('No bridge course data yet — upload a CSV to begin.','હજુ બ્રિજ કોર્સ ડેટા નથી — શરૂ કરવા CSV અપલોડ કરો.')+'</div>';}
+    if(!bA.rows.length){bInner='<div class="empty">'+(scopeIsTL()?T('No bridge course figures for your schools yet. Your programme manager uploads these.','તમારી શાળાના બ્રિજ કોર્સ આંકડા હજુ નથી. પ્રોગ્રામ મેનેજર આ અપલોડ કરે છે.'):T('No bridge course data yet — upload a CSV to begin.','હજુ બ્રિજ કોર્સ ડેટા નથી — શરૂ કરવા CSV અપલોડ કરો.'))+'</div>';}
     else if(BRIDGE_GROUP==='teacher'){
       var tg=bridgeTeacherGroups(bA.rows.map(function(r){return r.m;}));
       var gap=tg.unmatched.length?('<div class="card" style="border-left:3px solid #eda100;border-radius:0;margin:8px 0 0"><div style="font-weight:700;font-size:12.5px">'+tg.unmatched.length+' '+T('schools are not linked to any teacher','શાળા કોઈ શિક્ષક સાથે જોડાયેલ નથી')+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+T('A school links to a teacher through the schools that teacher entered in Setup. These have no match yet, so they are missing from every teacher below.','શિક્ષકે Setup માં લખેલી શાળા દ્વારા જોડાણ થાય છે. આમનું જોડાણ નથી, તેથી નીચેના કોઈ શિક્ષકમાં ગણાયેલ નથી.')+'</div><div style="font-size:12px;margin-top:5px">'+tg.unmatched.slice(0,14).map(function(m){return escA(m.school);}).join(' · ')+(tg.unmatched.length>14?(' … +'+(tg.unmatched.length-14)):'')+'</div></div>'):'';
@@ -1541,7 +1647,7 @@ function detailReports(){
     /* Schools show every level AND every change at once in the table, so the gain/level
        toggle is meaningless here — it only applies to the aggregated Teacher and NGO views. */
     else{var bUn=bridgeUnlinked(bA.rows.map(function(r){return r.m;}));
-      var bLinkBtn='<button class="btn'+(bUn.length?'':' ghost')+' block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+(bUn.length?(T('Link teachers to','શિક્ષક જોડો —')+' '+bUn.length+' '+(bUn.length===1?T('school','શાળા'):T('schools','શાળા'))):T('Change teacher links','શિક્ષક બદલો'))+'</button>';
+      var bLinkBtn=scopeIsTL()?'':'<button class="btn'+(bUn.length?'':' ghost')+' block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+(bUn.length?(T('Link teachers to','શિક્ષક જોડો —')+' '+bUn.length+' '+(bUn.length===1?T('school','શાળા'):T('schools','શાળા'))):T('Change teacher links','શિક્ષક બદલો'))+'</button>';
       /* Band filter applies to the TABLE only. If it ever empties the table the banner still
          renders, so there is always a visible way back out of the filter. */
       var bRows=bA.rows,bBanner='',bWhat='',bClear='';
@@ -1564,12 +1670,12 @@ function detailReports(){
     /* The overview sits above the NGO comparison, not below it: the mock-up's own order is
        headline numbers first, breakdowns after, and bChips scopes the overview so the filter
        has to come before the numbers it changes. */
-    return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ')+'</div></div>'+bBtns+'</div>'+modeToggle+bChips+bridgePortfolio(bA)+bridgeNgoChart()+bAtt+bList;
+    return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+(scopeIsTL()?(T('Bridge course — my schools','બ્રિજ કોર્સ — મારી શાળા')):T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ'))+'</div></div>'+bBtns+'</div>'+modeToggle+bChips+bridgePortfolio(bA)+bridgeNgoChart()+bAtt+bList;
   }
   if(REPORT_MODE==='hours'){
     var hClusters=clustersInScope();
     if(HOURS_CLUS!=='all'&&hClusters.indexOf(HOURS_CLUS)<0)HOURS_CLUS='all';
-    var hTeachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
+    var hTeachers=scopeTeachers();
     if(HOURS_CLUS!=='all')hTeachers=hTeachers.filter(function(t){return clusterOf(t)===HOURS_CLUS;});
     var hRows=hTeachers.map(function(t){var mins=schoolsOf(t).reduce(function(sum,sch){return sum+ttMinFromTT(ttForSchool(t,sch));},0);return {t:t,mins:mins};}).sort(function(a,b){return a.mins-b.mins;});
     var hChips=hClusters.length>1?('<div class="chips"><span class="chip '+(HOURS_CLUS==='all'?'on':'')+'" onclick="setHoursClus(\'all\')">'+T('All','બધા')+'</span>'+hClusters.map(function(c){return '<span class="chip '+(HOURS_CLUS===c?'on':'')+'" onclick="setHoursClus(\''+escAJ(c)+'\')">'+escA(c)+'</span>';}).join('')+'</div>'):'';
@@ -1577,7 +1683,7 @@ function detailReports(){
     return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+T('Teaching hours/day (from timetable)','શિક્ષણ કલાક/દિવસ (સમયપત્રક પરથી)')+'</div></div></div>'+modeToggle+hChips+'<div class="card" style="padding:0;overflow:hidden">'+hTable+'</div>';
   }
   var clusters=clustersInScope();
-  var allTeacherIds=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;}).map(function(x){return x.id;});
+  var allTeacherIds=scopeTeachers().map(function(x){return x.id;});
   var topAgg=marksAgg(allTeacherIds);
   var trendColors=['#2a78d6','#eb6834','#1baf7a','#eda100'];
   var trendClusters=clustersInScope();
@@ -1606,10 +1712,10 @@ function detailReports(){
   }
   var downloadBtn='<button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="downloadMarksTemplate()">⬇ '+T('Marks template','માર્ક્સ ટેમ્પલેટ')+'</button>';
   var uploadBtn='<button class="btn" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="document.getElementById(\'marksFile\').click()">⬆ '+T('Upload marks','માર્ક્સ અપલોડ')+'</button><input type="file" id="marksFile" accept=".csv" style="display:none" onchange="marksFileChange(event)">';
-  var reportBtns='<div style="display:flex;gap:8px;flex-shrink:0">'+downloadBtn+uploadBtn+'</div>';
+  var reportBtns=scopeIsTL()?'':('<div style="display:flex;gap:8px;flex-shrink:0">'+downloadBtn+uploadBtn+'</div>');
   var kpis='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"><div class="card" style="margin:0;padding:10px 12px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">'+T('Records tracked','રેકોર્ડ')+'</div><div style="font-size:20px;font-weight:700">'+(topAgg.hasData?topAgg.n:'—')+'</div></div><div class="card" style="margin:0;padding:10px 12px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700">'+T('Avg. score','સરેરાશ સ્કોર')+'</div><div style="font-size:20px;font-weight:700">'+(topAgg.hasData?topAgg.avg.toFixed(1)+'%':'—')+'</div></div></div>';
-  var rows=clusters.length?clusters.map(function(c){var tCount=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false&&clusterOf(x)===c;}).length;var teCount=teachersInScope('cluster',c).length;return reportRow(c,tCount+' TL · '+teCount+' '+T('teachers','શિક્ષકો'),marksAgg(teachersInScope('cluster',c).map(function(x){return x.id;})),"reportsGoto('cluster','"+c+"')");}).join(''):('<div class="empty">'+T('No clusters found.','ક્લસ્ટર મળ્યા નથી.')+'</div>');
-  return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+T('Comparing','સરખામણી')+' '+clusters.length+' '+T('clusters','ક્લસ્ટર')+(topAgg.hasData?'':(' · '+T('no marks data yet','હજુ માર્ક્સ ડેટા નથી')))+'</div></div>'+reportBtns+'</div>'+modeToggle+trendChart+kpis+legend+'<div class="card" style="padding:0;overflow:hidden">'+rows+'</div>';
+  var rows=clusters.length?clusters.map(function(c){var tCount=tlsInScope(c).length;var teCount=teachersInScope('cluster',c).length;return reportRow(c,tCount+' TL · '+teCount+' '+T('teachers','શિક્ષકો'),marksAgg(teachersInScope('cluster',c).map(function(x){return x.id;})),"reportsGoto('cluster','"+c+"')");}).join(''):('<div class="empty">'+T('No clusters found.','ક્લસ્ટર મળ્યા નથી.')+'</div>');
+  return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+(scopeIsTL()?(scopeTeachers().length+' '+T('teachers in my team','મારી ટીમના શિક્ષક')):(T('Comparing','સરખામણી')+' '+clusters.length+' '+T('clusters','ક્લસ્ટર')))+(topAgg.hasData?'':(' · '+T('no marks data yet','હજુ માર્ક્સ ડેટા નથી')))+'</div></div>'+reportBtns+'</div>'+modeToggle+trendChart+kpis+legend+'<div class="card" style="padding:0;overflow:hidden">'+rows+'</div>';
 }
 function loadSharedUsers(force){if(!FS)return;if(!fetchDue('users',864e5,force))return;FS.collection('appusers').get().then(function(snap){snap.docs.forEach(function(d){var v=d.data()||{};if(!v.id)return;var ex=u(v.id);if(ex){for(var k in v){ex[k]=v[k];}}else{DB.users.push(v);}});fetchStamp('users');save();renderAll();}).catch(function(err){quotaWarn(err);console.warn('loadSharedUsers',err);});}
 function muTlOpts(sel){var tls=DB.users.filter(function(x){return x.role==='TL';});return '<option value="">—</option>'+tls.map(function(t){return '<option value="'+t.id+'" '+(sel===t.id?'selected':'')+'>'+t.name+'</option>';}).join('');}
@@ -1877,11 +1983,11 @@ function bridgeRow(m){var gains=[],decline=false,anyEnd=false,allEnd=true,flat=t
      "not measured yet". Red is reserved for a real decline. */
   var status=reason==='decline'?'red':(reason==='noend'?'grey':(reason==='low'?'amber':'green'));
   return {m:m,gains:gains,avg:avg,decline:decline,anyEnd:anyEnd,allEnd:allEnd,flat:(flat&&anyEnd&&gains.length>0),status:status,reason:reason};}
-function bridgeAgg(scope){var list=(DB.bridgeMarks||[]).filter(function(m){return m&&(!scope||scope==='all'||m.cluster===scope);});
+function bridgeAgg(scope){var list=scopeMarks().filter(function(m){return m&&(!scope||scope==='all'||m.cluster===scope);});
   var rows=list.map(bridgeRow),withEnd=rows.filter(function(r){return r.anyEnd;}),noEnd=rows.filter(function(r){return !r.anyEnd;});
   withEnd.sort(function(a,b){return (a.avg==null?1e9:a.avg)-(b.avg==null?1e9:b.avg);});
   noEnd.sort(function(a,b){return String(a.m.school||'').localeCompare(String(b.m.school||''));});
-  var cl={};(DB.bridgeMarks||[]).forEach(function(m){if(m&&m.cluster)cl[m.cluster]=1;});
+  var cl={};scopeMarks().forEach(function(m){if(m&&m.cluster)cl[m.cluster]=1;});
   return {rows:withEnd.concat(noEnd),students:list.reduce(function(a,m){return a+(m.students||0);},0),
     complete:rows.filter(function(r){return r.allEnd;}).length,total:rows.length,
     declines:rows.filter(function(r){return r.decline;}),missing:noEnd,flat:rows.filter(function(r){return r.flat;}),
@@ -2465,7 +2571,7 @@ function bridgePortfolio(bA){
     /* Built from EVERY school, not the filtered list. Using the filtered one collapsed the
        panel to a single row the moment you tapped an NGO - removing the only control that
        could take you back out of the filter you had just applied. */
-    var all=(DB.bridgeMarks||[]),by={},order=[];
+    var all=scopeMarks(),by={},order=[];
     all.forEach(function(m){var c=m.cluster||'—';if(!by[c]){by[c]=[];order.push(c);}by[c].push(m);});
     if(order.length<2)return '';
     var mean=function(a){return a.length?(a.reduce(function(x,y){return x+y;},0)/a.length):null;};
@@ -2511,7 +2617,7 @@ function bridgePortfolio(bA){
      things you act on rather than skim, and both are now compact enough to sit side by side. */
   return kpis+subjKpis+'<div class="pf-three pf-gap">'+bands+gains+'</div>'
     +((ngoRows||bridgeMissingView(list))?('<div class="pf-two pf-gap">'+ngoRows+bridgeMissingView(list)+'</div>'):'')+movers+insight;}
-function bridgeNgoChart(){var all=(DB.bridgeMarks||[]);if(!all.length)return '';var g=bridgeNgoGroups(all);if(!g.length)return '';return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Compare NGOs','NGO સરખામણી')+'</h3>'+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+(BRIDGE_VIEW==='level'?T('Average level now, out of 10, across each NGO’s schools.','દરેક NGO ની શાળાઓનું સરેરાશ સ્તર, 10 માંથી.'):T('Average gain across each NGO’s schools. Hollow dot = start, solid dot = latest figure.','દરેક NGO ની શાળાઓનો સરેરાશ સુધારો.'))+'</div>'+bridgeGroupView(g)+'</div>';}
+function bridgeNgoChart(){var all=scopeMarks();if(!all.length)return '';var g=bridgeNgoGroups(all);if(g.length<2)return '';return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Compare NGOs','NGO સરખામણી')+'</h3>'+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+(BRIDGE_VIEW==='level'?T('Average level now, out of 10, across each NGO’s schools.','દરેક NGO ની શાળાઓનું સરેરાશ સ્તર, 10 માંથી.'):T('Average gain across each NGO’s schools. Hollow dot = start, solid dot = latest figure.','દરેક NGO ની શાળાઓનો સરેરાશ સુધારો.'))+'</div>'+bridgeGroupView(g)+'</div>';}
 /* ---- NGO master (v5.9) ---- */
 function ngoSeedOnce(){if(DB.ngosSeeded)return;if(!DB.ngos)DB.ngos=[];var seen={};
   (DB.users||[]).forEach(function(x){if(!x||(x.role!=='TL'&&x.role!=='Teacher')||x.active===false)return;var c=clusterOf(x);if(!c)return;var k=bridgeNorm(c);if(seen[k])return;seen[k]=1;
@@ -2580,7 +2686,7 @@ function ngoCard(){var rows=ngoAll().slice().sort(function(a,b){return ((a.activ
 function fmtUpd(v){if(!v)return '';var d=(typeof v==='number')?new Date(v):new Date(String(v));return isNaN(d.getTime())?'':fmtD(dstr(d));}
 async function expLogs(){var from=val('exp_from')||'';var to=val('exp_to')||'';if(from&&to&&from>to){var t=from;from=to;to=t;}var _win=addDays(realToday(),-60);if(FS&&(!from||from<_win)){try{toast(T('Fetching older logs…','જૂના લોગ લવાય છે…'));var _snap=await FS.collection('logs').where('date','>=',from||'2000-01-01').where('date','<=',to||realToday()).get();mergeLogs(_snap.docs.map(function(d){return d.data();}));save();}catch(err){quotaWarn(err);toast(T('Could not fetch older logs — export may be incomplete','જૂના લોગ ન મળ્યા — એક્સપોર્ટ અધૂરું હોઈ શકે'));}}var es=DB.entries.filter(function(e){if(!(hasDiary(e)||e.punchIn||e.punchOut))return false;var d=e.date||'';if(from&&d<from)return false;if(to&&d>to)return false;return true;});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String((u(a.userId)&&u(a.userId).name)||'').localeCompare(String((u(b.userId)&&u(b.userId).name)||''));});if(!es.length){toast(T('No logs in that range','આ શ્રેણીમાં લોગ નથી'));return;}var head=['Date','Name','Role','Cluster','Under TL','School(s)','Present','Total','Work done','Challenge','Purpose','Met','Observation','Topic','Punch in','Punch out','Updated'];var rows=[head];es.forEach(function(e){var x=u(e.userId);var tl=(x&&x.tl)?u(x.tl):null;var sch=e.school||e.visited||((e.schools&&e.schools.join)?e.schools.join('; '):'')||'';rows.push([fmtD(e.date),(x&&x.name)||e.userId||'',e.role||(x&&x.role)||'',x?clusterOf(x):'',tl?tl.name:'',sch,(e.present!=null?e.present:''),(e.total!=null?e.total:''),e.summary||'',(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?e.challenge:'',e.purpose||'',(e.met&&e.met.join)?e.met.join('; '):'',e.observation||'',e.topic||'',e.punchIn||'',e.punchOut||'',fmtUpd(e.updatedAt)]);});dlCSV('krsf-logs-'+(from||'all')+'_to_'+(to||'all')+'.csv',rows);toast(es.length+' '+T('records exported','રેકોર્ડ એક્સપોર્ટ')+' ✓');}
 function expUsers(){var ord={PM:0,TL:1,Teacher:2};var us=DB.users.slice().sort(function(a,b){return ((ord[a.role]==null?9:ord[a.role])-(ord[b.role]==null?9:ord[b.role]))||String(a.name||'').localeCompare(String(b.name||''));});var head=['Name','Role','Cluster','Phone','Under TL','Active'];var rows=[head];us.forEach(function(x){var tl=x.tl?u(x.tl):null;rows.push([x.name||'',x.role||'',clusterOf(x),x.phone||'',tl?tl.name:'',x.active===false?'No':'Yes']);});dlCSV('krsf-staff.csv',rows);toast(us.length+' '+T('users exported','યુઝર એક્સપોર્ટ')+' ✓');}
-function renderBottomNav(){var el=document.getElementById('bottomNav');if(!el)return;var u0=u(CUR);if(!u0){el.innerHTML='';return;}var role=u0.role;var tabs;if(role==='PM'){tabs=[['overview','ti-layout-dashboard',T('Overview','ઝલક')],['tls','ti-user-star',T('TLs','TL')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['queries','ti-search',T('Queries','ક્વેરી')],['users','ti-user-cog',T('Manage','મેનેજ')]];}else if(role==='TL'){tabs=[['diary','ti-clipboard-text',T('Today','આજે')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['tasks','ti-checklist',T('Tasks','કાર્ય')]];var _peers=peerTLs(CUR);if(_peers.length){tabs.push([_peers.length===1?_peers[0]:'home','ti-user-star',T('TL','TL')]);tabs.push(['assigned','ti-send',T('Given','સોંપ્યા')]);}tabs.push(['logs','ti-history',T('Logs','લોગ')]);}else{el.innerHTML='<div style="flex:1;display:flex;justify-content:center;align-items:center;padding:6px 0 2px"><div onclick="selectItem(\'home\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent"><span style="display:flex;align-items:center;justify-content:center;width:60px;height:34px;border-radius:18px;background:#ffc700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3a2e00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12L3 12L12 3L21 12L19 12"/><path d="M5 12V19a1 1 0 0 0 1 1h3v-5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5h3a1 1 0 0 0 1-1V12"/></svg></span><span style="font-size:11px;font-weight:700;color:#a16207">હોમ</span></div></div>';return;}el.innerHTML=tabs.map(function(t){var sel=((SEL===t[0])||(t[0]==='home'&&SEL==='diary'&&role!=='TL')||(t[0]==='tls'&&u(SEL)&&u(SEL).role==='TL')||(t[0]==='teachers'&&(SEL==='teacherLogs'||(u(SEL)&&u(SEL).role==='Teacher'))));return '<div data-k="'+t[0]+'" onclick="selectItem(this.dataset.k)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:3px 0;color:'+(sel?'#a16207':'#9aa1ad')+';font-weight:'+(sel?'700':'500')+'"><span style="display:flex;align-items:center;justify-content:center;width:48px;height:30px;border-radius:16px;background:'+(sel?'var(--brand-tint)':'transparent')+'"><i class="ti '+t[1]+'" style="font-size:22px"></i></span><div style="font-size:11px">'+t[2]+'</div></div>';}).join('');}
+function renderBottomNav(){var el=document.getElementById('bottomNav');if(!el)return;var u0=u(CUR);if(!u0){el.innerHTML='';return;}var role=u0.role;var tabs;if(role==='PM'){tabs=[['overview','ti-layout-dashboard',T('Overview','ઝલક')],['tls','ti-user-star',T('TLs','TL')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['queries','ti-search',T('Queries','ક્વેરી')],['users','ti-user-cog',T('Manage','મેનેજ')]];}else if(role==='TL'){tabs=[['dash','ti-layout-dashboard',T('Home','હોમ')],['diary','ti-clipboard-text',T('Today','આજે')],['teachers','ti-users',T('Teachers','શિક્ષકો')],['reports','ti-file-spreadsheet',T('Reports','રિપોર્ટ')],['tasks','ti-checklist',T('Tasks','કાર્ય')]];}else{el.innerHTML='<div style="flex:1;display:flex;justify-content:center;align-items:center;padding:6px 0 2px"><div onclick="selectItem(\'home\')" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent"><span style="display:flex;align-items:center;justify-content:center;width:60px;height:34px;border-radius:18px;background:#ffc700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3a2e00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12L3 12L12 3L21 12L19 12"/><path d="M5 12V19a1 1 0 0 0 1 1h3v-5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5h3a1 1 0 0 0 1-1V12"/></svg></span><span style="font-size:11px;font-weight:700;color:#a16207">હોમ</span></div></div>';return;}el.innerHTML=tabs.map(function(t){var sel=((SEL===t[0])||(t[0]==='home'&&SEL==='diary'&&role!=='TL')||(t[0]==='tls'&&u(SEL)&&u(SEL).role==='TL')||(t[0]==='teachers'&&(SEL==='teacherLogs'||(u(SEL)&&u(SEL).role==='Teacher'))));return '<div data-k="'+t[0]+'" onclick="selectItem(this.dataset.k)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:3px 0;color:'+(sel?'#a16207':'#9aa1ad')+';font-weight:'+(sel?'700':'500')+'"><span style="display:flex;align-items:center;justify-content:center;width:48px;height:30px;border-radius:16px;background:'+(sel?'var(--brand-tint)':'transparent')+'"><i class="ti '+t[1]+'" style="font-size:22px"></i></span><div style="font-size:11px">'+t[2]+'</div></div>';}).join('');}
 function detailProfile(){var x=u(CUR);if(!x)return '';var cl=clusterOf(x);return (x.role==='Teacher'?tHero(T('Profile','પ્રોફાઇલ'),''):'<div class="dhead"><div class="dh-title">'+T('Profile','પ્રોફાઇલ')+'</div></div>')+'<div class="card"><div style="font-weight:700;font-size:16px">'+escA(x.name)+'</div><div class="muted" style="margin-top:3px">'+x.role+(cl?(' · '+cl):'')+'</div><div class="muted" style="font-size:12.5px;margin-top:2px">'+(x.phone||'')+'</div><div class="muted" style="font-size:11.5px;margin-top:8px">'+T('App version','એપ વર્ઝન')+' '+APP_VERSION+'</div></div><a class="btn ghost block" href="guide.html" target="_blank" style="margin-top:10px;text-decoration:none;display:block;text-align:center">'+T('Teacher guide','શિક્ષક માર્ગદર્શિકા')+'</a><button class="btn block" style="margin-top:10px;background:#b3261e" onclick="logout()">'+T('Logout','લોગઆઉટ')+'</button>';}
 function openLogDate(d){SELDATE=d;SEL='diary';renderAll();}
 function overviewByCluster(){var td=today();var teachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});var g={};teachers.forEach(function(t){var c=clusterOf(t)||'—';if(!g[c])g[c]={total:0,logged:0,ch:0};g[c].total++;var e=DB.entries.find(function(x){return x.userId===t.id&&x.date===td;});if(hasDiary(e))g[c].logged++;if(e&&e.challenge&&String(e.challenge).trim())g[c].ch++;});var keys=Object.keys(g).sort();if(!keys.length)return '';var rows=keys.map(function(c){var x=g[c];var pct=x.total?Math.round(x.logged/x.total*100):0;var col=pct>=80?'var(--brand)':(pct>=40?'#c97a00':'#b3261e');return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)"><div style="font-weight:700;min-width:60px">'+c+'</div><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--muted)">'+x.logged+'/'+x.total+' '+T('logged today','આજે લોગ')+(x.ch?(' · '+x.ch+' '+T('challenges','સમસ્યા')):'')+'</div><div style="height:6px;background:var(--line);border-radius:4px;margin-top:4px;overflow:hidden"><div style="height:6px;width:'+pct+'%;background:'+col+'"></div></div></div><div style="font-weight:700;color:'+col+';min-width:40px;text-align:right">'+pct+'%</div></div>';}).join('');return '<div class="card"><h3><i class="ti ti-building-community"></i> '+T('By NGO / cluster','NGO / ક્લસ્ટર પ્રમાણે')+'</h3>'+rows+'</div>';}
@@ -2589,6 +2695,8 @@ function hasDiary(e){if(!e)return false;if(e.summary&&String(e.summary).trim())r
   if(sec==='diary')return detailDiary(role);
   if(sec==='tasks')return detailTasks();
   if(sec==='actions')return detailMyActions();
+  if(sec==='dash'&&role==='TL')return detailTLDash();
+  if(sec==='reports'&&role==='TL')return detailReports();
   if(sec==='teachers')return detailMyTeachers();
   if(sec==='assigned')return detailAssigned();
   if(sec==='setup')return setupView();if(sec==='logs')return detailMyLogs();if(sec==='profile')return detailProfile();if(u(sec)&&u(sec).role==='Teacher')return detailTeacher(sec);if(u(sec)&&u(sec).role==='TL'&&peerTLs(CUR).indexOf(sec)>-1)return detailTL(sec,true);
