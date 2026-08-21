@@ -313,7 +313,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.4'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.5'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -497,7 +497,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return (n||'').replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(function(w){return (w&&w[0])||'';}).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null,BRIDGE_BAND=null,BRIDGE_GBAND=null,BRIDGE_MISS=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50,mpct:40,mdays:30,lvl:2},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null,BRIDGE_BAND=null,BRIDGE_GBAND=null,BRIDGE_MISS=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -913,6 +913,14 @@ function buildQueries(){
   function todayE(t){return DB.entries.find(function(e){return e.userId===t.id&&e.date===today();});}
   function latestTotal(t){var es=esOf(t);for(var i=0;i<es.length;i++){if(es[i].total!=null&&es[i].total!=='')return +es[i].total;}return null;}
   function activeInDays(t,n){var since=addDays(td,-(n-1));return DB.entries.some(function(e){return e.userId===t.id&&e.date>=since&&(hasDiary(e)||e.punchIn);});}
+  function marksOf(t){return (DB.marks||[]).filter(function(m){return m&&m.teacherId===t.id;});}
+  /* Plain string comparison, matching marksAgg, which orders exam dates the same way. */
+  function lastExam(t){var d='';marksOf(t).forEach(function(m){var x=String(m.examDate||'');if(x>d)d=x;});return d||null;}
+  function bridgeOf(t){return bridgeForTeacher(t,DB.bridgeMarks||[]);}
+  /* bridgeNoLatest only asks whether an END figure exists. A school with no figures AT ALL
+     satisfies it too, and that school was never measured rather than never RE-measured - a
+     different problem with a different owner. Require a start before counting it. */
+  function bridgeStarted(m){var s=false;BRIDGE_SUBJ.forEach(function(k){if((m[k]||{}).start!=null)s=true;});return s;}
   var Q=[];
   var nd=QP.days;
   Q.push({id:'nodiaryN',ic:'📓',title:T('No daily diary for the last {n} days','છેલ્લા {n} દિવસ ડાયરી નથી'),sub:T('Teachers who went quiet','શાંત શિક્ષકો'),param:{k:'days',min:1,step:1,label:T('Days','દિવસ')},
@@ -931,12 +939,51 @@ function buildQueries(){
     list:teachers.filter(function(t){return !hasSetup(t.id);}).map(function(t){return {t:t,metric:T('no setup','સેટઅપ નથી'),sev:'a'};})});
   Q.push({id:'noweek',ic:'🗓',title:T('No log at all this week','આ અઠવાડિયે કોઈ લોગ નથી'),sub:T('0 diaries in last 7 days','7 દિવસમાં 0'),param:null,
     list:teachers.filter(function(t){return !activeInDays(t,7);}).map(function(t){return {t:t,metric:T('0 this week','0 આ અઠવાડિયે'),sev:'r'};})});
+  /* ---- results. Everything above asks whether the work was RECORDED; these ask how it is
+     GOING. Exam marks are loaded for the PM only - loadSharedMarks returns early for anyone
+     else - which is fine while Queries is a PM screen, but the first four below would read
+     as "nobody has any marks" if it ever reached a Team Leader. ---- */
+  Q.push({id:'nomarks',sec:'res',ic:'📊',title:T('No marks entered yet','હજુ માર્ક્સ નથી'),sub:T('Not one exam score on record','એક પણ પરીક્ષા સ્કોર નથી'),param:null,
+    list:teachers.filter(function(t){return !marksOf(t).length;}).map(function(t){return {t:t,metric:T('no marks','માર્ક્સ નથી'),sev:'a'};})});
+  Q.push({id:'marksdown',sec:'res',ic:'🔻',title:T('Scores went down','સ્કોર ઘટ્યા'),sub:T('Latest exam below the one before it','છેલ્લી પરીક્ષા આગલી કરતાં ઓછી'),param:null,
+    list:teachers.map(function(t){return {t:t,a:marksAgg([t.id])};}).filter(function(o){return o.a.hasData&&o.a.flag==='red';})
+      .sort(function(x,y){return x.a.delta-y.a.delta;})
+      .map(function(o){return {t:o.t,metric:'▼ '+Math.abs(o.a.delta).toFixed(1),sev:'r'};})});
+  var mp=QP.mpct;
+  Q.push({id:'lowmarks',sec:'res',ic:'🎯',title:T('Average below {n}%','સરેરાશ {n}% થી ઓછી'),sub:T('Latest score in each subject','દરેક વિષયનો છેલ્લો સ્કોર'),param:{k:'mpct',min:5,step:5,label:'%'},
+    list:teachers.map(function(t){return {t:t,a:marksAgg([t.id])};}).filter(function(o){return o.a.hasData&&o.a.avg<mp;})
+      .sort(function(x,y){return x.a.avg-y.a.avg;})
+      .map(function(o){return {t:o.t,metric:o.a.avg.toFixed(1)+'%',sev:'a'};})});
+  var mdy=QP.mdays;
+  /* Teachers with NO marks are deliberately absent here - they are the question above, and
+     listing them in both would count one person as two different problems. The exam date is
+     not validated on import, so an unreadable one drops out rather than rendering NaN. */
+  Q.push({id:'stalemarks',sec:'res',ic:'⏳',title:T('Marks not updated in {n} days','{n} દિવસથી માર્ક્સ અપડેટ નથી'),sub:T('Among teachers who already have marks','જેમના માર્ક્સ પહેલેથી છે તેમાં'),param:{k:'mdays',min:7,step:7,label:T('Days','દિવસ')},
+    list:teachers.map(function(t){var d=lastExam(t);if(!d)return null;var n=Math.round((Date.parse(td)-Date.parse(d))/864e5);if(isNaN(n))return null;return {t:t,n:n};})
+      .filter(function(o){return o&&o.n>=mdy;}).sort(function(a,b){return b.n-a.n;})
+      .map(function(o){return {t:o.t,metric:o.n+' '+T('days ago','દિવસ પહેલા'),sev:'a'};})});
+  Q.push({id:'notremeasured',sec:'res',ic:'📐',title:T('School never re-measured','શાળા ફરી માપી નથી'),sub:T('Has a starting figure but no latest one','શરૂઆતનો આંકડો છે, છેલ્લો નથી'),param:null,
+    list:teachers.map(function(t){var b=bridgeOf(t);return {t:t,miss:b.filter(function(m){return bridgeStarted(m)&&bridgeNoLatest(m);}).length,tot:b.length};})
+      .filter(function(o){return o.miss>0;}).sort(function(a,b){return b.miss-a.miss;})
+      .map(function(o){return {t:o.t,metric:o.miss+' '+T('of','માંથી')+' '+o.tot+' '+(o.tot===1?T('school','શાળા'):T('schools','શાળા')),sev:'r'};})});
+  var lv=QP.lvl;
+  Q.push({id:'lowlevel',sec:'res',ic:'📚',title:T('Learning level below {n} out of 10','શીખવાનું સ્તર {n} થી ઓછું (10 માંથી)'),sub:T('Average across the schools they run','તેમની શાળાઓની સરેરાશ'),param:{k:'lvl',min:1,step:1,label:T('Level','સ્તર')},
+    list:teachers.map(function(t){var v=bridgeOf(t).map(bridgeAvgLevel).filter(function(x){return x!=null;});
+        if(!v.length)return null;return {t:t,av:v.reduce(function(a,c){return a+c;},0)/v.length};})
+      .filter(function(o){return o&&o.av<lv;}).sort(function(a,b){return a.av-b.av;})
+      .map(function(o){return {t:o.t,metric:bridgeF2(o.av)+'/10',sev:'a'};})});
   return Q;
 }
 function detailQueries(){
   var Q=buildQueries();
+  var lastSec=null;
   var cards=Q.map(function(q){
     var open=(QOPEN===q.id);
+    /* The daily questions ask whether the work was written down; the results ones ask how
+       it is going. Different jobs on different days, so they get a line between them. */
+    var lab='';
+    if((q.sec||'day')!==lastSec){lastSec=(q.sec||'day');
+      lab='<div class="mlabel" style="margin:14px 2px 8px">'+(lastSec==='res'?T('Results','પરિણામ'):T('Daily work','રોજનું કામ'))+'</div>';}
     var titleTxt=q.param?q.title.replace('{n}','<b style="color:#a16207">'+QP[q.param.k]+'</b>'):q.title;
     var head='<div onclick="toggleQuery(\''+q.id+'\')" style="display:flex;align-items:center;gap:11px;padding:13px 15px;cursor:pointer">'
       +'<div style="width:34px;height:34px;border-radius:9px;background:#fef7e0;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">'+q.ic+'</div>'
@@ -952,7 +999,7 @@ function detailQueries(){
         +'<div style="font-size:12.5px;font-weight:700;color:'+(o.sev==='r'?'#b91c1c':'#b45309')+';white-space:nowrap">'+o.metric+'</div>'
         +'<i class="ti ti-chevron-right" style="color:#c3c8d1;font-size:15px"></i></div>';
     }).join(''):'<div class="empty" style="padding:16px">'+T('None — all good here.','કોઈ નથી — બધું બરાબર.')+'</div>')+'</div>'):'';
-    return '<div class="card" style="padding:0;overflow:hidden">'+head+param+rows+'</div>';
+    return lab+'<div class="card" style="padding:0;overflow:hidden">'+head+param+rows+'</div>';
   }).join('');
   return '<div class="dhead"><div><div class="dh-name">🔎 '+T('Queries','ક્વેરી')+'</div><div class="dh-sub">'+T('Find teachers who need attention · tap a name to open','ધ્યાન જરૂરી શિક્ષકો · નામ પર દબાવો')+'</div></div></div>'+cards;
 }
