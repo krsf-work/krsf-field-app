@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.7'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.8'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1862,6 +1862,151 @@ function detailReports(){
 }
 function loadSharedUsers(force){if(!FS)return;if(!fetchDue('users',864e5,force))return;FS.collection('appusers').get().then(function(snap){snap.docs.forEach(function(d){var v=d.data()||{};if(!v.id)return;var ex=u(v.id);if(ex){for(var k in v){ex[k]=v[k];}}else{DB.users.push(v);}});fetchStamp('users');save();renderAll();}).catch(function(err){quotaWarn(err);console.warn('loadSharedUsers',err);});}
 function muTlOpts(sel){var tls=DB.users.filter(function(x){return x.role==='TL';});return '<option value="">—</option>'+tls.map(function(t){return '<option value="'+t.id+'" '+(sel===t.id?'selected':'')+'>'+t.name+'</option>';}).join('');}
+/* ---- Bulk teacher import ----
+   Reads a CSV of teachers and shows exactly what WOULD happen before anything is written.
+   Nothing reaches Firebase until the confirm button is pressed, and even then it only ever
+   ADDS: a row whose phone already belongs to somebody is skipped, never overwritten. */
+var IMP={rows:null,tl:'',prefix:'krsf',busy:false,done:null,fileName:''};
+/* A quoted field may legitimately contain a comma, and school names arrive from Excel. */
+function impSplitLine(line){var out=[],cur='',q=false,i,ch;
+  for(i=0;i<line.length;i++){ch=line[i];
+    if(q){if(ch==='"'){if(line[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else if(ch==='"')q=true;
+    else if(ch===','){out.push(cur);cur='';}
+    else cur+=ch;}
+  out.push(cur);return out;}
+function impNorm(s){return String(s==null?'':s).replace(/\s+/g,' ').trim();}
+/* Columns are found by NAME, so the sheet exported straight out of Excel works unchanged.
+   'School Name' contains the word name, so school is tested FIRST or it would be mistaken
+   for the teacher's name column. */
+function impPickCols(head){
+  var lc=head.map(function(x){return impNorm(x).toLowerCase();});
+  var find=function(test){for(var i=0;i<lc.length;i++)if(test(lc[i]))return i;return -1;};
+  var cSchool=find(function(s){return s.indexOf('school')>-1;});
+  var cName=find(function(s){return (s.indexOf('teacher')>-1)||(s.indexOf('name')>-1&&s.indexOf('school')<0);});
+  var cPhone=find(function(s){return s.indexOf('phone')>-1||s.indexOf('contact')>-1||s.indexOf('mobile')>-1||s.indexOf('number')>-1;});
+  return {name:cName,phone:cPhone,school:cSchool};}
+function impParse(text){
+  var lines=String(text||'').split(/\r?\n/).filter(function(l){return l.trim().length;});
+  if(!lines.length)throw new Error(T('That file is empty.','આ ફાઇલ ખાલી છે.'));
+  var head=impSplitLine(lines[0]),col=impPickCols(head);
+  if(col.name<0||col.phone<0)throw new Error(T('Could not find a name column and a phone column. The file needs a heading row.','નામ અને ફોન કૉલમ મળ્યા નથી. ફાઇલમાં હેડિંગ હરોળ જોઈએ.'));
+  var out=[],i,c;
+  for(i=1;i<lines.length;i++){c=impSplitLine(lines[i]);
+    var nm=impNorm(c[col.name]),ph=impNorm(c[col.phone]).replace(/[^0-9]/g,''),
+        sc=col.school>-1?impNorm(c[col.school]):'';
+    /* A 91 or 0 dialling prefix is dropped rather than making the number 11 or 12 digits. */
+    if(ph.length===12&&ph.slice(0,2)==='91')ph=ph.slice(2);
+    if(ph.length===11&&ph.charAt(0)==='0')ph=ph.slice(1);
+    if(!nm&&!ph)continue;
+    out.push({line:i+1,name:nm,phone:ph,school:sc});}
+  return out;}
+/* Says what would happen to every row, and why - without touching anything. */
+function impClassify(rows,tl){
+  var create=[],skip=[],seen={};
+  (rows||[]).forEach(function(r){
+    var why='';
+    if(!r.name)why=T('no name','નામ નથી');
+    else if(r.phone.length!==10)why=T('phone is not 10 digits','ફોન 10 અંકનો નથી');
+    else if('6789'.indexOf(r.phone.charAt(0))<0)why=T('not a mobile number','મોબાઇલ નંબર નથી');
+    else if(seen[r.phone])why=T('this number is twice in the file','આ નંબર ફાઇલમાં બે વાર છે');
+    else if(DB.users.some(function(x){return x&&x.phone===r.phone;}))why=T('already in the app','એપમાં પહેલેથી છે');
+    if(why){skip.push({row:r,why:why});return;}
+    seen[r.phone]=1;
+    var obj={id:'tch_'+r.phone,name:r.name,role:'Teacher',phone:r.phone,active:true,tl:tl||''};
+    /* The school is pre-filled so the teacher is joined to their bridge course figures from
+       day one. The TIMETABLE is deliberately left empty - only they know their periods, and
+       hasSetup still counts them as not set up until they fill it. */
+    if(r.school)obj.setupSchools=[r.school];
+    create.push({row:r,obj:obj});});
+  return {create:create,skip:skip};}
+function impPassword(phone,prefix){return String(prefix||'')+String(phone||'').slice(-4);}
+/* ---- the import screen ---- */
+function impClear(){IMP={rows:null,tl:'',prefix:'krsf',busy:false,done:null,fileName:''};renderDetail();}
+function impSetTL(v){IMP.tl=v;renderDetail();}
+function impSetPrefix(v){IMP.prefix=v;renderDetail();}
+function impFileChange(ev){var f=ev.target.files&&ev.target.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(e){try{IMP.rows=impParse(e.target.result);IMP.fileName=f.name;IMP.done=null;
+      if(!IMP.rows.length)toast(T('No teachers found in that file','આ ફાઇલમાં કોઈ શિક્ષક નથી'));}
+    catch(err){IMP.rows=null;toast(err.message||String(err));}
+    renderDetail();};
+  rd.readAsText(f);ev.target.value='';}
+/* Sequential, one account at a time. A parallel burst would trip Firebase's rate limit and
+   leave a half-finished import nobody could tell apart from a finished one. Each success is
+   pushed into DB.users immediately, so re-running the same file afterwards skips whoever
+   already went in - the import can be repeated safely after a failure. */
+function impRunNext(list,i,okList,failList){
+  if(i>=list.length){IMP.busy=false;IMP.done={ok:okList,fail:failList};
+    save();renderDetail();
+    toast(okList.length+' '+T('teachers added','શિક્ષક ઉમેરાયા')+(failList.length?(' · '+failList.length+' '+T('failed','નિષ્ફળ')):''));return;}
+  var it=list[i];
+  var el=document.getElementById('impProg');
+  if(el)el.textContent=T('Adding','ઉમેરાય છે')+' '+(i+1)+'/'+list.length+' — '+it.obj.name;
+  muCreateUser(it.obj,impPassword(it.obj.phone,IMP.prefix)).then(function(){
+      okList.push(it);impRunNext(list,i+1,okList,failList);},
+    function(err){failList.push({row:it.row,why:muErrText(err)});impRunNext(list,i+1,okList,failList);});}
+function impRun(){
+  if(IMP.busy)return;
+  if(!IMP.rows){toast(T('Choose a file first','પહેલા ફાઇલ પસંદ કરો'));return;}
+  /* A teacher with no team leader has no NGO either - clusterOf reads it through the leader -
+     so they would exist and yet appear on no dashboard, report, register or export. Refuse
+     rather than quietly create 28 invisible people. */
+  if(!IMP.tl){toast(T('Pick the team leader they report to','તેઓ કોને રિપોર્ટ કરે છે તે પસંદ કરો'));return;}
+  if(!FS){toast(T('No internet — cannot add users right now','ઇન્ટરનેટ નથી — હમણાં યુઝર ઉમેરી શકાતો નથી'));return;}
+  var pw=impPassword('0000',IMP.prefix);
+  if(pw.length<6){toast(T('That password would be under 6 characters — Firebase will refuse it','પાસવર્ડ 6 અક્ષરથી ઓછો છે'));return;}
+  var c=impClassify(IMP.rows,IMP.tl);
+  if(!c.create.length){toast(T('Nothing new to add','નવું કંઈ ઉમેરવાનું નથી'));return;}
+  if(!confirm(T('Add','ઉમેરવા')+' '+c.create.length+' '+T('teachers? This creates a login for each of them.','શિક્ષક? દરેક માટે લોગિન બનશે.')))return;
+  IMP.busy=true;IMP.done=null;renderDetail();
+  impRunNext(c.create,0,[],[]);}
+function impCard(){
+  var tls=DB.users.filter(function(x){return x&&x.role==='TL'&&x.active!==false;})
+    .sort(function(a,b){var ca=clusterOf(a)||'',cb=clusterOf(b)||'';
+      return ca.localeCompare(cb)||String(a.name||'').localeCompare(String(b.name||''));});
+  var pick='<label>'+T('They all report to','બધા કોને રિપોર્ટ કરે છે')+'</label><select id="imp_tl" class="fld" onchange="impSetTL(this.value)">'
+    +'<option value="">'+T('— choose a team leader —','— ટીમ લીડર પસંદ કરો —')+'</option>'
+    +tls.map(function(t){var c=clusterOf(t);
+      return '<option value="'+escA(t.id)+'"'+(IMP.tl===t.id?' selected':'')+'>'+escA(t.name)+(c?(' — '+escA(c)):'')+'</option>';}).join('')
+    +'</select><div class="muted" style="font-size:11.5px;margin-top:4px">'+T('The NGO comes from the team leader, so this is what puts them in the right NGO.','NGO ટીમ લીડર પરથી આવે છે, તેથી આનાથી જ તેઓ સાચા NGO માં જાય છે.')+'</div>';
+  var body='';
+  if(IMP.done){
+    var f=IMP.done.fail;
+    body='<div class="card" style="margin:10px 0 0;border-left:3px solid var(--gG-tx)"><div style="font-weight:800">'+IMP.done.ok.length+' '+T('teachers added','શિક્ષક ઉમેરાયા')+'</div>'
+      +(f.length?('<div style="font-weight:700;color:#b3261e;margin-top:7px">'+f.length+' '+T('could not be added','ઉમેરી શકાયા નથી')+'</div>'
+        +f.map(function(x){return '<div style="font-size:12.5px;margin-top:3px">'+escA(x.row.name)+' — '+escA(x.why)+'</div>';}).join('')):'')
+      +'</div><button class="btn ghost block" style="margin-top:10px" onclick="impClear()">'+T('Done','પૂર્ણ')+'</button>';
+    return '<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Import teachers','શિક્ષક ઇમ્પોર્ટ')+'</h3>'+body+'</div>';}
+  if(IMP.busy)
+    return '<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Import teachers','શિક્ષક ઇમ્પોર્ટ')+'</h3>'
+      +'<div id="impProg" style="font-weight:700">'+T('Working…','ચાલુ છે…')+'</div>'
+      +'<div class="muted" style="font-size:12px;margin-top:6px">'+T('Leave this screen open until it finishes.','પૂરું થાય ત્યાં સુધી આ સ્ક્રીન ખુલ્લી રાખો.')+'</div></div>';
+  if(!IMP.rows)
+    return '<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Import teachers','શિક્ષક ઇમ્પોર્ટ')+'</h3>'
+      +'<div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('A CSV with a heading row naming the teacher, their phone and their school. You will see exactly who would be added before anything is saved.','હેડિંગ હરોળ સાથે CSV — શિક્ષકનું નામ, ફોન અને શાળા. સાચવતા પહેલા કોણ ઉમેરાશે તે દેખાશે.')+'</div>'
+      +'<button class="btn block" onclick="document.getElementById(\'impFile\').click()"><i class="ti ti-file-spreadsheet"></i> '+T('Choose a CSV file','CSV ફાઇલ પસંદ કરો')+'</button>'
+      +'<input type="file" id="impFile" accept=".csv,text/csv" style="display:none" onchange="impFileChange(event)"></div>';
+  var c=impClassify(IMP.rows,IMP.tl);
+  var ex=c.create.length?impPassword(c.create[0].obj.phone,IMP.prefix):impPassword('0000',IMP.prefix);
+  var pwField='<label style="margin-top:8px;display:block">'+T('Password','પાસવર્ડ')+'</label>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="imp_pw" class="fld" style="flex:1;min-width:110px" value="'+escA(IMP.prefix)+'" oninput="impSetPrefix(this.value)">'
+    +'<span class="muted" style="font-size:12px">+ '+T('last 4 digits','છેલ્લા 4 અંક')+' → <b>'+escA(ex)+'</b></span></div>'
+    +(ex.length<6?('<div style="color:#b3261e;font-size:12px;margin-top:4px">'+T('Too short — Firebase needs at least 6 characters.','ખૂબ ટૂંકો — ઓછામાં ઓછા 6 અક્ષર જોઈએ.')+'</div>'):'');
+  var rows=c.create.map(function(x){
+    return '<tr><td>'+escA(x.obj.name)+'</td><td>'+escA(x.obj.phone)+'</td><td>'+escA((x.obj.setupSchools||[])[0]||'—')+'</td><td>'+escA(impPassword(x.obj.phone,IMP.prefix))+'</td></tr>';}).join('');
+  var tbl=c.create.length?('<div class="tw" style="max-height:46vh;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">'
+    +'<thead><tr style="text-align:left;font-size:10.5px;color:var(--muted);text-transform:uppercase"><th style="padding:6px">'+T('Name','નામ')+'</th><th style="padding:6px">'+T('Phone','ફોન')+'</th><th style="padding:6px">'+T('School','શાળા')+'</th><th style="padding:6px">'+T('Password','પાસવર્ડ')+'</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'):('<div class="empty">'+T('Nothing new to add — every row is already in the app or unusable.','નવું કંઈ નથી.')+'</div>');
+  var skipped=c.skip.length?('<div class="card" style="margin:10px 0 0;border-left:3px solid #eda100;padding:9px 11px"><div style="font-weight:700;font-size:12.5px">'+c.skip.length+' '+T('rows will be skipped','હરોળ છોડાશે')+'</div>'
+    +c.skip.slice(0,30).map(function(s){return '<div style="font-size:12px;margin-top:3px">'+T('Line','લાઇન')+' '+s.row.line+' — '+escA(s.row.name||'(no name)')+' — <b>'+escA(s.why)+'</b></div>';}).join('')
+    +(c.skip.length>30?('<div class="muted" style="font-size:11.5px;margin-top:4px">… +'+(c.skip.length-30)+'</div>'):'')+'</div>'):'';
+  return '<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Import teachers','શિક્ષક ઇમ્પોર્ટ')+'</h3>'
+    +'<div class="muted" style="font-size:12px;margin-bottom:8px">'+escA(IMP.fileName)+' · '+IMP.rows.length+' '+T('rows read','હરોળ વાંચી')+'</div>'
+    +pick+pwField+skipped
+    +'<div style="font-weight:800;margin:12px 0 6px">'+c.create.length+' '+T('will be added','ઉમેરાશે')+'</div>'+tbl
+    +'<button class="btn block" style="margin-top:10px" onclick="impRun()">'+T('Add these teachers','આ શિક્ષકો ઉમેરો')+'</button>'
+    +'<button class="btn ghost block" style="margin-top:8px" onclick="impClear()">'+T('Cancel','રદ કરો')+'</button></div>';}
 function detailUsers(){var addCard='<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Add user','નવો યુઝર')+'</h3><label>'+T('Name','નામ')+'</label><input id="mu_name" class="fld"><label>'+T('Mobile number','મોબાઇલ નંબર')+'</label><input id="mu_phone" class="fld" inputmode="numeric"><label>'+T('Role','ભૂમિકા')+'</label><select id="mu_role" class="fld" onchange="muRoleChange()"><option value="Teacher">Teacher</option><option value="TL">Team Leader</option><option value="PM">PM</option></select><div id="mu_tlwrap"><label>'+T('Under Team Leader','ટીમ લીડર હેઠળ')+'</label><select id="mu_tl" class="fld">'+muTlOpts('')+'</select></div><div id="mu_clwrap" style="display:none"><label>'+T('NGO / cluster code (e.g. SVT, KCT, JCT, Dahod, GST)','NGO / ક્લસ્ટર કોડ (દા.ત. SVT, KCT, JCT, Dahod, GST)')+'</label><input id="mu_cluster" class="fld"></div><div class="muted" style="font-size:12px;margin:6px 0">'+T('Password = last 4 digits of the mobile number.','પાસવર્ડ = મોબાઇલના છેલ્લા 4 અંક.')+'</div><label>'+T('Password (optional)','પાસવર્ડ (વૈકલ્પિક)')+'</label><input id="mu_pw" class="fld" placeholder="'+T('Blank = last 4 digits','ખાલી = છેલ્લા 4 અંક')+'"><button class="btn block" onclick="muAdd()">'+T('Add user','યુઝર ઉમેરો')+'</button></div>';var roles=['PM','TL','Teacher'];var listCard='';roles.forEach(function(role){var us=DB.users.filter(function(x){return x.role===role;});if(!us.length)return;listCard+='<div class="card"><h3>'+role+' ('+us.length+')</h3>'+us.map(function(x){var cl=clusterOf(x);var inactive=x.active===false;var roleSel='<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:110px" onchange="muSetRole(this.dataset.id,this.value)">'+['Teacher','TL','PM'].map(function(r){return '<option '+(x.role===r?'selected':'')+'>'+r+'</option>';}).join('')+'</select>';var ra=(x.role==='Teacher')?'<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:140px" onchange="muReassign(this.dataset.id,this.value)">'+muTlOpts(x.tl)+'</select>':'';var ngoSel=(x.role==='TL')?('<select class="fld" data-id="'+x.id+'" title="'+T('NGO','NGO')+'" style="padding:5px 7px;max-width:110px" onchange="muSetCluster(this.dataset.id,this.value)">'+ngoOpts(cl)+'</select>'):'';var seesRow='';if(x.role==='TL'){var others=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others.length){var seesSet=x.seesAlso||[];var chips=others.map(function(y){var on=seesSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetSeesAlso(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');seesRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also sees teams of:','આ પણ ટીમો જુએ છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips+'</div></div>';}}var monitorsRow='';if(x.role==='TL'){var others2=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others2.length){var monSet=x.monitorsTLs||[];var chips2=others2.map(function(y){var on=monSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetMonitorsTL(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');monitorsRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also monitors:','આ પણ મોનિટર કરે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips2+'</div></div>';}}return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(inactive?'opacity:.55':'')+'"><div style="flex:1;min-width:130px"><div style="font-weight:700">'+x.name+(x.role!=='TL'&&cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':'')+(inactive?' <span class="pill r" style="font-size:10px">'+T('inactive','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(x.phone||'')+'</div></div>'+roleSel+ngoSel+ra+'<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muSetActive(this.dataset.id,'+(inactive?'true':'false')+')">'+(inactive?T('Activate','ચાલુ કરો'):T('Deactivate','બંધ કરો'))+'</button>'+seesRow+monitorsRow+'</div>';}).join('')+'</div>';});/* bulk assign panel */
 var allTLs=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
 var allTeachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
@@ -1891,11 +2036,35 @@ if(BULK_OPEN){
     +'<button class="btn block" '+(selCount===0?'disabled':'')+' onclick="submitBulkAssign()">'+T('Assign to','સોંપો')+' '+selCount+' '+T('people','લોકો')+'</button>'
     +'</div>';
 }
-return '<div class="dhead"><div class="dh-title">'+T('Manage users','યુઝર મેનેજ')+'</div></div><button class="btn ghost block" style="margin-bottom:10px" onclick="selectItem(\'export\')"><i class="ti ti-download"></i> '+T('Export data (CSV)','ડેટા એક્સપોર્ટ (CSV)')+'</button>'+bulkToggleBtn+bulkPanel+ngoCard()+addCard+listCard;}
+return '<div class="dhead"><div class="dh-title">'+T('Manage users','યુઝર મેનેજ')+'</div></div><button class="btn ghost block" style="margin-bottom:10px" onclick="selectItem(\'export\')"><i class="ti ti-download"></i> '+T('Export data (CSV)','ડેટા એક્સપોર્ટ (CSV)')+'</button>'+bulkToggleBtn+bulkPanel+ngoCard()+impCard()+addCard+listCard;}
 function submitBulkAssign(){var text=(document.getElementById('bulk_text')||{}).value||'';text=text.trim();var due=(document.getElementById('bulk_due')||{}).value||addDays(realToday(),5);var ids=Object.keys(BULK_SEL);if(!text||!ids.length){toast(T('Select people and enter a task','લોકો પસંદ કરો અને કાર્ય લખો'));return;}ids.forEach(function(id){assignTeacherTask(id,text,due);});toast(T('Task assigned to','કાર્ય સોંપ્યું')+' '+ids.length+' '+T('people','લોકો')+' ✓');BULK_OPEN=false;BULK_SEL={};renderDetail();}
 function muRoleChange(){var r=val('mu_role');var a=document.getElementById('mu_tlwrap'),b=document.getElementById('mu_clwrap');if(a)a.style.display=(r==='Teacher')?'':'none';if(b)b.style.display=(r==='TL')?'':'none';}
 var MU_BUSY=false;
-function muAdd(){var name=(val('mu_name')||'').trim();var phone=(val('mu_phone')||'').trim();var role=val('mu_role')||'Teacher';if(!name){toast(T('Enter name','નામ લખો'));return;}var okp=phone.length===10;for(var i=0;i<phone.length;i++){if(phone[i]<'0'||phone[i]>'9')okp=false;}if(!okp){toast(T('Enter a valid 10-digit mobile','સાચો 10 અંકનો નંબર લખો'));return;}if(DB.users.find(function(x){return x.phone===phone;})){toast(T('This number already exists','આ નંબર પહેલેથી છે'));return;}var id=(role==='Teacher'?'tch_':role==='TL'?'tl_':'pm_')+phone;var obj={id:id,name:name,role:role,phone:phone,active:true};if(role==='Teacher')obj.tl=val('mu_tl')||'';if(role==='TL')obj.cluster=(val('mu_cluster')||'').trim();var cpw=(val('mu_pw')||'').trim();if(cpw&&cpw.length<6){toast(T('Password must be at least 6 characters','પાસવર્ડ ઓછામાં ઓછા 6 અક્ષર'));return;}var pw=cpw||('krsf'+phone.slice(-4));if(MU_BUSY)return;if(!FS){toast(T('No internet — cannot add users right now','ઇન્ટરનેટ નથી — હમણાં યુઝર ઉમેરી શકાતો નથી'));return;}MU_BUSY=true;var sec;try{sec=firebase.initializeApp(firebaseConfig,'mku');}catch(e){sec=firebase.app('mku');}var sa=sec.auth();sa.createUserWithEmailAndPassword(phone+'@krsf-field.app',pw).then(function(){return sa.signOut().catch(function(){});}).then(function(){DB.users.push(obj);save();FS.collection('appusers').doc(id).set(obj);FS.collection('usermap').doc(phone).set({appId:id,role:role,tl:obj.tl||''});MU_BUSY=false;toast(T('User added','યુઝર ઉમેરાયો')+' ✓');SEL='users';renderAll();},function(err){MU_BUSY=false;var c=err&&err.code;var m=(c==='auth/email-already-in-use')?T('This number already has an account','આ નંબરનું એકાઉન્ટ પહેલેથી છે'):(c==='auth/network-request-failed')?T('No internet — user not added','ઇન્ટરનેટ નથી — યુઝર ઉમેરાયો નથી'):(c==='auth/weak-password')?T('Password too weak (min 6 characters)','પાસવર્ડ ખૂબ નબળો'):T('Could not add user — not saved','યુઝર ઉમેરાયો નથી');toast(m);});}
+function muAdd(){var name=(val('mu_name')||'').trim();var phone=(val('mu_phone')||'').trim();var role=val('mu_role')||'Teacher';if(!name){toast(T('Enter name','નામ લખો'));return;}var okp=phone.length===10;for(var i=0;i<phone.length;i++){if(phone[i]<'0'||phone[i]>'9')okp=false;}if(!okp){toast(T('Enter a valid 10-digit mobile','સાચો 10 અંકનો નંબર લખો'));return;}if(DB.users.find(function(x){return x.phone===phone;})){toast(T('This number already exists','આ નંબર પહેલેથી છે'));return;}var id=(role==='Teacher'?'tch_':role==='TL'?'tl_':'pm_')+phone;var obj={id:id,name:name,role:role,phone:phone,active:true};if(role==='Teacher')obj.tl=val('mu_tl')||'';if(role==='TL')obj.cluster=(val('mu_cluster')||'').trim();var cpw=(val('mu_pw')||'').trim();if(cpw&&cpw.length<6){toast(T('Password must be at least 6 characters','પાસવર્ડ ઓછામાં ઓછા 6 અક્ષર'));return;}var pw=cpw||('krsf'+phone.slice(-4));if(MU_BUSY)return;if(!FS){toast(T('No internet — cannot add users right now','ઇન્ટરનેટ નથી — હમણાં યુઝર ઉમેરી શકાતો નથી'));return;}MU_BUSY=true;muCreateUser(obj,pw).then(function(){MU_BUSY=false;toast(T('User added','યુઝર ઉમેરાયો')+' ✓');SEL='users';renderAll();},function(err){MU_BUSY=false;toast(muErrText(err));});}
+/* ---- creating one account, in ONE place ----
+   The bulk import calls exactly this, so the two paths cannot drift apart on what a user
+   record holds or which collections it lands in. The account is created on a SECONDARY
+   firebase app ('mku') and signed straight out again - createUserWithEmailAndPassword signs
+   the new user in on whichever app it is called on, which would otherwise throw the PM out
+   of their own session halfway through an import.
+   Purely additive: it writes two new documents and never reads, updates or deletes an
+   existing one. */
+function muCreateUser(obj,pw){
+  if(!FS)return Promise.reject({code:'auth/network-request-failed'});
+  var sec;try{sec=firebase.initializeApp(firebaseConfig,'mku');}catch(e){sec=firebase.app('mku');}
+  var sa=sec.auth();
+  return sa.createUserWithEmailAndPassword(obj.phone+'@krsf-field.app',pw)
+    .then(function(){return sa.signOut().catch(function(){});})
+    .then(function(){
+      DB.users.push(obj);save();
+      FS.collection('appusers').doc(obj.id).set(obj);
+      FS.collection('usermap').doc(obj.phone).set({appId:obj.id,role:obj.role,tl:obj.tl||''});
+      return obj;});}
+function muErrText(err){var c=err&&err.code;
+  return (c==='auth/email-already-in-use')?T('This number already has an account','આ નંબરનું એકાઉન્ટ પહેલેથી છે')
+    :(c==='auth/network-request-failed')?T('No internet — user not added','ઇન્ટરનેટ નથી — યુઝર ઉમેરાયો નથી')
+    :(c==='auth/weak-password')?T('Password too weak (min 6 characters)','પાસવર્ડ ખૂબ નબળો')
+    :T('Could not add user — not saved','યુઝર ઉમેરાયો નથી');}
 function muReassign(id,tlid){var x=u(id);if(!x)return;x.tl=tlid;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:tlid,cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:x.role,tl:tlid},{merge:true});}toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
 /* Until v5.8 a TL's cluster could ONLY be set here, at the moment of promotion, and
    only if it was still blank — so an existing TL's NGO could never be changed and a
