@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.6'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.7'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1911,6 +1911,50 @@ function muSetRole(id,role){var x=u(id);if(!x)return;x.role=role;if(role==='TL'&
 function muSetSeesAlso(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.seesAlso||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.seesAlso=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,seesAlso:set},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
 function muSetMonitorsTL(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.monitorsTLs||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.monitorsTLs=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,monitorsTLs:set},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
 function muSetActive(id,act){var x=u(id);if(!x)return;x.active=act;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:act},{merge:true});}toast(act?(T('Activated','ચાલુ')+' ✓'):(T('Deactivated','બંધ')+' ✓'));renderAll();}
+/* ---- Attendance export ----
+   One row per person per working day, which is the shape Excel can actually filter and
+   pivot; a column-per-day grid can only ever be filtered by person. Built on the same
+   attPeople and attIndex the on-screen register uses, so the file and the screen can never
+   disagree about who was present.
+   Non-working days are left OUT rather than exported as absences - a Sunday is not a day
+   anybody failed to file on, and including them would drag every percentage down. */
+function attExportDays(from,to){var out=[],d=from,guard=0;
+  while(d<=to&&guard<1500){if(isWorkday(d))out.push(d);d=addDays(d,1);guard++;}
+  return out;}
+function attExportRows(from,to,ngo,role){
+  var ix=attIndex(),days=attExportDays(from,to);
+  var WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var people=attPeople().filter(function(p){
+    if(role==='Teacher'&&p.role!=='Teacher')return false;
+    if(role==='TL'&&p.role!=='TL')return false;
+    if(ngo&&ngo!=='all'&&(clusterOf(p)||'')!==ngo)return false;
+    return true;});
+  /* NGO, then the team leader above their own teachers, then alphabetical - so the file
+     reads the same way down the page as the register does on screen. */
+  people.sort(function(a,b){
+    var ca=clusterOf(a)||'',cb=clusterOf(b)||'';
+    if(ca!==cb)return ca.localeCompare(cb);
+    var ra=(a.role==='TL')?0:1,rb=(b.role==='TL')?0:1;
+    if(ra!==rb)return ra-rb;
+    return String(a.name||'').localeCompare(String(b.name||''));});
+  var rows=[];
+  people.forEach(function(p){
+    var c=clusterOf(p)||'',lead=(p.role==='TL')?'':(((u(p.tl)||{}).name)||'');
+    days.forEach(function(d){
+      rows.push([p.name,(p.role==='TL'?'Team Leader':'Teacher'),c,lead,d,
+        WD[new Date(d+'T00:00:00').getDay()],(ix[p.id+'|'+d]?'Yes':'No')]);});});
+  return {days:days,people:people,rows:rows};}
+function expAttendance(){
+  var from=val('att_from')||'',to=val('att_to')||'';
+  /* Reversed dates are swapped rather than refused, matching the daily-logs export. */
+  if(from&&to&&from>to){var t=from;from=to;to=t;}
+  if(!from||!to){toast(T('Pick both dates','બંને તારીખ પસંદ કરો'));return;}
+  var r=attExportRows(from,to,val('att_ngo')||'all',val('att_role')||'all');
+  if(!r.days.length){toast(T('No working days in that range','આ શ્રેણીમાં કામકાજનો દિવસ નથી'));return;}
+  if(!r.rows.length){toast(T('Nobody matches those filters','આ ફિલ્ટરમાં કોઈ નથી'));return;}
+  dlCSV('attendance-'+from+'-to-'+to+'.csv',
+    [['Name','Role','NGO','Team Leader','Date','Weekday','Present']].concat(r.rows));
+  toast(r.people.length+' '+T('people','લોકો')+' × '+r.days.length+' '+T('working days','કામકાજના દિવસ'));}
 function detailExport(){var now=new Date();var toD=dstr(now);var fromD=dstr(new Date(now.getFullYear(),now.getMonth(),1));var nLogs=DB.entries.filter(function(e){return hasDiary(e)||e.punchIn||e.punchOut;}).length;return '<div class="dhead"><div class="dh-title">'+T('Export data','ડેટા એક્સપોર્ટ')+'</div></div>'
  +'<div class="card"><h3><i class="ti ti-file-spreadsheet"></i> '+T('Daily logs (CSV)','દૈનિક લોગ (CSV)')+'</h3>'
  +'<div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('Every teacher & TL diary in a date range. Opens in Excel / Google Sheets.','તારીખ શ્રેણીમાં બધી ડાયરી. Excel / Google Sheets માં ખૂલે છે.')+'</div>'
@@ -1918,6 +1962,15 @@ function detailExport(){var now=new Date();var toD=dstr(now);var fromD=dstr(new 
  +'<div style="flex:1;min-width:120px"><label>'+T('To','સુધી')+'</label><input id="exp_to" type="date" class="fld" value="'+toD+'"></div></div>'
  +'<button class="btn block" style="margin-top:10px" onclick="expLogs()"><i class="ti ti-download"></i> '+T('Download logs','લોગ ડાઉનલોડ')+'</button>'
  +'<div class="muted" style="font-size:11.5px;margin-top:6px">'+nLogs+' '+T('log records available in total','કુલ લોગ રેકોર્ડ ઉપલબ્ધ')+'</div></div>'
+ +'<div class="card"><h3><i class="ti ti-calendar-event"></i> '+T('Attendance (CSV)','હાજરી (CSV)')+'</h3>'
+ +'<div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('One row per person per working day, so you can filter and pivot it in Excel. A person counts as present on a day when they wrote the daily diary. Sundays and holidays are left out.','દરેક વ્યક્તિ માટે દરેક કામકાજના દિવસની એક હરોળ. ડાયરી લખી હોય તે દિવસે હાજર ગણાય. રવિવાર અને રજા બાદ.')+'</div>'
+ +'<div style="display:flex;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:120px"><label>'+T('From','થી')+'</label><input id="att_from" type="date" class="fld" value="'+fromD+'"></div>'
+ +'<div style="flex:1;min-width:120px"><label>'+T('To','સુધી')+'</label><input id="att_to" type="date" class="fld" value="'+toD+'"></div></div>'
+ +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><div style="flex:1;min-width:120px"><label>'+T('NGO','NGO')+'</label><select id="att_ngo" class="fld"><option value="all">'+T('All NGOs','બધા NGO')+'</option>'
+ +clustersInScope().map(function(c){return '<option value="'+escA(c)+'">'+escA(c)+'</option>';}).join('')+'</select></div>'
+ +'<div style="flex:1;min-width:120px"><label>'+T('Role','ભૂમિકા')+'</label><select id="att_role" class="fld"><option value="all">'+T('Everyone','બધા')+'</option>'
+ +'<option value="Teacher">'+T('Teachers only','ફક્ત શિક્ષકો')+'</option><option value="TL">'+T('Team leaders only','ફક્ત ટીમ લીડર')+'</option></select></div></div>'
+ +'<button class="btn block" style="margin-top:10px" onclick="expAttendance()"><i class="ti ti-download"></i> '+T('Download attendance','હાજરી ડાઉનલોડ')+'</button></div>'
  +'<div class="card"><h3><i class="ti ti-users"></i> '+T('Staff list (CSV)','સ્ટાફ યાદી (CSV)')+'</h3>'
  +'<div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('All users with role, cluster, phone and status.','બધા યુઝર — ભૂમિકા, ક્લસ્ટર, નંબર, સ્થિતિ.')+'</div>'
  +'<button class="btn block ghost" onclick="expUsers()"><i class="ti ti-download"></i> '+T('Download staff list','સ્ટાફ ડાઉનલોડ')+'</button></div>';}
