@@ -189,6 +189,19 @@
   /* A nine-column table must scroll INSIDE its card. Letting it drag the whole page sideways
      is the single most common way a dense table ruins a phone. */
   .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Scroll a month of columns sideways and the names go with them, leaving a grid of ticks
+   attached to nobody. The first column stays put. It needs its own opaque background:
+   sticky only lifts it out of the flow, it does not stop the cells sliding underneath. */
+.att{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap}
+.att th,.att td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:center}
+.att .nm{position:sticky;left:0;z-index:2;text-align:left;background:var(--panel);min-width:132px;max-width:132px;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.att thead th{position:sticky;top:0;z-index:1;background:var(--panel);font-size:10px;color:var(--muted);font-weight:700}
+.att thead th.nm{z-index:3}
+.att tr.ngo td{background:var(--brand-tint);font-weight:800;color:var(--brand-d);font-size:11.5px}
+.att tr.ngo .nm{background:var(--brand-tint)}
+.att .yes{color:var(--gG-tx);font-weight:800}
+.att .no{color:#d9dde4}
+.att .tot{font-weight:800;background:var(--panel)}
   .tw table{min-width:600px}
   /* Overview strip: four compact metrics, not three tiles the size of a hand. */
   .ov-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
@@ -313,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.5'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.6'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -497,7 +510,7 @@ const overdue=(d,st)=>st==='open'&&d<realToday();
 function initials(n){return (n||'').replace(/\(.*\)/,'').trim().split(/\s+/).slice(0,2).map(function(w){return (w&&w[0])||'';}).join('').toUpperCase();}
 
 /* ===================== STATE ===================== */
-let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50,mpct:40,mdays:30,lvl:2},REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null,BRIDGE_BAND=null,BRIDGE_GBAND=null,BRIDGE_MISS=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
+let CUR='pm1',LANG='en',FILTER='all',SEL=null,TASK_TL=null,SELDATE=null,DIRTY=false,TEACHER_CLUS='all',TASK_OPEN_FOR=null,TEACHER_OPEN=null,SELTEACHER=null,SELTL=null,BULK_OPEN=false,BULK_SEL={},QOPEN=null,QP={days:3,students:20,pct:50,mpct:40,mdays:30,lvl:2},ATT_MONTH=null,REPLY_TASK=null,REPORT_LEVEL=null,REPORT_ID=null,REPORT_MODE='marks',HOURS_CLUS='all',TREND_SHOW={},BRIDGE_CLUS='all',BRIDGE_REVIEW=null,BRIDGE_SEL=null,BRIDGE_VIEW='gain',BRIDGE_GROUP='school',BRIDGE_SORT={k:'now',asc:true},BRIDGE_LINK=null,BRIDGE_BAND=null,BRIDGE_GBAND=null,BRIDGE_MISS=null;function selDate(){return SELDATE||today();}function changeDate(v){SELDATE=v||today();renderAll();}
 function T(en,gu){return LANG==='gu'?gu:en;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function toggleLang(){LANG=LANG==='en'?'gu':'en';document.body.classList.toggle('gu',LANG==='gu');document.getElementById('langBtn').textContent=LANG==='en'?'ગુજરાતી':'English';renderAll();}
@@ -974,6 +987,86 @@ function buildQueries(){
       .map(function(o){return {t:o.t,metric:bridgeF2(o.av)+'/10',sev:'a'};})});
   return Q;
 }
+/* ---- Attendance register: who filled the daily log, day by day, NGO by NGO ----
+   Guru's rule, chosen explicitly: a day counts ONLY when the diary was written. Punching in
+   and writing nothing is an absence here, which is why this cannot reuse the Dashboard's
+   'logged or punched' idea of activity. */
+function attMonth(){return ATT_MONTH||String(realToday()).slice(0,7);}
+function attShift(mk,n){var p=mk.split('-'),y=+p[0],m=+p[1]-1+n;var d=new Date(y,m,1);
+  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);}
+function attStep(n){var nx=attShift(attMonth(),n);
+  /* Never walk into a month that has not happened; every column would read as an absence. */
+  if(nx>String(realToday()).slice(0,7))return;
+  ATT_MONTH=nx;renderDetail();}
+/* Working days only - Sundays and the HOLIDAYS list are not absences. In the CURRENT month
+   the columns stop at today, otherwise the rest of the month reads as everyone missing. */
+function attDays(mk){var p=mk.split('-'),y=+p[0],m=+p[1];
+  var last=new Date(y,m,0).getDate(),td=realToday(),out=[],i,d;
+  for(i=1;i<=last;i++){d=mk+'-'+('0'+i).slice(-2);if(d>td)break;if(isWorkday(d))out.push(d);}
+  return out;}
+/* TLs first inside each NGO, then their teachers - the person who chases the log above the
+   people who file it. Anyone deactivated is left out, matching every other count. */
+function attPeople(){var out=[],seen={};
+  scopeTLs().slice().sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''));})
+    .forEach(function(x){if(!seen[x.id]){seen[x.id]=1;out.push(x);}});
+  scopeTeachers().slice().sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''));})
+    .forEach(function(x){if(!seen[x.id]){seen[x.id]=1;out.push(x);}});
+  return out;}
+/* One pass over the diaries, not one per person per day. With 46 staff and 26 columns a
+   naive lookup would walk the whole entry list 1,196 times. */
+function attIndex(){var ix={};(DB.entries||[]).forEach(function(e){if(e&&e.userId&&e.date&&hasDiary(e))ix[e.userId+'|'+e.date]=1;});return ix;}
+function attData(){
+  var mk=attMonth(),days=attDays(mk),ix=attIndex(),people=attPeople();
+  var by={},order=[];
+  people.forEach(function(p){var c=clusterOf(p)||T('No NGO set','NGO નથી');
+    if(!by[c]){by[c]=[];order.push(c);}
+    var hit=0;days.forEach(function(d){if(ix[p.id+'|'+d])hit++;});
+    by[c].push({u:p,hit:hit,days:days.map(function(d){return !!ix[p.id+'|'+d];})});});
+  order.sort(function(a,b){return String(a).localeCompare(String(b));});
+  var tot=0,poss=0;
+  order.forEach(function(c){by[c].forEach(function(r){tot+=r.hit;poss+=days.length;});});
+  return {month:mk,days:days,order:order,by:by,filled:tot,possible:poss,
+          pct:poss?Math.round(tot/poss*100):null};}
+function attMonthLabel(mk){var p=mk.split('-');
+  var n=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return n[(+p[1])-1]+' '+p[0];}
+function attRegisterCard(){
+  var open=(QOPEN==='attreg'),D=attData();
+  var badge=(D.pct==null?'—':D.pct+'%');
+  var head='<div onclick="toggleQuery(\'attreg\')" style="display:flex;align-items:center;gap:11px;padding:13px 15px;cursor:pointer">'
+    +'<div style="width:34px;height:34px;border-radius:9px;background:#fef7e0;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🗒</div>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:14.5px;font-weight:700">'+T('Daily log register','દૈનિક લોગ રજિસ્ટર')+'</div>'
+    +'<div style="font-size:12px;color:var(--muted)">'+T('Day by day, NGO by NGO','દિવસવાર, NGO વાર')+' · '+attMonthLabel(D.month)+'</div></div>'
+    +'<div style="background:'+(D.pct==null?'#e6e9ef':'#a16207')+';color:'+(D.pct==null?'#9aa1ad':'#fff')+';font-weight:800;font-size:12.5px;border-radius:20px;padding:3px 11px;min-width:34px;text-align:center">'+badge+'</div>'
+    +'<i class="ti ti-chevron-'+(open?'up':'down')+'" style="color:var(--muted);font-size:16px"></i></div>';
+  if(!open)return '<div class="card" style="padding:0;overflow:hidden">'+head+'</div>';
+  var atNow=(D.month>=String(realToday()).slice(0,7));
+  var pick='<div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:10px;padding:0 15px 12px">'
+    +'<span style="display:inline-flex;align-items:center;border:1px solid #e0d3a6;border-radius:9px;overflow:hidden;background:#fffdf5">'
+    +'<button onclick="attStep(-1)" style="border:none;background:transparent;width:34px;height:32px;font-size:17px;font-weight:800;color:#a16207;cursor:pointer">‹</button>'
+    +'<span style="min-width:104px;text-align:center;font-weight:800;color:#3a2e00;font-size:12.5px">'+attMonthLabel(D.month)+'</span>'
+    +'<button onclick="attStep(1)" '+(atNow?'disabled ':'')+'style="border:none;background:transparent;width:34px;height:32px;font-size:17px;font-weight:800;color:'+(atNow?'#d9dde4':'#a16207')+';cursor:'+(atNow?'default':'pointer')+'">›</button></span>'
+    +'<span class="muted" style="font-size:11.5px">'+D.filled+' '+T('of','માંથી')+' '+D.possible+' '+T('logs filled','લોગ ભરાયા')+'</span></div>';
+  if(!D.days.length)return '<div class="card" style="padding:0;overflow:hidden">'+head+pick
+    +'<div class="empty" style="padding:16px">'+T('No working days in this month yet.','આ મહિનામાં હજુ કામકાજનો દિવસ નથી.')+'</div></div>';
+  var hdr='<thead><tr><th class="nm">'+T('Name','નામ')+'</th>'
+    +D.days.map(function(d){return '<th>'+(+d.slice(8,10))+'</th>';}).join('')
+    +'<th class="tot">'+T('Total','કુલ')+'</th></tr></thead>';
+  var body='';
+  D.order.forEach(function(c){
+    var rows=D.by[c],hit=0;rows.forEach(function(r){hit+=r.hit;});
+    var poss=rows.length*D.days.length;
+    body+='<tr class="ngo"><td class="nm">'+escA(c)+'</td><td colspan="'+D.days.length+'"></td>'
+      +'<td>'+(poss?Math.round(hit/poss*100)+'%':'—')+'</td></tr>';
+    rows.forEach(function(r){
+      body+='<tr><td class="nm" onclick="selectItem(\''+r.u.id+'\')" style="cursor:pointer">'+escA(r.u.name)
+        +(r.u.role==='TL'?' <span class="pill b" style="font-size:9px;padding:0 5px">TL</span>':'')+'</td>'
+        +r.days.map(function(y){return y?'<td class="yes">✓</td>':'<td class="no">·</td>';}).join('')
+        +'<td class="tot">'+r.hit+'/'+D.days.length+'</td></tr>';});});
+  var note='<div class="muted" style="font-size:11px;padding:9px 15px 13px">'
+    +T('A tick means the daily diary was written that day. Punching in without writing the diary does not count. Sundays and holidays are left out. Tap a name to open that person.','ટિક એટલે તે દિવસે ડાયરી લખાઈ. માત્ર પંચ-ઇન ગણાતું નથી. રવિવાર અને રજા બાદ. વ્યક્તિ ખોલવા નામ પર દબાવો.')+'</div>';
+  return '<div class="card" style="padding:0;overflow:hidden">'+head+pick
+    +'<div class="tw" style="max-height:62vh;overflow-y:auto"><table class="att">'+hdr+'<tbody>'+body+'</tbody></table></div>'+note+'</div>';}
 function detailQueries(){
   var Q=buildQueries();
   var lastSec=null;
@@ -1001,7 +1094,10 @@ function detailQueries(){
     }).join(''):'<div class="empty" style="padding:16px">'+T('None — all good here.','કોઈ નથી — બધું બરાબર.')+'</div>')+'</div>'):'';
     return lab+'<div class="card" style="padding:0;overflow:hidden">'+head+param+rows+'</div>';
   }).join('');
-  return '<div class="dhead"><div><div class="dh-name">🔎 '+T('Queries','ક્વેરી')+'</div><div class="dh-sub">'+T('Find teachers who need attention · tap a name to open','ધ્યાન જરૂરી શિક્ષકો · નામ પર દબાવો')+'</div></div></div>'+cards;
+  /* The register is not a filter that returns a list of people, so it sits above the ones
+     that are, under a heading of its own rather than pretending to be one of them. */
+  var reg='<div class="mlabel" style="margin:2px 2px 8px">'+T('Attendance','હાજરી')+'</div>'+attRegisterCard();
+  return '<div class="dhead"><div><div class="dh-name">🔎 '+T('Queries','ક્વેરી')+'</div><div class="dh-sub">'+T('Find teachers who need attention · tap a name to open','ધ્યાન જરૂરી શિક્ષકો · નામ પર દબાવો')+'</div></div></div>'+reg+cards;
 }
 function detailTLs(){
   var list=overviewTLList();
