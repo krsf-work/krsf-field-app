@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.8'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.9'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1261,6 +1261,11 @@ function tlDashTeachers(){
   var band=function(p){return p>=85?'background:var(--gG-bg);color:var(--gG-tx)':(p>=60?'background:var(--gA-bg);color:var(--gA-tx)':'background:var(--gR-bg);color:var(--gR-tx)');};
   var pctCell=function(pv){if(pv==null)return '<td><span class="muted">—</span></td>';return '<td><span class="pf-cell" style="'+band(pv)+'">'+pv+'%</span></td>';};
   var lvl=function(v){return '<td><span class="pf-cell" style="'+bridgeLvlTint(v)+'">'+(v==null?'—':bridgeF2(v))+'</span></td>';};
+  /* A leader who runs two NGOs - Yogesh runs SVT and GST - needs to tell his two teams apart,
+     so each name carries its NGO. A leader with one NGO gets no tag: it would be the same
+     word on every row, which is noise rather than information. */
+  var ngoSet={};tch.forEach(function(t){var c=clusterOf(t);if(c)ngoSet[c]=1;});
+  var showNgo=Object.keys(ngoSet).length>1;
   var data=tch.map(function(t){return {t:t,ms:bridgeForTeacher(t,marks)};});
   var lvlOf=function(d){var v=d.ms.map(bridgeAvgLevel).filter(function(x){return x!=null;});return v.length?(v.reduce(function(a,b){return a+b;},0)/v.length):null;};
   /* Weakest learning level first, exactly as the NGO scoreboard sorts. A teacher with no
@@ -1270,7 +1275,7 @@ function tlDashTeachers(){
     var stu=ms.reduce(function(a,m){return a+(m.students||0);},0);
     var yes=loggedOn(t,ref);
     var todayCell='<td><span class="pf-cell" style="'+(yes?'background:var(--gG-bg);color:var(--gG-tx)':'background:var(--gR-bg);color:var(--gR-tx)')+'">'+(yes?T('Yes','હા'):T('No','ના'))+'</span></td>';
-    return '<tr class="tap" onclick="selectItem(\''+t.id+'\')"><td>'+escA(t.name)+(t.flagged?' <span class="pill r" style="font-size:9px;padding:1px 5px">!</span>':'')+'</td>'
+    return '<tr class="tap" onclick="selectItem(\''+t.id+'\')"><td>'+escA(t.name)+(showNgo&&clusterOf(t)?(' <span class="pill b" style="font-size:9px;padding:1px 5px">'+escA(clusterOf(t))+'</span>'):'')+(t.flagged?' <span class="pill r" style="font-size:9px;padding:1px 5px">!</span>':'')+'</td>'
       +'<td>'+(stu||'<span class="muted">—</span>')+'</td>'+todayCell+pctCell(pct7(t))+pctCell(att(t))
       +lvl(subj(ms,'reading'))+lvl(subj(ms,'writing'))+lvl(subj(ms,'maths'))+'</tr>';}).join('');
   var hol=(ref!==realToday())?('<div class="muted" style="font-size:11.5px;margin-bottom:7px;background:var(--brand-tint);border:1px solid #f6df91;border-radius:8px;padding:7px 10px;color:var(--brand-d);font-weight:700">'+T('Today is a holiday — showing the last working day,','આજે રજા છે — છેલ્લો કામકાજનો દિવસ:')+' '+fmtD(ref)+'</div>'):'';
@@ -1724,7 +1729,14 @@ function scopeMarks(){
     if(mine&&bridgeNorm(m.head||'')===mine)return true;
     return tch.some(function(t){return bridgeOwnsSchool(t,m);});});}
 function schoolsForTL(tlid){var set={};DB.users.forEach(function(t){if(t.role==='Teacher'&&tlSees(t,tlid)){var sc=(t.setupSchools&&t.setupSchools.length)?t.setupSchools:(t.setupSchool?[t.setupSchool]:[]);sc.forEach(function(s){if(s)set[s]=1;});}});return Object.keys(set).sort();}function peerTLs(tlid){var t=u(tlid);return (t&&t.monitorsTLs)||[];}
-function overviewActivity(){var _sc=scopeIsTL()?scopeTeachers().map(function(x){return x.id;}):null;var es=DB.entries.filter(function(e){return e.role==='Teacher'&&hasDiary(e)&&!(u(e.userId)&&u(e.userId).active===false)&&(!_sc||_sc.indexOf(e.userId)>-1);});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,15);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';var att=(e.present!=null&&e.present!==''&&e.total!=null&&e.total!=='')?(' · '+e.present+'/'+e.total):'';var work=escN(e.summary||'');var chal=(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?('<div style="color:#b3261e;font-size:12px;margin-top:3px">⚠ '+escN(e.challenge)+'</div>'):'';return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+'</span></div><div class="muted" style="font-size:12.5px">'+sch+att+'</div>'+(work?('<div style="font-size:13px;margin-top:2px">'+work+'</div>'):'')+chal+'</div>';}).join(''):('<div class="empty">'+T('No teacher activity yet','હજુ કોઈ પ્રવૃત્તિ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-activity"></i> '+T('Recent activity','તાજેતરની પ્રવૃત્તિ')+'</h3>'+rows+'</div>';}function overviewChallenges(){var _sc=scopeIsTL()?scopeTeachers().map(function(x){return x.id;}):null;var es=DB.entries.filter(function(e){return e.role==='Teacher'&&e.challenge&&String(e.challenge).trim()&&e.challenge!=='None.'&&e.challenge!=='None'&&(!_sc||_sc.indexOf(e.userId)>-1);});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,20);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';return '<div class="mrow" style="border:1px solid var(--line);border-left:3px solid #b3261e;margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+(sch?(' · '+escA(sch)):'')+'</span></div><div style="font-size:13px;margin-top:2px">'+escA(e.challenge)+'</div></div>';}).join(''):('<div class="empty">'+T('No challenges reported','કોઈ સમસ્યા નોંધાઈ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-flag"></i> '+T('Challenges from teachers','શિક્ષકોની સમસ્યાઓ')+'</h3>'+rows+'</div>';}function clusterOf(t){if(!t)return '';var MAP={tl_nilesh:'Dahod',tl_yogesh:'SVT',tl_falguni:'SVT',tl_bhargav:'KCT',tl_martin:'JCT',tl_jignesh:'JCT'};if(t.role==='TL')return t.cluster||MAP[t.id]||'';var tl=u(t.tl);return (tl&&tl.cluster)||MAP[t.tl]||'';}function clTag(x){var c=x?clusterOf(x):'';return c?' <span class="pill b" style="font-size:10px;padding:1px 6px;vertical-align:middle">'+escA(c)+'</span>':'';}
+function overviewActivity(){var _sc=scopeIsTL()?scopeTeachers().map(function(x){return x.id;}):null;var es=DB.entries.filter(function(e){return e.role==='Teacher'&&hasDiary(e)&&!(u(e.userId)&&u(e.userId).active===false)&&(!_sc||_sc.indexOf(e.userId)>-1);});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,15);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';var att=(e.present!=null&&e.present!==''&&e.total!=null&&e.total!=='')?(' · '+e.present+'/'+e.total):'';var work=escN(e.summary||'');var chal=(e.challenge&&e.challenge!=='None.'&&e.challenge!=='None')?('<div style="color:#b3261e;font-size:12px;margin-top:3px">⚠ '+escN(e.challenge)+'</div>'):'';return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+'</span></div><div class="muted" style="font-size:12.5px">'+sch+att+'</div>'+(work?('<div style="font-size:13px;margin-top:2px">'+work+'</div>'):'')+chal+'</div>';}).join(''):('<div class="empty">'+T('No teacher activity yet','હજુ કોઈ પ્રવૃત્તિ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-activity"></i> '+T('Recent activity','તાજેતરની પ્રવૃત્તિ')+'</h3>'+rows+'</div>';}function overviewChallenges(){var _sc=scopeIsTL()?scopeTeachers().map(function(x){return x.id;}):null;var es=DB.entries.filter(function(e){return e.role==='Teacher'&&e.challenge&&String(e.challenge).trim()&&e.challenge!=='None.'&&e.challenge!=='None'&&(!_sc||_sc.indexOf(e.userId)>-1);});es.sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||String(b.id).localeCompare(String(a.id));});es=es.slice(0,20);var rows=es.length?es.map(function(e){var nm=(u(e.userId)&&u(e.userId).name)||'Teacher';var sch=e.school||(e.schools&&e.schools[0])||'';return '<div class="mrow" style="border:1px solid var(--line);border-left:3px solid #b3261e;margin-bottom:6px;display:block"><div style="font-weight:700">'+nm+clTag(u(e.userId))+' <span class="muted" style="font-weight:400;font-size:12px">'+fmtD(e.date)+(sch?(' · '+escA(sch)):'')+'</span></div><div style="font-size:13px;margin-top:2px">'+escA(e.challenge)+'</div></div>';}).join(''):('<div class="empty">'+T('No challenges reported','કોઈ સમસ્યા નોંધાઈ નથી')+'</div>');return '<div class="card"><h3><i class="ti ti-flag"></i> '+T('Challenges from teachers','શિક્ષકોની સમસ્યાઓ')+'</h3>'+rows+'</div>';}function clusterOf(t){if(!t)return '';var MAP={tl_nilesh:'Dahod',tl_yogesh:'SVT',tl_falguni:'SVT',tl_bhargav:'KCT',tl_martin:'JCT',tl_jignesh:'JCT'};if(t.role==='TL')return t.cluster||MAP[t.id]||'';
+  /* A teacher's OWN NGO wins when it is set. ONE TEAM LEADER CAN RUN TWO NGOs - Yogesh runs
+     SVT and GST - and until this existed every teacher under him read SVT whichever NGO they
+     actually worked in, because a teacher's NGO was only ever their leader's. A teacher with
+     no cluster of their own still falls back to the leader exactly as before, so nobody
+     already in the app moves. */
+  if(t.cluster)return t.cluster;
+  var tl=u(t.tl);return (tl&&tl.cluster)||MAP[t.tl]||'';}function clTag(x){var c=x?clusterOf(x):'';return c?' <span class="pill b" style="font-size:10px;padding:1px 6px;vertical-align:middle">'+escA(c)+'</span>':'';}
 function teachersInScope(level,id){var teachers=scopeTeachers();if(level==='cluster')teachers=teachers.filter(function(t){return clusterOf(t)===id;});if(level==='tl')teachers=teachers.filter(function(t){return t.tl===id;});return teachers;}
 function tlsInScope(clusterId){return scopeTLs().filter(function(x){return clusterOf(x)===clusterId;});}
 function clustersInScope(){var set={};scopeTeachers().concat(scopeTLs()).forEach(function(x){var c=clusterOf(x);if(c)set[c]=1;});return Object.keys(set).sort();}
@@ -1866,7 +1878,7 @@ function muTlOpts(sel){var tls=DB.users.filter(function(x){return x.role==='TL';
    Reads a CSV of teachers and shows exactly what WOULD happen before anything is written.
    Nothing reaches Firebase until the confirm button is pressed, and even then it only ever
    ADDS: a row whose phone already belongs to somebody is skipped, never overwritten. */
-var IMP={rows:null,tl:'',prefix:'krsf',busy:false,done:null,fileName:''};
+var IMP={rows:null,tl:'',ngo:'',prefix:'krsf',busy:false,done:null,fileName:''};
 /* A quoted field may legitimately contain a comma, and school names arrive from Excel. */
 function impSplitLine(line){var out=[],cur='',q=false,i,ch;
   for(i=0;i<line.length;i++){ch=line[i];
@@ -1902,28 +1914,42 @@ function impParse(text){
     out.push({line:i+1,name:nm,phone:ph,school:sc});}
   return out;}
 /* Says what would happen to every row, and why - without touching anything. */
-function impClassify(rows,tl){
-  var create=[],skip=[],seen={};
+/* `ngo` is what these teachers belong to, which is NOT always their leader's NGO - one leader
+   can run two. Left blank it means "whatever the leader says", which is how it behaved
+   before this existed. `fix` lists people already in the app whose NGO disagrees, so they can
+   be corrected without being created twice. */
+function impClassify(rows,tl,ngo){
+  var create=[],skip=[],fix=[],seen={};
   (rows||[]).forEach(function(r){
     var why='';
     if(!r.name)why=T('no name','નામ નથી');
     else if(r.phone.length!==10)why=T('phone is not 10 digits','ફોન 10 અંકનો નથી');
     else if('6789'.indexOf(r.phone.charAt(0))<0)why=T('not a mobile number','મોબાઇલ નંબર નથી');
     else if(seen[r.phone])why=T('this number is twice in the file','આ નંબર ફાઇલમાં બે વાર છે');
-    else if(DB.users.some(function(x){return x&&x.phone===r.phone;}))why=T('already in the app','એપમાં પહેલેથી છે');
+    else if(DB.users.some(function(x){return x&&x.phone===r.phone;})){
+      why=T('already in the app','એપમાં પહેલેથી છે');
+      var ex=DB.users.filter(function(x){return x&&x.phone===r.phone;})[0];
+      if(ngo&&ex&&ex.role==='Teacher'&&clusterOf(ex)!==ngo)
+        fix.push({row:r,user:ex,from:clusterOf(ex)||T('none','કોઈ નહીં'),to:ngo});}
     if(why){skip.push({row:r,why:why});return;}
     seen[r.phone]=1;
     var obj={id:'tch_'+r.phone,name:r.name,role:'Teacher',phone:r.phone,active:true,tl:tl||''};
+    if(ngo)obj.cluster=ngo;
     /* The school is pre-filled so the teacher is joined to their bridge course figures from
        day one. The TIMETABLE is deliberately left empty - only they know their periods, and
        hasSetup still counts them as not set up until they fill it. */
     if(r.school)obj.setupSchools=[r.school];
     create.push({row:r,obj:obj});});
-  return {create:create,skip:skip};}
+  return {create:create,skip:skip,fix:fix};}
 function impPassword(phone,prefix){return String(prefix||'')+String(phone||'').slice(-4);}
 /* ---- the import screen ---- */
-function impClear(){IMP={rows:null,tl:'',prefix:'krsf',busy:false,done:null,fileName:''};renderDetail();}
-function impSetTL(v){IMP.tl=v;renderDetail();}
+function impClear(){IMP={rows:null,tl:'',ngo:'',prefix:'krsf',busy:false,done:null,fileName:''};renderDetail();}
+function impSetTL(v){IMP.tl=v;
+  /* Propose the leader's own NGO, since that is right whenever a leader runs just one.
+     It stays editable because Yogesh runs SVT and GST, and the teachers in this file may
+     belong to either. */
+  var t=u(v);if(t&&!IMP.ngo)IMP.ngo=clusterOf(t)||'';
+  renderDetail();}
 function impSetPrefix(v){IMP.prefix=v;renderDetail();}
 function impFileChange(ev){var f=ev.target.files&&ev.target.files[0];if(!f)return;
   var rd=new FileReader();
@@ -1956,11 +1982,24 @@ function impRun(){
   if(!FS){toast(T('No internet — cannot add users right now','ઇન્ટરનેટ નથી — હમણાં યુઝર ઉમેરી શકાતો નથી'));return;}
   var pw=impPassword('0000',IMP.prefix);
   if(pw.length<6){toast(T('That password would be under 6 characters — Firebase will refuse it','પાસવર્ડ 6 અક્ષરથી ઓછો છે'));return;}
-  var c=impClassify(IMP.rows,IMP.tl);
+  var c=impClassify(IMP.rows,IMP.tl,IMP.ngo);
   if(!c.create.length){toast(T('Nothing new to add','નવું કંઈ ઉમેરવાનું નથી'));return;}
   if(!confirm(T('Add','ઉમેરવા')+' '+c.create.length+' '+T('teachers? This creates a login for each of them.','શિક્ષક? દરેક માટે લોગિન બનશે.')))return;
   IMP.busy=true;IMP.done=null;renderDetail();
   impRunNext(c.create,0,[],[]);}
+/* Deliberately separate from the Add button. This one MODIFIES people who already exist,
+   which the import otherwise never does, so it gets its own list, its own confirm and its
+   own button. It writes one field - the NGO - and nothing else. */
+function impFixNgo(){
+  if(IMP.busy)return;
+  if(!IMP.rows||!IMP.ngo){toast(T('Choose a file and an NGO first','પહેલા ફાઇલ અને NGO પસંદ કરો'));return;}
+  var c=impClassify(IMP.rows,IMP.tl,IMP.ngo);
+  if(!c.fix.length){toast(T('Nothing to correct','સુધારવાનું કંઈ નથી'));return;}
+  if(!confirm(T('Change the NGO on','NGO બદલવું —')+' '+c.fix.length+' '+T('teachers who are already in the app?','પહેલેથી હાજર શિક્ષકો?')))return;
+  var n=0;c.fix.forEach(function(f){if(muSetCluster(f.user.id,IMP.ngo,true))n++;});
+  save();renderAll();
+  toast(n+' '+T('teachers moved to','શિક્ષક ખસેડ્યા —')+' '+IMP.ngo);}
+function impSetNgo(v){IMP.ngo=v;renderDetail();}
 function impCard(){
   var tls=DB.users.filter(function(x){return x&&x.role==='TL'&&x.active!==false;})
     .sort(function(a,b){var ca=clusterOf(a)||'',cb=clusterOf(b)||'';
@@ -1969,7 +2008,12 @@ function impCard(){
     +'<option value="">'+T('— choose a team leader —','— ટીમ લીડર પસંદ કરો —')+'</option>'
     +tls.map(function(t){var c=clusterOf(t);
       return '<option value="'+escA(t.id)+'"'+(IMP.tl===t.id?' selected':'')+'>'+escA(t.name)+(c?(' — '+escA(c)):'')+'</option>';}).join('')
-    +'</select><div class="muted" style="font-size:11.5px;margin-top:4px">'+T('The NGO comes from the team leader, so this is what puts them in the right NGO.','NGO ટીમ લીડર પરથી આવે છે, તેથી આનાથી જ તેઓ સાચા NGO માં જાય છે.')+'</div>';
+    +'</select>'
+    +'<label style="margin-top:8px;display:block">'+T('Their NGO','તેમનું NGO')+'</label>'
+    +'<select id="imp_ngo" class="fld" onchange="impSetNgo(this.value)">'
+    +'<option value="">'+T('— whatever the team leader is —','— ટીમ લીડર પ્રમાણે —')+'</option>'
+    +ngoOpts(IMP.ngo)+'</select>'
+    +'<div class="muted" style="font-size:11.5px;margin-top:4px">'+T('A team leader can run more than one NGO, so set this when these teachers are not in the same one as their leader.','એક ટીમ લીડર એક કરતાં વધુ NGO સંભાળી શકે, તેથી લીડરથી અલગ NGO હોય તો અહીં સેટ કરો.')+'</div>';
   var body='';
   if(IMP.done){
     var f=IMP.done.fail;
@@ -1987,7 +2031,7 @@ function impCard(){
       +'<div class="muted" style="font-size:12.5px;margin-bottom:8px">'+T('A CSV with a heading row naming the teacher, their phone and their school. You will see exactly who would be added before anything is saved.','હેડિંગ હરોળ સાથે CSV — શિક્ષકનું નામ, ફોન અને શાળા. સાચવતા પહેલા કોણ ઉમેરાશે તે દેખાશે.')+'</div>'
       +'<button class="btn block" onclick="document.getElementById(\'impFile\').click()"><i class="ti ti-file-spreadsheet"></i> '+T('Choose a CSV file','CSV ફાઇલ પસંદ કરો')+'</button>'
       +'<input type="file" id="impFile" accept=".csv,text/csv" style="display:none" onchange="impFileChange(event)"></div>';
-  var c=impClassify(IMP.rows,IMP.tl);
+  var c=impClassify(IMP.rows,IMP.tl,IMP.ngo);
   var ex=c.create.length?impPassword(c.create[0].obj.phone,IMP.prefix):impPassword('0000',IMP.prefix);
   var pwField='<label style="margin-top:8px;display:block">'+T('Password','પાસવર્ડ')+'</label>'
     +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="imp_pw" class="fld" style="flex:1;min-width:110px" value="'+escA(IMP.prefix)+'" oninput="impSetPrefix(this.value)">'
@@ -2003,11 +2047,18 @@ function impCard(){
     +(c.skip.length>30?('<div class="muted" style="font-size:11.5px;margin-top:4px">… +'+(c.skip.length-30)+'</div>'):'')+'</div>'):'';
   return '<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Import teachers','શિક્ષક ઇમ્પોર્ટ')+'</h3>'
     +'<div class="muted" style="font-size:12px;margin-bottom:8px">'+escA(IMP.fileName)+' · '+IMP.rows.length+' '+T('rows read','હરોળ વાંચી')+'</div>'
-    +pick+pwField+skipped
+    +pick+pwField
+    +(c.fix.length?('<div class="card" style="margin:10px 0 0;border-left:3px solid #2563eb;padding:9px 11px">'
+      +'<div style="font-weight:700;font-size:12.5px">'+c.fix.length+' '+T('are already in the app but under the wrong NGO','પહેલેથી છે પણ ખોટા NGO માં')+'</div>'
+      +c.fix.slice(0,8).map(function(x){return '<div style="font-size:12px;margin-top:3px">'+escA(x.user.name)+' — '+escA(x.from)+' → <b>'+escA(x.to)+'</b></div>';}).join('')
+      +(c.fix.length>8?('<div class="muted" style="font-size:11.5px;margin-top:3px">… +'+(c.fix.length-8)+'</div>'):'')
+      +'<button class="btn block" style="margin-top:9px" onclick="impFixNgo()">'+T('Move them to','ખસેડો —')+' '+escA(IMP.ngo)+'</button>'
+      +'<div class="muted" style="font-size:11px;margin-top:5px">'+T('This changes their NGO only. Nothing else about them is touched.','આનાથી ફક્ત NGO બદલાય છે. બીજું કંઈ બદલાતું નથી.')+'</div></div>'):'')
+    +skipped
     +'<div style="font-weight:800;margin:12px 0 6px">'+c.create.length+' '+T('will be added','ઉમેરાશે')+'</div>'+tbl
     +'<button class="btn block" style="margin-top:10px" onclick="impRun()">'+T('Add these teachers','આ શિક્ષકો ઉમેરો')+'</button>'
     +'<button class="btn ghost block" style="margin-top:8px" onclick="impClear()">'+T('Cancel','રદ કરો')+'</button></div>';}
-function detailUsers(){var addCard='<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Add user','નવો યુઝર')+'</h3><label>'+T('Name','નામ')+'</label><input id="mu_name" class="fld"><label>'+T('Mobile number','મોબાઇલ નંબર')+'</label><input id="mu_phone" class="fld" inputmode="numeric"><label>'+T('Role','ભૂમિકા')+'</label><select id="mu_role" class="fld" onchange="muRoleChange()"><option value="Teacher">Teacher</option><option value="TL">Team Leader</option><option value="PM">PM</option></select><div id="mu_tlwrap"><label>'+T('Under Team Leader','ટીમ લીડર હેઠળ')+'</label><select id="mu_tl" class="fld">'+muTlOpts('')+'</select></div><div id="mu_clwrap" style="display:none"><label>'+T('NGO / cluster code (e.g. SVT, KCT, JCT, Dahod, GST)','NGO / ક્લસ્ટર કોડ (દા.ત. SVT, KCT, JCT, Dahod, GST)')+'</label><input id="mu_cluster" class="fld"></div><div class="muted" style="font-size:12px;margin:6px 0">'+T('Password = last 4 digits of the mobile number.','પાસવર્ડ = મોબાઇલના છેલ્લા 4 અંક.')+'</div><label>'+T('Password (optional)','પાસવર્ડ (વૈકલ્પિક)')+'</label><input id="mu_pw" class="fld" placeholder="'+T('Blank = last 4 digits','ખાલી = છેલ્લા 4 અંક')+'"><button class="btn block" onclick="muAdd()">'+T('Add user','યુઝર ઉમેરો')+'</button></div>';var roles=['PM','TL','Teacher'];var listCard='';roles.forEach(function(role){var us=DB.users.filter(function(x){return x.role===role;});if(!us.length)return;listCard+='<div class="card"><h3>'+role+' ('+us.length+')</h3>'+us.map(function(x){var cl=clusterOf(x);var inactive=x.active===false;var roleSel='<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:110px" onchange="muSetRole(this.dataset.id,this.value)">'+['Teacher','TL','PM'].map(function(r){return '<option '+(x.role===r?'selected':'')+'>'+r+'</option>';}).join('')+'</select>';var ra=(x.role==='Teacher')?'<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:140px" onchange="muReassign(this.dataset.id,this.value)">'+muTlOpts(x.tl)+'</select>':'';var ngoSel=(x.role==='TL')?('<select class="fld" data-id="'+x.id+'" title="'+T('NGO','NGO')+'" style="padding:5px 7px;max-width:110px" onchange="muSetCluster(this.dataset.id,this.value)">'+ngoOpts(cl)+'</select>'):'';var seesRow='';if(x.role==='TL'){var others=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others.length){var seesSet=x.seesAlso||[];var chips=others.map(function(y){var on=seesSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetSeesAlso(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');seesRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also sees teams of:','આ પણ ટીમો જુએ છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips+'</div></div>';}}var monitorsRow='';if(x.role==='TL'){var others2=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others2.length){var monSet=x.monitorsTLs||[];var chips2=others2.map(function(y){var on=monSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetMonitorsTL(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');monitorsRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also monitors:','આ પણ મોનિટર કરે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips2+'</div></div>';}}return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(inactive?'opacity:.55':'')+'"><div style="flex:1;min-width:130px"><div style="font-weight:700">'+x.name+(x.role!=='TL'&&cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':'')+(inactive?' <span class="pill r" style="font-size:10px">'+T('inactive','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(x.phone||'')+'</div></div>'+roleSel+ngoSel+ra+'<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muSetActive(this.dataset.id,'+(inactive?'true':'false')+')">'+(inactive?T('Activate','ચાલુ કરો'):T('Deactivate','બંધ કરો'))+'</button>'+seesRow+monitorsRow+'</div>';}).join('')+'</div>';});/* bulk assign panel */
+function detailUsers(){var addCard='<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Add user','નવો યુઝર')+'</h3><label>'+T('Name','નામ')+'</label><input id="mu_name" class="fld"><label>'+T('Mobile number','મોબાઇલ નંબર')+'</label><input id="mu_phone" class="fld" inputmode="numeric"><label>'+T('Role','ભૂમિકા')+'</label><select id="mu_role" class="fld" onchange="muRoleChange()"><option value="Teacher">Teacher</option><option value="TL">Team Leader</option><option value="PM">PM</option></select><div id="mu_tlwrap"><label>'+T('Under Team Leader','ટીમ લીડર હેઠળ')+'</label><select id="mu_tl" class="fld">'+muTlOpts('')+'</select></div><div id="mu_clwrap" style="display:none"><label>'+T('NGO / cluster code (e.g. SVT, KCT, JCT, Dahod, GST)','NGO / ક્લસ્ટર કોડ (દા.ત. SVT, KCT, JCT, Dahod, GST)')+'</label><input id="mu_cluster" class="fld"></div><div class="muted" style="font-size:12px;margin:6px 0">'+T('Password = last 4 digits of the mobile number.','પાસવર્ડ = મોબાઇલના છેલ્લા 4 અંક.')+'</div><label>'+T('Password (optional)','પાસવર્ડ (વૈકલ્પિક)')+'</label><input id="mu_pw" class="fld" placeholder="'+T('Blank = last 4 digits','ખાલી = છેલ્લા 4 અંક')+'"><button class="btn block" onclick="muAdd()">'+T('Add user','યુઝર ઉમેરો')+'</button></div>';var roles=['PM','TL','Teacher'];var listCard='';roles.forEach(function(role){var us=DB.users.filter(function(x){return x.role===role;});if(!us.length)return;listCard+='<div class="card"><h3>'+role+' ('+us.length+')</h3>'+us.map(function(x){var cl=clusterOf(x);var inactive=x.active===false;var roleSel='<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:110px" onchange="muSetRole(this.dataset.id,this.value)">'+['Teacher','TL','PM'].map(function(r){return '<option '+(x.role===r?'selected':'')+'>'+r+'</option>';}).join('')+'</select>';var ra=(x.role==='Teacher')?'<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:140px" onchange="muReassign(this.dataset.id,this.value)">'+muTlOpts(x.tl)+'</select>':'';var ngoSel=(x.role==='TL'||x.role==='Teacher')?('<select class="fld" data-id="'+x.id+'" title="'+(x.role==='Teacher'?(x.cluster?T('NGO set on this teacher','આ શિક્ષક પર સેટ કરેલ NGO'):T('NGO inherited from their team leader','ટીમ લીડર પરથી આવેલ NGO')):T('NGO','NGO'))+'" style="padding:5px 7px;max-width:110px" onchange="muSetCluster(this.dataset.id,this.value)">'+ngoOpts(cl)+'</select>'):'';var seesRow='';if(x.role==='TL'){var others=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others.length){var seesSet=x.seesAlso||[];var chips=others.map(function(y){var on=seesSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetSeesAlso(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');seesRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also sees teams of:','આ પણ ટીમો જુએ છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips+'</div></div>';}}var monitorsRow='';if(x.role==='TL'){var others2=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others2.length){var monSet=x.monitorsTLs||[];var chips2=others2.map(function(y){var on=monSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetMonitorsTL(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');monitorsRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also monitors:','આ પણ મોનિટર કરે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips2+'</div></div>';}}return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(inactive?'opacity:.55':'')+'"><div style="flex:1;min-width:130px"><div style="font-weight:700">'+x.name+(x.role!=='TL'&&cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':'')+(inactive?' <span class="pill r" style="font-size:10px">'+T('inactive','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(x.phone||'')+'</div></div>'+roleSel+ngoSel+ra+'<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muSetActive(this.dataset.id,'+(inactive?'true':'false')+')">'+(inactive?T('Activate','ચાલુ કરો'):T('Deactivate','બંધ કરો'))+'</button>'+seesRow+monitorsRow+'</div>';}).join('')+'</div>';});/* bulk assign panel */
 var allTLs=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
 var allTeachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
 var clusters=[...new Set(allTLs.map(clusterOf).concat(allTeachers.map(clusterOf)).filter(Boolean))].sort();
@@ -2069,13 +2120,16 @@ function muReassign(id,tlid){var x=u(id);if(!x)return;x.tl=tlid;save();if(FS){FS
 /* Until v5.8 a TL's cluster could ONLY be set here, at the moment of promotion, and
    only if it was still blank — so an existing TL's NGO could never be changed and a
    new NGO could not be introduced without creating a new user. muSetCluster fixes that. */
-function muSetCluster(id,v){var x=u(id);if(!x||x.role!=='TL')return;var cur=x.cluster||clusterOf(x)||'';
+function muSetCluster(id,v,quiet){var x=u(id);if(!x||(x.role!=='TL'&&x.role!=='Teacher'))return false;var cur=x.cluster||clusterOf(x)||'';
   v=(v==null?'':String(v)).trim();
-  if(v===cur)return;
-  if(v.length>24){toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return;}
+  if(v===cur)return false;
+  if(v.length>24){if(!quiet)toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return false;}
   x.cluster=v;save();
   if(FS){try{FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:v,active:x.active!==false},{merge:true});}catch(err){console.warn('muSetCluster',err);}}
-  toast(T('Cluster updated','ક્લસ્ટર બદલ્યું')+' ✓');renderAll();}
+  /* Quiet is for the bulk path: twenty-eight toasts and twenty-eight full re-renders would
+     be the only thing anybody saw. The caller renders once at the end instead. */
+  if(!quiet){toast(T('Cluster updated','ક્લસ્ટર બદલ્યું')+' ✓');renderAll();}
+  return true;}
 function muSetRole(id,role){var x=u(id);if(!x)return;x.role=role;if(role==='TL'&&!x.cluster){x.cluster=(prompt('Cluster code — e.g. SVT / KCT / JCT / Dahod / GST')||'').trim();}save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:role,tl:x.tl||''},{merge:true});}toast(T('Role updated','ભૂમિકા બદલી')+' ✓');renderAll();}
 function muSetSeesAlso(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.seesAlso||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.seesAlso=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,seesAlso:set},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
 function muSetMonitorsTL(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.monitorsTLs||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.monitorsTLs=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,monitorsTLs:set},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
