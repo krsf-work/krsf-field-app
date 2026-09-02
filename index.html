@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.11'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.12'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -367,7 +367,40 @@ async function fetchLogsFor(ids,fromDate){var FP=firebase.firestore.FieldPath.do
 function pushLog(e){ if(!FS)return; try{ e.updatedAt=Date.now(); syncTrack(FS.collection('logs').doc(String(e.id)).set(e,{merge:true})); }catch(err){SYNC.err++;updateSyncUI();console.warn('pushLog',err);} }
 async function loadSharedLogs(force){ if(!FS)return; if(!fetchDue('logs',9e5,force))return; try{ var fromDate=logsFromDate(force); var ids=logIdsForRole(); var remote; if(ids===null){ const snap=await FS.collection('logs').where('date','>=',fromDate).get(); remote=snap.docs.map(d=>d.data()); } else { remote=await fetchLogsFor(ids,fromDate); } mergeLogs(remote); fetchStamp('logs'); logsCursorSet(realToday()); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedLogs',err);} }
 function pushTask(t){ if(!FS)return; try{ t.updatedAt=Date.now(); syncTrack(FS.collection('tasks').doc(String(t.id)).set(t,{merge:true})); }catch(err){SYNC.err++;updateSyncUI();console.warn('pushTask',err);} }
-async function loadSharedTasks(force){ if(!FS)return; if(!fetchDue('tasks',9e5,force))return; try{ const snap=await FS.collection('tasks').get(); const remote=snap.docs.map(d=>d.data()); var _tb={};DB.tasks.forEach(function(x){if(x&&x.id)_tb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_tb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_tb[r.id]=r;});DB.tasks=Object.keys(_tb).map(function(k){return _tb[k];}); fetchStamp('tasks'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedTasks',err);} }
+/* ---- which tasks this person's screens can ever ask about ----
+   Every task lookup in the app keys on one of two fields: `tlid`, the person it is FOR, and
+   `assignedBy`, the person who gave it. A teacher only ever reads their own. A team leader
+   reads their own, their teachers', those of any leader they monitor, and whatever they
+   handed out. The PM's Overview counts overdue tasks across the whole programme, so for a
+   PM there is nothing to narrow and this returns null, meaning fetch everything.
+   Before this, every device downloaded EVERY task on every sync: at 200 people and 500 tasks
+   that is about 300,000 Firestore reads a day against a free allowance of 50,000. */
+function taskIdsForRole(){
+  var me=u(CUR);if(!me)return [CUR];
+  if(me.role==='PM')return null;
+  var set={};set[CUR]=1;
+  DB.users.forEach(function(x){if(x&&tlSees(x,CUR))set[x.id]=1;});
+  (peerTLs(CUR)||[]).forEach(function(id){if(id)set[id]=1;});
+  coTLs(CUR).forEach(function(id){if(id)set[id]=1;});
+  return Object.keys(set);}
+/* Firestore accepts at most 30 values in an `in`, so the ids go in batches - the same shape
+   fetchLogsFor already uses for diaries. */
+async function fetchTasksFor(ids){
+  var CH=30,jobs=[],i;
+  for(i=0;i<ids.length;i+=CH)jobs.push(FS.collection('tasks').where('tlid','in',ids.slice(i,i+CH)).get());
+  jobs.push(FS.collection('tasks').where('assignedBy','==',CUR).get());
+  var snaps=await Promise.all(jobs),out=[];
+  snaps.forEach(function(s){s.docs.forEach(function(d){out.push(d.data());});});
+  return out;}
+async function loadSharedTasks(force){ if(!FS)return; if(!fetchDue('tasks',9e5,force))return; try{
+  var _ids=taskIdsForRole(),remote;
+  if(_ids===null){const snap=await FS.collection('tasks').get();remote=snap.docs.map(d=>d.data());}
+  else{
+    /* If the narrow read fails for ANY reason, fall back to the whole collection rather than
+       leave somebody looking at an empty Tasks screen. Costlier, but never wrong. */
+    try{remote=await fetchTasksFor(_ids);}
+    catch(e){console.warn('scoped task fetch failed, falling back to all',e);
+      const snap=await FS.collection('tasks').get();remote=snap.docs.map(d=>d.data());}} var _tb={};DB.tasks.forEach(function(x){if(x&&x.id)_tb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_tb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_tb[r.id]=r;});DB.tasks=Object.keys(_tb).map(function(k){return _tb[k];}); fetchStamp('tasks'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedTasks',err);} }
 function pushSchool(name){ if(!FS||!name)return; try{ syncTrack(FS.collection('schools').doc(encodeURIComponent(name).slice(0,1400)).set({name:name})); }catch(err){console.warn('pushSchool',err);} }
 async function loadSharedSchools(force){ if(!FS)return; if(!fetchDue('schools',864e5,force))return; try{ const snap=await FS.collection('schools').get(); const remote=snap.docs.map(d=>(d.data()||{}).name).filter(Boolean); DB.schools=[...new Set(DB.schools.concat(remote))].sort(); fetchStamp('schools'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedSchools',err);} }
 function markId(teacherId,subject,examDate){return teacherId+'_'+String(subject).trim().toLowerCase().replace(/[^a-z0-9]+/g,'-')+'_'+examDate;}
