@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.9'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.11'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1894,10 +1894,15 @@ function impNorm(s){return String(s==null?'':s).replace(/\s+/g,' ').trim();}
 function impPickCols(head){
   var lc=head.map(function(x){return impNorm(x).toLowerCase();});
   var find=function(test){for(var i=0;i<lc.length;i++)if(test(lc[i]))return i;return -1;};
-  var cSchool=find(function(s){return s.indexOf('school')>-1;});
-  var cName=find(function(s){return (s.indexOf('teacher')>-1)||(s.indexOf('name')>-1&&s.indexOf('school')<0);});
-  var cPhone=find(function(s){return s.indexOf('phone')>-1||s.indexOf('contact')>-1||s.indexOf('mobile')>-1||s.indexOf('number')>-1;});
-  return {name:cName,phone:cPhone,school:cSchool};}
+  var isPhone=function(s){return s.indexOf('phone')>-1||s.indexOf('contact')>-1||s.indexOf('mobile')>-1||s.indexOf('number')>-1;};
+  var isLead=function(s){return s.indexOf('leader')>-1||s.indexOf('tl')===0;};
+  /* Leader columns are claimed FIRST, so the teacher columns can simply exclude them. */
+  var cLeadPhone=find(function(s){return isLead(s)&&isPhone(s);});
+  var cLead=find(function(s){return isLead(s)&&!isPhone(s);});
+  var cSchool=find(function(s){return s.indexOf('school')>-1&&!isLead(s);});
+  var cName=find(function(s){return !isLead(s)&&((s.indexOf('teacher')>-1)||(s.indexOf('name')>-1&&s.indexOf('school')<0));});
+  var cPhone=find(function(s){return isPhone(s)&&!isLead(s);});
+  return {name:cName,phone:cPhone,school:cSchool,lead:cLead,leadPhone:cLeadPhone};}
 function impParse(text){
   var lines=String(text||'').split(/\r?\n/).filter(function(l){return l.trim().length;});
   if(!lines.length)throw new Error(T('That file is empty.','આ ફાઇલ ખાલી છે.'));
@@ -1911,7 +1916,9 @@ function impParse(text){
     if(ph.length===12&&ph.slice(0,2)==='91')ph=ph.slice(2);
     if(ph.length===11&&ph.charAt(0)==='0')ph=ph.slice(1);
     if(!nm&&!ph)continue;
-    out.push({line:i+1,name:nm,phone:ph,school:sc});}
+    out.push({line:i+1,name:nm,phone:ph,school:sc,
+      lead:col.lead>-1?impNorm(c[col.lead]):'',
+      leadPhone:col.leadPhone>-1?impNorm(c[col.leadPhone]).replace(/[^0-9]/g,''):''});}
   return out;}
 /* Says what would happen to every row, and why - without touching anything. */
 /* `ngo` is what these teachers belong to, which is NOT always their leader's NGO - one leader
@@ -1919,7 +1926,7 @@ function impParse(text){
    before this existed. `fix` lists people already in the app whose NGO disagrees, so they can
    be corrected without being created twice. */
 function impClassify(rows,tl,ngo){
-  var create=[],skip=[],fix=[],seen={};
+  var create=[],skip=[],fix=[],move=[],unknownLead=[],seen={};
   (rows||[]).forEach(function(r){
     var why='';
     if(!r.name)why=T('no name','નામ નથી');
@@ -1930,17 +1937,40 @@ function impClassify(rows,tl,ngo){
       why=T('already in the app','એપમાં પહેલેથી છે');
       var ex=DB.users.filter(function(x){return x&&x.phone===r.phone;})[0];
       if(ngo&&ex&&ex.role==='Teacher'&&clusterOf(ex)!==ngo)
-        fix.push({row:r,user:ex,from:clusterOf(ex)||T('none','કોઈ નહીં'),to:ngo});}
+        fix.push({row:r,user:ex,from:clusterOf(ex)||T('none','કોઈ નહીં'),to:ngo});
+      /* Only ever a TEACHER, and only when the file actually names a leader. */
+      if(ex&&ex.role==='Teacher'&&impLeadNamed(r)){
+        var want=impResolveLead(r);
+        if(!want)unknownLead.push({row:r,named:r.lead||r.leadPhone});
+        else if(ex.tl!==want)
+          move.push({row:r,user:ex,fromId:ex.tl||'',from:((u(ex.tl)||{}).name)||T('nobody','કોઈ નહીં'),
+                     toId:want,to:((u(want)||{}).name)||want});}}
     if(why){skip.push({row:r,why:why});return;}
     seen[r.phone]=1;
-    var obj={id:'tch_'+r.phone,name:r.name,role:'Teacher',phone:r.phone,active:true,tl:tl||''};
+    var rowLead=impLeadNamed(r)?impResolveLead(r):'';
+    if(impLeadNamed(r)&&!rowLead)unknownLead.push({row:r,named:r.lead||r.leadPhone});
+    var obj={id:'tch_'+r.phone,name:r.name,role:'Teacher',phone:r.phone,active:true,tl:rowLead||tl||''};
     if(ngo)obj.cluster=ngo;
     /* The school is pre-filled so the teacher is joined to their bridge course figures from
        day one. The TIMETABLE is deliberately left empty - only they know their periods, and
        hasSetup still counts them as not set up until they fill it. */
     if(r.school)obj.setupSchools=[r.school];
     create.push({row:r,obj:obj});});
-  return {create:create,skip:skip,fix:fix};}
+  return {create:create,skip:skip,fix:fix,move:move,unknownLead:unknownLead};}
+/* Match on the leader's PHONE first - two people can share a name, nobody shares a number.
+   Falls back to the name, compared the same way school names are. Returns '' when the file
+   names a leader this app has never heard of, which the preview then reports rather than
+   silently attaching the teacher to whoever the dropdown happened to be showing. */
+function impResolveLead(r){
+  if(!r)return '';
+  var tls=DB.users.filter(function(x){return x&&x.role==='TL'&&x.active!==false;});
+  var byPhone=r.leadPhone&&tls.filter(function(x){return String(x.phone||'')===r.leadPhone;})[0];
+  if(byPhone)return byPhone.id;
+  if(!r.lead)return '';
+  var k=bridgeNorm(r.lead);
+  var byName=tls.filter(function(x){return bridgeNorm(x.name||'')===k;})[0];
+  return byName?byName.id:'';}
+function impLeadNamed(r){return !!(r&&(r.lead||r.leadPhone));}
 function impPassword(phone,prefix){return String(prefix||'')+String(phone||'').slice(-4);}
 /* ---- the import screen ---- */
 function impClear(){IMP={rows:null,tl:'',ngo:'',prefix:'krsf',busy:false,done:null,fileName:''};renderDetail();}
@@ -1999,12 +2029,26 @@ function impFixNgo(){
   var n=0;c.fix.forEach(function(f){if(muSetCluster(f.user.id,IMP.ngo,true))n++;});
   save();renderAll();
   toast(n+' '+T('teachers moved to','શિક્ષક ખસેડ્યા —')+' '+IMP.ngo);}
+/* Its own button, like the NGO correction, because it MODIFIES people who already exist.
+   It writes one field - who they report to - and never touches their school, their phone or
+   their NGO override. A teacher's NGO follows their new leader on its own. */
+function impMoveLead(){
+  if(IMP.busy)return;
+  if(!IMP.rows){toast(T('Choose a file first','પહેલા ફાઇલ પસંદ કરો'));return;}
+  var c=impClassify(IMP.rows,IMP.tl,IMP.ngo);
+  if(!c.move.length){toast(T('Nobody needs moving','કોઈને ખસેડવાની જરૂર નથી'));return;}
+  if(!confirm(T('Move','ખસેડવા')+' '+c.move.length+' '+T('teachers to the team leaders named in the file?','શિક્ષકોને ફાઇલમાં લખેલા ટીમ લીડર પાસે?')))return;
+  var n=0;c.move.forEach(function(m){if(muReassign(m.user.id,m.toId,true))n++;});
+  save();renderAll();
+  toast(n+' '+T('teachers moved','શિક્ષક ખસેડ્યા'));}
 function impSetNgo(v){IMP.ngo=v;renderDetail();}
 function impCard(){
   var tls=DB.users.filter(function(x){return x&&x.role==='TL'&&x.active!==false;})
     .sort(function(a,b){var ca=clusterOf(a)||'',cb=clusterOf(b)||'';
       return ca.localeCompare(cb)||String(a.name||'').localeCompare(String(b.name||''));});
-  var pick='<label>'+T('They all report to','બધા કોને રિપોર્ટ કરે છે')+'</label><select id="imp_tl" class="fld" onchange="impSetTL(this.value)">'
+  var perRowLead=(IMP.rows||[]).some(impLeadNamed);
+  var pick=perRowLead?('<div class="muted" style="font-size:12.5px;padding:7px 9px;background:var(--brand-tint);border-radius:8px">'+T('This file names a team leader on every row, so each teacher goes to their own. The picker below is only used for rows that name nobody.','આ ફાઇલમાં દરેક હરોળ પર ટીમ લીડર છે, તેથી દરેક શિક્ષક પોતાના લીડર પાસે જશે.')+'</div>'):'';
+  pick+='<label>'+T('They all report to','બધા કોને રિપોર્ટ કરે છે')+'</label><select id="imp_tl" class="fld" onchange="impSetTL(this.value)">'
     +'<option value="">'+T('— choose a team leader —','— ટીમ લીડર પસંદ કરો —')+'</option>'
     +tls.map(function(t){var c=clusterOf(t);
       return '<option value="'+escA(t.id)+'"'+(IMP.tl===t.id?' selected':'')+'>'+escA(t.name)+(c?(' — '+escA(c)):'')+'</option>';}).join('')
@@ -2048,6 +2092,16 @@ function impCard(){
   return '<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Import teachers','શિક્ષક ઇમ્પોર્ટ')+'</h3>'
     +'<div class="muted" style="font-size:12px;margin-bottom:8px">'+escA(IMP.fileName)+' · '+IMP.rows.length+' '+T('rows read','હરોળ વાંચી')+'</div>'
     +pick+pwField
+    +(c.unknownLead.length?('<div class="card" style="margin:10px 0 0;border-left:3px solid #b3261e;padding:9px 11px">'
+      +'<div style="font-weight:700;font-size:12.5px;color:#b3261e">'+c.unknownLead.length+' '+T('rows name a team leader this app does not have','હરોળમાં લખેલા ટીમ લીડર એપમાં નથી')+'</div>'
+      +[...new Set(c.unknownLead.map(function(x){return x.named;}))].slice(0,6).map(function(nm){return '<div style="font-size:12px;margin-top:3px">'+escA(nm)+'</div>';}).join('')
+      +'<div class="muted" style="font-size:11px;margin-top:5px">'+T('Add them under Add user first, or correct the spelling in the file.','પહેલા Add user માં ઉમેરો, અથવા ફાઇલમાં જોડણી સુધારો.')+'</div></div>'):'')
+    +(c.move.length?('<div class="card" style="margin:10px 0 0;border-left:3px solid #1baf7a;padding:9px 11px">'
+      +'<div style="font-weight:700;font-size:12.5px">'+c.move.length+' '+T('are under the wrong team leader','ખોટા ટીમ લીડર હેઠળ છે')+'</div>'
+      +c.move.slice(0,8).map(function(x){return '<div style="font-size:12px;margin-top:3px">'+escA(x.user.name)+' — '+escA(x.from)+' → <b>'+escA(x.to)+'</b></div>';}).join('')
+      +(c.move.length>8?('<div class="muted" style="font-size:11.5px;margin-top:3px">… +'+(c.move.length-8)+'</div>'):'')
+      +'<button class="btn block" style="margin-top:9px" onclick="impMoveLead()">'+T('Move them to these team leaders','આ ટીમ લીડર પાસે ખસેડો')+'</button>'
+      +'<div class="muted" style="font-size:11px;margin-top:5px">'+T('This changes who they report to, and nothing else. Their NGO follows their new leader.','આનાથી ફક્ત ટીમ લીડર બદલાય છે. NGO નવા લીડર પ્રમાણે થશે.')+'</div></div>'):'')
     +(c.fix.length?('<div class="card" style="margin:10px 0 0;border-left:3px solid #2563eb;padding:9px 11px">'
       +'<div style="font-weight:700;font-size:12.5px">'+c.fix.length+' '+T('are already in the app but under the wrong NGO','પહેલેથી છે પણ ખોટા NGO માં')+'</div>'
       +c.fix.slice(0,8).map(function(x){return '<div style="font-size:12px;margin-top:3px">'+escA(x.user.name)+' — '+escA(x.from)+' → <b>'+escA(x.to)+'</b></div>';}).join('')
@@ -2116,7 +2170,10 @@ function muErrText(err){var c=err&&err.code;
     :(c==='auth/network-request-failed')?T('No internet — user not added','ઇન્ટરનેટ નથી — યુઝર ઉમેરાયો નથી')
     :(c==='auth/weak-password')?T('Password too weak (min 6 characters)','પાસવર્ડ ખૂબ નબળો')
     :T('Could not add user — not saved','યુઝર ઉમેરાયો નથી');}
-function muReassign(id,tlid){var x=u(id);if(!x)return;x.tl=tlid;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:tlid,cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:x.role,tl:tlid},{merge:true});}toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
+function muReassign(id,tlid,quiet){var x=u(id);if(!x)return false;if(x.tl===tlid)return false;x.tl=tlid;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:tlid,cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:x.role,tl:tlid},{merge:true});}
+  /* Quiet is for the bulk path - twenty-eight toasts and re-renders would be all anybody saw. */
+  if(!quiet){toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
+  return true;}
 /* Until v5.8 a TL's cluster could ONLY be set here, at the moment of promotion, and
    only if it was still blank — so an existing TL's NGO could never be changed and a
    new NGO could not be introduced without creating a new user. muSetCluster fixes that. */
@@ -3208,10 +3265,19 @@ function detailMyActions(){
     <div class="card">${acts.length?acts.sort((x,y)=>x.a.due.localeCompare(y.a.due)).map(o=>`<div class="item ${overdue(o.a.due,'open')?'r':''}"><span>${o.a.text}</span><span class="x">${overdue(o.a.due,'open')?'⚠ ':''}${o.a.due}</span><button class="btn sm" style="margin-left:8px" onclick="closeAction('${o.eid}',${o.i})">${T('Done','થયું')}</button></div>`).join(''):`<div class="empty">${T('No open action items 🎉','કોઈ ખુલ્લા એક્શન નથી')}</div>`}</div>`;
 }
 function detailMyTeachers(){
-  const teachers=DB.users.filter(x=>tlSees(x,CUR));
+  var everyone=DB.users.filter(x=>tlSees(x,CUR));
+  /* Only worth offering when this leader actually has more than one NGO - a single chip
+     beside 'All' filters nothing and is just another thing to read. */
+  var cset={};everyone.forEach(function(t){var c=clusterOf(t);if(c)cset[c]=1;});
+  var myNgos=Object.keys(cset).sort();
+  if(TEACHER_CLUS!=='all'&&myNgos.indexOf(TEACHER_CLUS)<0)TEACHER_CLUS='all';
+  var ngoChips=(myNgos.length>1)?('<div class="chips"><span class="chip '+(TEACHER_CLUS==='all'?'on':'')+'" onclick="setTeacherClus(\'all\')">'+T('All','બધા')+' '+everyone.length+'</span>'
+    +myNgos.map(function(c){var n=everyone.filter(function(t){return clusterOf(t)===c;}).length;
+      return '<span class="chip '+(TEACHER_CLUS===c?'on':'')+'" onclick="setTeacherClus(\''+escAJ(c)+'\')">'+escA(c)+' '+n+'</span>';}).join('')+'</div>'):'';
+  const teachers=(TEACHER_CLUS==='all')?everyone:everyone.filter(function(t){return clusterOf(t)===TEACHER_CLUS;});
   var loggedN=teachers.filter(function(z){return DB.entries.some(function(x){return x.userId===z.id&&x.date===today()&&hasDiary(x);});}).length;
   var punchedN=teachers.filter(function(z){return DB.entries.some(function(x){return x.userId===z.id&&x.date===today()&&x.punchIn&&!hasDiary(x);});}).length;
-  if(!teachers.length)return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div></div></div><div class="empty">'+T('No teachers assigned.','કોઈ શિક્ષક નથી.')+'</div>';
+  if(!teachers.length)return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div></div></div>'+ngoChips+'<div class="empty">'+(everyone.length?T('No teachers in this NGO.','આ NGO માં કોઈ શિક્ષક નથી.'):T('No teachers assigned.','કોઈ શિક્ષક નથી.'))+'</div>';
   var rows=teachers.map(function(t){
     var e=DB.entries.find(function(x){return x.userId===t.id&&x.date===today();});
     var logged=hasDiary(e);
@@ -3273,7 +3339,7 @@ function detailMyTeachers(){
       +'<div style="padding:8px 12px;font-weight:700;font-size:13px;color:#dc2626;border-bottom:1px solid #fca5a5"><i class="ti ti-flag-filled"></i> '+T('Under observation','અવલોકન હેઠળ')+' ('+flaggedList.length+')</div>'
       +obsItems+'</div>';
   }
-  return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div><div class="dh-sub">'+loggedN+'/'+teachers.length+' '+T('logged today','આજે લોગ')+punchedStr+'</div></div></div>'+obsSection+'<div class="card" style="padding:0">'+rows+'</div>';
+  return '<div class="dhead"><div><div class="dh-name">'+T('My teachers','મારા શિક્ષકો')+'</div><div class="dh-sub">'+loggedN+'/'+teachers.length+' '+T('logged today','આજે લોગ')+punchedStr+'</div></div></div>'+ngoChips+obsSection+'<div class="card" style="padding:0">'+rows+'</div>';
 }
 function toggleTeacherTask(id){TASK_OPEN_FOR=(TASK_OPEN_FOR===id)?null:id;renderDetail();}
 function toggleTeacherRow(id){if(TEACHER_OPEN===id){TEACHER_OPEN=null;}else{TEACHER_OPEN=id;TASK_OPEN_FOR=null;}renderDetail();}
