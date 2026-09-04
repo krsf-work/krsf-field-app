@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.12'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.13'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -1905,7 +1905,43 @@ function detailReports(){
   var rows=clusters.length?clusters.map(function(c){var tCount=tlsInScope(c).length;var teCount=teachersInScope('cluster',c).length;return reportRow(c,tCount+' TL · '+teCount+' '+T('teachers','શિક્ષકો'),marksAgg(teachersInScope('cluster',c).map(function(x){return x.id;})),"reportsGoto('cluster','"+c+"')");}).join(''):('<div class="empty">'+T('No clusters found.','ક્લસ્ટર મળ્યા નથી.')+'</div>');
   return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+(scopeIsTL()?(scopeTeachers().length+' '+T('teachers in my team','મારી ટીમના શિક્ષક')):(T('Comparing','સરખામણી')+' '+clusters.length+' '+T('clusters','ક્લસ્ટર')))+(topAgg.hasData?'':(' · '+T('no marks data yet','હજુ માર્ક્સ ડેટા નથી')))+'</div></div>'+reportBtns+'</div>'+modeToggle+trendChart+kpis+legend+'<div class="card" style="padding:0;overflow:hidden">'+rows+'</div>';
 }
-function loadSharedUsers(force){if(!FS)return;if(!fetchDue('users',864e5,force))return;FS.collection('appusers').get().then(function(snap){snap.docs.forEach(function(d){var v=d.data()||{};if(!v.id)return;var ex=u(v.id);if(ex){for(var k in v){ex[k]=v[k];}}else{DB.users.push(v);}});fetchStamp('users');save();renderAll();}).catch(function(err){quotaWarn(err);console.warn('loadSharedUsers',err);});}
+/* ---- the staff list ----
+   Downloading every user on every device once a day is 40,000 Firestore reads a day at two
+   hundred people, against a free allowance of 50,000. Fetching only what CHANGED costs
+   almost nothing on an ordinary day.
+   Two nets sit under it, and both are load-bearing rather than belt-and-braces:
+     - a device with no cursor takes the WHOLE list, so a fresh phone gets everybody;
+     - every seventh day it takes the whole list again, because records written by an older
+       build carry no timestamp and a delta would never see them. Until every phone in the
+       field is past v9.13 that reconcile is the only thing that catches them.
+   The merge itself is unchanged and still only ever adds or updates, never deletes. */
+function usersCursorGet(){try{return parseInt(localStorage.getItem('krsf_users_synced_at')||'0',10)||0;}catch(e){return 0;}}
+function usersCursorSet(t){try{localStorage.setItem('krsf_users_synced_at',String(t));}catch(e){}}
+var USERS_FULL_EVERY=6048e5; /* seven days */
+function usersWantsFull(force){
+  var cur=usersCursorGet();
+  return force||!cur||(Date.now()-cur)>=USERS_FULL_EVERY;}
+function loadSharedUsers(force){if(!FS)return;if(!fetchDue('users',864e5,force))return;
+  var full=usersWantsFull(force),cur=usersCursorGet();
+  var q=full?FS.collection('appusers'):FS.collection('appusers').where('updatedAt','>',cur);
+  var started=Date.now();
+  q.get().then(function(snap){
+    snap.docs.forEach(function(d){var v=d.data()||{};if(!v.id)return;var ex=u(v.id);
+      if(ex){for(var k in v){ex[k]=v[k];}}else{DB.users.push(v);}});
+    /* Only a FULL pass may move the cursor forward to now. A delta run leaves it where it
+       was, so nothing written while the query was in flight can be skipped over. */
+    if(full)usersCursorSet(started);
+    fetchStamp('users');save();renderAll();
+  }).catch(function(err){
+    /* A delta can fail where a plain read would not - a missing index, say. Fall back to the
+       whole list rather than leave the device with a stale roster. */
+    if(!full){console.warn('user delta failed, falling back to the whole list',err);
+      FS.collection('appusers').get().then(function(snap){
+        snap.docs.forEach(function(d){var v=d.data()||{};if(!v.id)return;var ex=u(v.id);
+          if(ex){for(var k in v){ex[k]=v[k];}}else{DB.users.push(v);}});
+        usersCursorSet(started);fetchStamp('users');save();renderAll();
+      }).catch(function(e2){quotaWarn(e2);console.warn('loadSharedUsers',e2);});return;}
+    quotaWarn(err);console.warn('loadSharedUsers',err);});}
 function muTlOpts(sel){var tls=DB.users.filter(function(x){return x.role==='TL';});return '<option value="">—</option>'+tls.map(function(t){return '<option value="'+t.id+'" '+(sel===t.id?'selected':'')+'>'+t.name+'</option>';}).join('');}
 /* ---- Bulk teacher import ----
    Reads a CSV of teachers and shows exactly what WOULD happen before anything is written.
@@ -2195,7 +2231,7 @@ function muCreateUser(obj,pw){
     .then(function(){return sa.signOut().catch(function(){});})
     .then(function(){
       DB.users.push(obj);save();
-      FS.collection('appusers').doc(obj.id).set(obj);
+      obj.updatedAt=Date.now();FS.collection('appusers').doc(obj.id).set(obj);
       FS.collection('usermap').doc(obj.phone).set({appId:obj.id,role:obj.role,tl:obj.tl||''});
       return obj;});}
 function muErrText(err){var c=err&&err.code;
@@ -2203,7 +2239,7 @@ function muErrText(err){var c=err&&err.code;
     :(c==='auth/network-request-failed')?T('No internet — user not added','ઇન્ટરનેટ નથી — યુઝર ઉમેરાયો નથી')
     :(c==='auth/weak-password')?T('Password too weak (min 6 characters)','પાસવર્ડ ખૂબ નબળો')
     :T('Could not add user — not saved','યુઝર ઉમેરાયો નથી');}
-function muReassign(id,tlid,quiet){var x=u(id);if(!x)return false;if(x.tl===tlid)return false;x.tl=tlid;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:tlid,cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:x.role,tl:tlid},{merge:true});}
+function muReassign(id,tlid,quiet){var x=u(id);if(!x)return false;if(x.tl===tlid)return false;x.tl=tlid;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:tlid,cluster:x.cluster||'',active:x.active!==false,updatedAt:Date.now()},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:x.role,tl:tlid},{merge:true});}
   /* Quiet is for the bulk path - twenty-eight toasts and re-renders would be all anybody saw. */
   if(!quiet){toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
   return true;}
@@ -2215,15 +2251,15 @@ function muSetCluster(id,v,quiet){var x=u(id);if(!x||(x.role!=='TL'&&x.role!=='T
   if(v===cur)return false;
   if(v.length>24){if(!quiet)toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return false;}
   x.cluster=v;save();
-  if(FS){try{FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:v,active:x.active!==false},{merge:true});}catch(err){console.warn('muSetCluster',err);}}
+  if(FS){try{FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:v,active:x.active!==false,updatedAt:Date.now()},{merge:true});}catch(err){console.warn('muSetCluster',err);}}
   /* Quiet is for the bulk path: twenty-eight toasts and twenty-eight full re-renders would
      be the only thing anybody saw. The caller renders once at the end instead. */
   if(!quiet){toast(T('Cluster updated','ક્લસ્ટર બદલ્યું')+' ✓');renderAll();}
   return true;}
-function muSetRole(id,role){var x=u(id);if(!x)return;x.role=role;if(role==='TL'&&!x.cluster){x.cluster=(prompt('Cluster code — e.g. SVT / KCT / JCT / Dahod / GST')||'').trim();}save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:role,tl:x.tl||''},{merge:true});}toast(T('Role updated','ભૂમિકા બદલી')+' ✓');renderAll();}
-function muSetSeesAlso(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.seesAlso||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.seesAlso=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,seesAlso:set},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
-function muSetMonitorsTL(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.monitorsTLs||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.monitorsTLs=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,monitorsTLs:set},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
-function muSetActive(id,act){var x=u(id);if(!x)return;x.active=act;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:act},{merge:true});}toast(act?(T('Activated','ચાલુ')+' ✓'):(T('Deactivated','બંધ')+' ✓'));renderAll();}
+function muSetRole(id,role){var x=u(id);if(!x)return;x.role=role;if(role==='TL'&&!x.cluster){x.cluster=(prompt('Cluster code — e.g. SVT / KCT / JCT / Dahod / GST')||'').trim();}save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,updatedAt:Date.now()},{merge:true});FS.collection('usermap').doc(x.phone).set({appId:id,role:role,tl:x.tl||''},{merge:true});}toast(T('Role updated','ભૂમિકા બદલી')+' ✓');renderAll();}
+function muSetSeesAlso(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.seesAlso||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.seesAlso=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,seesAlso:set,updatedAt:Date.now()},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
+function muSetMonitorsTL(tlid,otherTlid,on){var x=u(tlid);if(!x)return;var set=(x.monitorsTLs||[]).slice();var i=set.indexOf(otherTlid);if(on&&i===-1)set.push(otherTlid);if(!on&&i>-1)set.splice(i,1);x.monitorsTLs=set;save();if(FS)FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,monitorsTLs:set,updatedAt:Date.now()},{merge:true});toast(T('Updated','બદલ્યું')+' ✓');renderAll();}
+function muSetActive(id,act){var x=u(id);if(!x)return;x.active=act;save();if(FS){FS.collection('appusers').doc(id).set({id:id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:act,updatedAt:Date.now()},{merge:true});}toast(act?(T('Activated','ચાલુ')+' ✓'):(T('Deactivated','બંધ')+' ✓'));renderAll();}
 /* ---- Attendance export ----
    One row per person per working day, which is the shape Excel can actually filter and
    pivot; a column-per-day grid can only ever be filtered by person. Built on the same
@@ -3161,7 +3197,7 @@ function ngoRename(id,newCode){var n=ngoById(id);if(!n)return false;
   var clash=ngoByCode(newCode);if(clash&&clash.id!==n.id){toast(T('That code is already used','આ કોડ પહેલેથી વપરાયો છે'));return false;}
   var oldCode=n.code,imp=ngoImpact(oldCode);
   if(!confirm(T('Rename ','નામ બદલો ')+oldCode+' → '+newCode+'?\n\n'+imp.tls.length+T(' team leader(s), ',' ટીમ લીડર, ')+imp.teachers.length+T(' teacher(s) and ',' શિક્ષક અને ')+imp.recs.length+T(' bridge course record(s) will move.',' બ્રિજ કોર્સ રેકોર્ડ ખસેડાશે.')))return false;
-  imp.tls.forEach(function(x){x.cluster=newCode;if(FS){try{FS.collection('appusers').doc(x.id).set({id:x.id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:newCode,active:x.active!==false},{merge:true});}catch(err){console.warn('ngoRename tl',err);}}});
+  imp.tls.forEach(function(x){x.cluster=newCode;if(FS){try{FS.collection('appusers').doc(x.id).set({id:x.id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:newCode,active:x.active!==false,updatedAt:Date.now()},{merge:true});}catch(err){console.warn('ngoRename tl',err);}}});
   var oldIds=[];
   imp.recs.forEach(function(m){oldIds.push(m.id);m.cluster=newCode;m.id=bridgeId(newCode,m.school);m.updatedAt=Date.now();});
   var live={};(DB.bridgeMarks||[]).forEach(function(m){if(m&&m.id)live[m.id]=m;});
@@ -3377,9 +3413,9 @@ function detailMyTeachers(){
 function toggleTeacherTask(id){TASK_OPEN_FOR=(TASK_OPEN_FOR===id)?null:id;renderDetail();}
 function toggleTeacherRow(id){if(TEACHER_OPEN===id){TEACHER_OPEN=null;}else{TEACHER_OPEN=id;TASK_OPEN_FOR=null;}renderDetail();}
 function toggleBulkAssign(){BULK_OPEN=!BULK_OPEN;BULK_SEL={};renderDetail();}
-function flagTeacher(id){var x=u(id);if(!x)return;x.flagged=!x.flagged;if(x.flagged)x.gflag=false;save();if(FS)FS.collection('appusers').doc(id).set({flagged:x.flagged,gflag:!!x.gflag},{merge:true});toast(x.flagged?T('Red flag — under observation','લાલ ફ્લેગ — અવલોકન હેઠળ'):T('Flag removed','ફ્લેગ હટાવ્યું'));renderAll();}
+function flagTeacher(id){var x=u(id);if(!x)return;x.flagged=!x.flagged;if(x.flagged)x.gflag=false;save();if(FS)FS.collection('appusers').doc(id).set({flagged:x.flagged,gflag:!!x.gflag,updatedAt:Date.now()},{merge:true});toast(x.flagged?T('Red flag — under observation','લાલ ફ્લેગ — અવલોકન હેઠળ'):T('Flag removed','ફ્લેગ હટાવ્યું'));renderAll();}
 /* green flag = good performer (teachers AND TLs). Mutually exclusive with the red flag. */
-function gflagUser(id){var x=u(id);if(!x)return;x.gflag=!x.gflag;if(x.gflag)x.flagged=false;save();if(FS)FS.collection('appusers').doc(id).set({flagged:!!x.flagged,gflag:x.gflag},{merge:true});toast(x.gflag?T('Green flag — good performer ✓','ગ્રીન ફ્લેગ — સારું કામ ✓'):T('Green flag removed','ગ્રીન ફ્લેગ હટાવ્યો'));renderAll();}
+function gflagUser(id){var x=u(id);if(!x)return;x.gflag=!x.gflag;if(x.gflag)x.flagged=false;save();if(FS)FS.collection('appusers').doc(id).set({flagged:!!x.flagged,gflag:x.gflag,updatedAt:Date.now()},{merge:true});toast(x.gflag?T('Green flag — good performer ✓','ગ્રીન ફ્લેગ — સારું કામ ✓'):T('Green flag removed','ગ્રીન ફ્લેગ હટાવ્યો'));renderAll();}
 function toggleBulkSel(id){if(BULK_SEL[id]){delete BULK_SEL[id];}else{BULK_SEL[id]=true;}renderDetail();}
 function bulkSelectGroup(ids,on){ids.forEach(function(id){if(on){BULK_SEL[id]=true;}else{delete BULK_SEL[id];}});renderDetail();}
 /* Unique per recipient AND per call, so a synchronous bulk loop cannot collide. The counter
