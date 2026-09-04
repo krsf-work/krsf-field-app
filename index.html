@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.13'; /* v6.9 - manual teacher links were being IGNORED everywhere except the table. The Teachers report and the teacher's own profile each carried their own copy of the Setup-name matching, written before explicit linking existed in 6.7, so a school linked by hand still showed nothing for its teacher. Both now go through one shared bridgeOwnsSchool(), which defers to bridgeTeachersFor and therefore honours an explicit teacherId. Two consequences that were also wrong: the Teachers report skipped any teacher with no Setup schools, which excluded teachers whose schools were ALL linked by hand; and the profile card returned its 'has not completed Setup' message before it ever looked at the school list. Results are now checked first, and both empty states point at Change teacher links. */
+const APP_VERSION='9.14'; /* v9.14 - the school list is one document, not the whole collection. Every device read all 250 school documents once a day, which at 200 people is 50,000 Firestore reads and the entire free allowance on its own. One document now holds every name, so a sync costs ONE read. The per-school documents are still written exactly as before: this index is a cache laid over the collection, never a replacement, so an older build in the field keeps working and nothing is migrated or deleted. Three things make it safe. DB.schools only ever grows, so the worst a wrong index can do is leave a name out of a dropdown for one sync. A device falls back to reading the whole collection whenever the index is absent, empty, the wrong shape, unreadable, or missing a school that device already has - and then repairs the index, so the next sync is one read again. And a device that has never completed a schools sync will not write the index at all, because creating a one-name index would starve every device that then trusted it. The write uses arrayUnion with merge, so two people adding a school at the same moment cannot lose each other's. The index id carries a space, which encodeURIComponent always escapes, so no school name can ever produce that id and pushSchool can never overwrite it. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -402,13 +402,57 @@ async function loadSharedTasks(force){ if(!FS)return; if(!fetchDue('tasks',9e5,f
     catch(e){console.warn('scoped task fetch failed, falling back to all',e);
       const snap=await FS.collection('tasks').get();remote=snap.docs.map(d=>d.data());}} var _tb={};DB.tasks.forEach(function(x){if(x&&x.id)_tb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_tb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_tb[r.id]=r;});DB.tasks=Object.keys(_tb).map(function(k){return _tb[k];}); fetchStamp('tasks'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedTasks',err);} }
 function pushSchool(name){ if(!FS||!name)return; try{ syncTrack(FS.collection('schools').doc(encodeURIComponent(name).slice(0,1400)).set({name:name})); }catch(err){console.warn('pushSchool',err);} }
-async function loadSharedSchools(force){ if(!FS)return; if(!fetchDue('schools',864e5,force))return; try{ const snap=await FS.collection('schools').get(); const remote=snap.docs.map(d=>(d.data()||{}).name).filter(Boolean); DB.schools=[...new Set(DB.schools.concat(remote))].sort(); fetchStamp('schools'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedSchools',err);} }
+/* Reading the whole schools collection cost one Firestore read per school per device per day
+   - 250 documents times 200 people is 50,000 reads, the entire free allowance on its own.
+   A single document now holds every name, so a sync costs ONE read.
+   The per-school documents are still written exactly as before. This index is a cache laid
+   over the collection, never a replacement, so an older build in the field keeps working and
+   nothing has to be migrated or ever deleted. DB.schools only ever grows, so the worst a
+   stale or wrong index can do is leave a name out of a dropdown until the next sync. */
+/* The id carries a space. encodeURIComponent always escapes a space, so no school name can
+   ever produce this id - which means pushSchool can never land {name:...} on the index and
+   wipe it. */
+const SCHOOL_INDEX_ID='schools index';
+function schoolsMerge(names){ if(!names||!names.length)return; DB.schools=[...new Set(DB.schools.concat(names.filter(Boolean)))].sort(); }
+/* Anything this device knows that the index does not means the index has fallen behind -
+   normally a school added by an older build, which never writes the index at all. */
+function schoolsIndexBehind(names){ var have={},i; for(i=0;i<names.length;i++)have[names[i]]=1;
+  return (DB.schools||[]).some(function(s){return s&&!have[s];}); }
+function schoolsSynced(){ try{ return (parseInt(localStorage.getItem('krsf_ttl_schools')||'0',10)||0)>0; }catch(e){ return false; } }
+/* arrayUnion, so two devices adding a school at the same moment cannot lose each other's -
+   and merge, so the write can never clear a field it did not set.
+   A device that has never completed a schools sync must NOT write: its list may be almost
+   empty, and creating a one-name index would starve every device that then trusts it.
+   fromFullRead is the one exception, because that caller has just read the collection. */
+function schoolsIndexAdd(names,fromFullRead){
+  if(!FS||!names||!names.length)return;
+  if(!fromFullRead&&!schoolsSynced())return;
+  /* Firestore caps a document at 1 MiB. A runaway list degrades to the old full read rather
+     than throwing on every sync. */
+  if(names.length>20000)return;
+  try{ var FV=firebase.firestore.FieldValue;
+    syncTrack(FS.collection('schools').doc(SCHOOL_INDEX_ID).set({names:FV.arrayUnion.apply(FV,names)},{merge:true}));
+  }catch(err){ console.warn('schoolsIndexAdd',err); } }
+function loadSharedSchools(force){ if(!FS)return; if(!fetchDue('schools',864e5,force))return;
+  var full=function(){ return FS.collection('schools').get().then(function(snap){
+    /* schoolsMerge drops the blanks, which is where the index document - it has no name
+       field - falls out. */
+    var remote=snap.docs.map(function(d){return (d.data()||{}).name;});
+    schoolsMerge(remote); schoolsIndexAdd(DB.schools,true); fetchStamp('schools'); save(); renderAll(); }); };
+  FS.collection('schools').doc(SCHOOL_INDEX_ID).get().then(function(idx){
+    var names=(idx&&idx.exists&&(idx.data()||{}).names)||null;
+    if(Array.isArray(names)&&names.length&&!schoolsIndexBehind(names)){
+      schoolsMerge(names); fetchStamp('schools'); save(); renderAll(); return true; }
+    return false; })
+  .catch(function(){ return false; })   /* index unreadable: behave like every earlier build */
+  .then(function(done){ if(done)return; return full(); })
+  .catch(function(err){ quotaWarn(err); console.warn('loadSharedSchools',err); }); }
 function markId(teacherId,subject,examDate){return teacherId+'_'+String(subject).trim().toLowerCase().replace(/[^a-z0-9]+/g,'-')+'_'+examDate;}
 function pushMark(m){ if(!FS)return; try{ m.updatedAt=Date.now(); syncTrack(FS.collection('marks').doc(String(m.id)).set(m,{merge:true})); }catch(err){SYNC.err++;updateSyncUI();console.warn('pushMark',err);} }
 function pushBridgeMark(m){ if(!FS)return; try{ m.updatedAt=Date.now(); syncTrack(FS.collection('bridgeMarks').doc(String(m.id)).set(m,{merge:true})); }catch(err){SYNC.err++;updateSyncUI();console.warn('pushBridgeMark',err);} }
 async function loadSharedBridgeMarks(force){ if(!FS)return; var _me=u(CUR); if(!_me||_me.role!=='PM')return; if(!fetchDue('bridgeMarks',9e5,force))return; try{ const snap=await FS.collection('bridgeMarks').get(); const remote=snap.docs.map(d=>d.data()); var _bb={};(DB.bridgeMarks||[]).forEach(function(x){if(x&&x.id)_bb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_bb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_bb[r.id]=r;});DB.bridgeMarks=Object.keys(_bb).map(function(k){return _bb[k];}); fetchStamp('bridgeMarks'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedBridgeMarks',err);} }
 async function loadSharedMarks(force){ if(!FS)return; var _me=u(CUR); if(!_me||_me.role!=='PM')return; if(!fetchDue('marks',9e5,force))return; try{ const snap=await FS.collection('marks').get(); const remote=snap.docs.map(d=>d.data()); var _mb={};DB.marks.forEach(function(x){if(x&&x.id)_mb[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_mb[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_mb[r.id]=r;});DB.marks=Object.keys(_mb).map(function(k){return _mb[k];}); fetchStamp('marks'); save(); renderAll(); }catch(err){quotaWarn(err);console.warn('loadSharedMarks',err);} }
-function addSchool(name){ name=(name||'').trim(); if(!name)return false; var _an=name.length>=6;for(var _i=0;_i<name.length;_i++){var _c=name.charCodeAt(_i);if(_c<48||_c>57){_an=false;break;}}if(_an)return false; if(!DB.schools.includes(name)){DB.schools.push(name);DB.schools.sort();save();} pushSchool(name); return true; }
+function addSchool(name){ name=(name||'').trim(); if(!name)return false; var _an=name.length>=6;for(var _i=0;_i<name.length;_i++){var _c=name.charCodeAt(_i);if(_c<48||_c>57){_an=false;break;}}if(_an)return false; if(!DB.schools.includes(name)){DB.schools.push(name);DB.schools.sort();save();/* Everything this device knows, not just the new name: the index this creates is then never   a partial one. Only when the name is genuinely new - this project is billed per byte. */schoolsIndexAdd(DB.schools);} pushSchool(name); return true; }
 const PURPOSES=['School observation','Teacher mentoring','Remedial session','Community/parent meeting','BRC/CRC coordination','Material distribution','Other'];
 const PEOPLE_MET=['BRC','CRC','Head Master','Teachers','SMC/Parents'];
 const TIME_SLOTS=['09:00-09:45','09:45-10:30','10:30-11:15','11:15-12:00','12:00-12:45','12:45-13:30','13:30-14:15','14:15-15:00'];const STDS=['Std 1','Std 2','Std 3','Std 4','Std 5','Std 6','Std 7','Std 8'];const SLOT_MIN=45;const SUBJECTS=['Math','English','EVS','FLN','Bridge English'];function ttSubChange(i){var sub=document.getElementById('tt_sub_'+i),std=document.getElementById('tt_std_'+i),na=document.getElementById('tt_nostd_'+i);var fln=sub&&sub.value==='FLN';if(std)std.style.display=fln?'none':'';if(na)na.style.display=fln?'':'none';if(fln&&std)std.value='';ttRecount();}
