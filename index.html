@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.15'; /* v9.15 - a PM can change somebody's password from Manage users. Firebase only ever lets a SIGNED-IN person change their own password, and a web page must never hold admin rights because anyone could read them out of the source, so this signs in AS that person on a SEPARATE Firebase app instance ('mpw'), changes the password there, and signs that instance out - the same trick muCreateUser already uses, which is what keeps the PM's own session untouched. Persistence is set to NONE first, so the teacher's session is never written to the PM's phone even for a moment, and signOut runs on every path out including the failures. The price of working without admin rights is that it needs their CURRENT password: every account starts as krsf plus the last four digits of the mobile, so that is tried first and usually just works; if it does not, the PM is asked once - once only, never in a loop - and if that also fails they are pointed at the Firebase Console or tools/reset-password.js. Somebody who changed their own password and then forgot it cannot be helped from here, which is the honest limit of doing this without the Blaze plan. A PM cannot change another PM's. When Firebase locks an account after too many tries it says to wait rather than blaming the password. The new password is shown once on the screen rather than in a toast that vanishes, and the 4-digit login shortcut is offered only when the password really is the prefix plus the last four digits - saying otherwise would lock somebody out. Nothing is ever shown as changed unless it changed. 41 checks, all 20 mutations caught. */
+const APP_VERSION='9.16'; /* v9.16 - the Change password screen now tries every password prefix this app has ever handed out, not just one. v9.15 guessed krsf plus the last four digits, which is the default in muAdd - but the 28 GST teachers were imported with the prefix 'gst' typed into the import's prefix box, so for every one of them the first guess was certain to fail and the PM was asked for a password they had no reason to know. PWD_KNOWN_PREFIXES is now walked in order and the first that works is used; a new NGO imported under its own prefix belongs in that list. The walk stops the moment one succeeds, and stops immediately if Firebase locks the account after too many tries, because further attempts only lengthen the lockout and none of them can succeed. Only after every prefix has failed is the PM asked, once, and the wording now says the usual ones were already tried. The failure points at both remaining routes, the Firebase Console and tools/reset-password.js. Test counts are read from PWD_KNOWN_PREFIXES rather than written down, so adding a prefix later cannot turn them red. 1,763 checks, all 6 new mutations caught. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -2268,6 +2268,14 @@ var MU_BUSY=false;
    account starts as krsf plus the last four digits of the mobile, so that is tried first and
    almost always works. Somebody who changed their own password and then forgot it cannot be
    helped from here - that is the Firebase Console, or tools/reset-password.js. */
+/* Every password prefix this app has ever created an account with. krsf is the default in
+   muAdd; gst was typed into the import's prefix box for the 28 GST teachers. Anything added
+   here is tried in order before the PM is asked, so a new NGO imported under its own prefix
+   belongs in this list. */
+var PWD_KNOWN_PREFIXES=['krsf','gst'];
+function muGuessPasswords(phone){var last4=String(phone||'').slice(-4),out=[],i,p;
+  for(i=0;i<PWD_KNOWN_PREFIXES.length;i++){p=PWD_KNOWN_PREFIXES[i]+last4;if(out.indexOf(p)<0)out.push(p);}
+  return out;}
 var MU_RESET=null;
 function muResetClear(){MU_RESET=null;renderDetail();}
 function muCanReset(x){var me=u(CUR);return !!(me&&me.role==='PM'&&x&&x.role!=='PM'&&x.phone);}
@@ -2276,7 +2284,11 @@ function muPwErr(e){var c=e&&e.code;
   return (c==='auth/too-many-requests')?T('Firebase has locked this account for a while after too many tries. Wait a few minutes.','\u0a98\u0aa3\u0abe \u0aaa\u0acd\u0ab0\u0aaf\u0abe\u0ab8 \u0aaa\u0a9b\u0ac0 Firebase \u0ac7 \u0a86 \u0a8f\u0a95\u0abe\u0a89\u0aa8\u0acd\u0a9f \u0aa5\u0acb\u0aa1\u0ac0 \u0ab5\u0abe\u0ab0 \u0aae\u0abe\u0a9f\u0ac7 \u0aac\u0a82\u0aa7 \u0a95\u0ab0\u0acd\u0aaf\u0ac1\u0a82 \u0a9b\u0ac7.')
     :(c==='auth/network-request-failed')?T('No internet \u2014 the password was not changed','\u0a87\u0aa8\u0acd\u0a9f\u0ab0\u0aa8\u0ac7\u0a9f \u0aa8\u0aa5\u0ac0 \u2014 \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0aac\u0aa6\u0ab2\u0abe\u0aaf\u0acb \u0aa8\u0aa5\u0ac0')
     :(c==='auth/weak-password')?T('Firebase says that password is too weak','Firebase \u0aae\u0ac1\u0a9c\u0aac \u0a86 \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0aa8\u0aac\u0ab3\u0acb \u0a9b\u0ac7')
-    :T('That is not their current password. Use the Firebase Console instead.','\u0a86 \u0a8f\u0aae\u0aa8\u0acb \u0ab9\u0abe\u0ab2\u0aa8\u0acb \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0aa8\u0aa5\u0ac0. Firebase Console \u0ab5\u0abe\u0aaa\u0ab0\u0acb.');}
+    :(c==='auth/user-not-found'||c==='auth/invalid-email')?T('There is no login for this mobile number. The number on their record may not be the one their account was created with.','\u0a86 \u0aae\u0acb\u0aac\u0abe\u0a87\u0ab2 \u0aa8\u0a82\u0aac\u0ab0 \u0aae\u0abe\u0a9f\u0ac7 \u0a95\u0acb\u0a88 \u0ab2\u0acb\u0a97\u0abf\u0aa8 \u0aa8\u0aa5\u0ac0.')
+    :(c==='auth/wrong-password'||c==='auth/invalid-credential')?T('That is not their current password. Use the Firebase Console, or tools/reset-password.js.','\u0a86 \u0a8f\u0aae\u0aa8\u0acb \u0ab9\u0abe\u0ab2\u0aa8\u0acb \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0aa8\u0aa5\u0ac0. Firebase Console \u0ab5\u0abe\u0aaa\u0ab0\u0acb.')
+    /* Anything unrecognised carries its Firebase code, so it can be read out rather than
+       guessed at - a wrong guess sent one real failure off in the wrong direction entirely. */
+    :(T('Could not change it','\u0aac\u0aa6\u0ab2\u0ac0 \u0ab6\u0a95\u0abe\u0aaf\u0ac1\u0a82 \u0aa8\u0ab9\u0ac0\u0a82')+' \u2014 '+(c||T('no reason given','\u0a95\u0abe\u0ab0\u0aa3 \u0a85\u0a9c\u0acd\u0a9e\u0abe\u0aa4')));}
 function muChangePw(id){
   var x=u(id),me=u(CUR);
   if(!x||!me)return;
@@ -2291,6 +2303,7 @@ function muChangePw(id){
   np=String(np).trim();
   if(np.length<6){toast(T('At least 6 characters','\u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe 6 \u0a85\u0a95\u0acd\u0ab7\u0ab0'));return;}
   MU_BUSY=true;MU_RESET=null;
+  var guesses=muGuessPasswords(x.phone);
   var sa=muPwApp().auth(),email=String(x.phone)+AUTH_DOMAIN;
   /* Signing out is what keeps the teacher's session off the PM's phone, and it has to happen
      on every path out of here, including the failures. */
@@ -2306,12 +2319,14 @@ function muChangePw(id){
       .then(function(){return sa.signInWithEmailAndPassword(email,pw);})
       .then(setIt)
       .catch(function(e){
+        /* Another prefix left to try before troubling the PM. */
+        if(askAgain&&guesses.length&&!(e&&e.code==='auth/too-many-requests')){attempt(guesses.shift(),true);return;}
         if(!askAgain||(e&&e.code==='auth/too-many-requests')){finish();toast(muPwErr(e));return;}
-        var cur=prompt(T('Their password is not the usual one. What is their current password?','\u0a8f\u0aae\u0aa8\u0acb \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0ab0\u0acb\u0a9c\u0aa8\u0acb \u0aa8\u0aa5\u0ac0. \u0ab9\u0abe\u0ab2\u0aa8\u0acb \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0ab6\u0ac1\u0a82 \u0a9b\u0ac7?')+'\n'+x.name,'');
+        var cur=prompt(T('None of the usual passwords worked. What is their current password?','\u0a8f\u0aae\u0aa8\u0acb \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0ab0\u0acb\u0a9c\u0aa8\u0acb \u0aa8\u0aa5\u0ac0. \u0ab9\u0abe\u0ab2\u0aa8\u0acb \u0aaa\u0abe\u0ab8\u0ab5\u0ab0\u0acd\u0aa1 \u0ab6\u0ac1\u0a82 \u0a9b\u0ac7?')+'\n'+x.name,'');
         if(cur===null){finish();return;}
         attempt(String(cur).trim(),false);
       });};
-  attempt(def,true);}
+  attempt(guesses.shift(),true);}
 /* Shown on the screen, not in a toast that vanishes before it can be written down or read out
    over the phone. */
 function muResetCard(){
