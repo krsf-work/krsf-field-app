@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.18'; /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
+const APP_VERSION='9.19'; /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -359,7 +359,7 @@ function logIdsForRole(){var me=u(CUR);if(!me)return [CUR];if(me.role==='Teacher
     var add=function(id){if(id&&!seen[id]){seen[id]=1;ids.push(id);}};
     add(CUR);
     peerTLs(CUR).forEach(function(id){var p=u(id);if(p&&p.role==='TL'&&p.active!==false)add(id);});
-    DB.users.forEach(function(t){if(t.role==='Teacher'&&t.active!==false&&tlSees(t,CUR))add(t.id);});
+    var _sees=seesFn(CUR);DB.users.forEach(function(t){if(t.role==='Teacher'&&t.active!==false&&_sees(t))add(t.id);});
     return ids;}
   return null;}
 function mergeLogs(remote){var _byId={};DB.entries.forEach(function(x){if(x&&x.id)_byId[x.id]=x;});remote.forEach(function(r){if(!r||!r.id)return;var ex=_byId[r.id];if(!ex||(r.updatedAt||0)>=(ex.updatedAt||0))_byId[r.id]=r;});DB.entries=Object.keys(_byId).map(function(k){return _byId[k];});}
@@ -379,7 +379,7 @@ function taskIdsForRole(){
   var me=u(CUR);if(!me)return [CUR];
   if(me.role==='PM')return null;
   var set={};set[CUR]=1;
-  DB.users.forEach(function(x){if(x&&tlSees(x,CUR))set[x.id]=1;});
+  var _sees=seesFn(CUR);DB.users.forEach(function(x){if(x&&_sees(x))set[x.id]=1;});
   (peerTLs(CUR)||[]).forEach(function(id){if(id)set[id]=1;});
   coTLs(CUR).forEach(function(id){if(id)set[id]=1;});
   return Object.keys(set);}
@@ -610,7 +610,7 @@ function tlInfo(tlid){
   let rag='g';
   if((isWorkday(realToday())&&!todayLog)||tkOver>0||aOver>=2||daysSinceLog>3)rag='r';
   else if(aOpen||tkOpen.length||aOver>=1)rag='a';
-  const teachers=DB.users.filter(x=>tlSees(x,tlid));
+  const teachers=DB.users.filter(seesFn(tlid));
   return {tlid,name:u0.name,es,todayLog,lastLog,logs7,aOpen,aOver,aDone,openActs,tks,tkOpen,tkOver,tkDone,rag,teachers,activeDays:es.length,workdays:DB.days.length};
 }
 function allTL(){const o={r:0,a:1,g:2};return DB.users.filter(x=>x.role==='TL'&&x.active!==false).map(t=>tlInfo(t.id)).sort((a,b)=>o[a.rag]-o[b.rag]||(b.aOver+b.tkOver)-(a.aOver+a.tkOver)||b.aOpen-a.aOpen);}
@@ -1389,7 +1389,7 @@ function detailTLDash(){
 function detailTL(tlid,peerMode){
   const s=tlInfo(tlid);if(!s)return '';
   const e=s.todayLog;
-  const gflagBtn=(peerMode&&!(u(CUR)&&u(CUR).role==='TL'&&reportsOf(CUR).indexOf(tlid)>-1))?'':`<button onclick="gflagUser('${tlid}')" style="background:${u(tlid)&&u(tlid).gflag?'#059669':'#f2fdf8'};border:1.5px solid #059669;border-radius:6px;cursor:pointer;padding:6px 12px;font-size:13px;color:${u(tlid)&&u(tlid).gflag?'#fff':'#059669'};display:flex;align-items:center;gap:5px;font-weight:600;flex-shrink:0"><i class="ti ${u(tlid)&&u(tlid).gflag?'ti-flag-filled':'ti-flag'}"></i>${u(tlid)&&u(tlid).gflag?T('Good ✓','સારું ✓'):T('Good','સારું')}</button>`;
+  const gflagBtn=(peerMode&&!(u(CUR)&&u(CUR).role==='TL'&&(reportsOf(CUR).indexOf(tlid)>-1||overseenTLs(CUR).indexOf(tlid)>-1)))?'':`<button onclick="gflagUser('${tlid}')" style="background:${u(tlid)&&u(tlid).gflag?'#059669':'#f2fdf8'};border:1.5px solid #059669;border-radius:6px;cursor:pointer;padding:6px 12px;font-size:13px;color:${u(tlid)&&u(tlid).gflag?'#fff':'#059669'};display:flex;align-items:center;gap:5px;font-weight:600;flex-shrink:0"><i class="ti ${u(tlid)&&u(tlid).gflag?'ti-flag-filled':'ti-flag'}"></i>${u(tlid)&&u(tlid).gflag?T('Good ✓','સારું ✓'):T('Good','સારું')}</button>`;
   const tasksHeader=peerMode?T('Their tasks','તેમના કાર્ય'):T('Tasks I assigned','મેં સોંપેલા કાર્ય');
   const teachersCard=peerMode?'':`<div class="card"><h3><i class="ti ti-users"></i>${T('Teachers under this TL','આ TL હેઠળ શિક્ષકો')} · ${s.teachers.length}</h3>
       ${s.teachers.map(t=>{const te=DB.entries.find(x=>x.userId===t.id&&x.date===today());return `<div class="entry" style="cursor:pointer" onclick="selectItem('${t.id}')"><div class="top"><span style="color:var(--ink);font-weight:700">${escA(t.name)}${clTag(t)} <i class="ti ti-chevron-right muted" style="font-size:12px"></i></span><span>${hasDiary(te)?`<span class="pill g">${T('logged today','આજે લોગ')}</span>`:`<span class="pill n">${T('no log today','આજે લોગ નથી')}</span>`}</span></div>${te&&te.present!==''?`<div class="body"><span class="pill b">${T('Att','હાજરી')} ${te.present}/${te.total}</span> ${escA(te.topic||'')}</div>`:''}</div>`;}).join('')||`<div class="empty">${T('No teachers mapped.','કોઈ શિક્ષક નથી.')}</div>`}</div>`;
@@ -1781,7 +1781,9 @@ function coTLs(tlid){var t=u(tlid);var set={};set[tlid]=1;(t&&t.seesAlso||[]).fo
    screen counted deactivated teachers in its denominator and rendered them permanently red -
    logIdsForRole excludes their ids, so their diaries are never even fetched - while the PM's
    scoreboard, which does filter, reported a different team size for the same team. */
-function tlSees(t,tlid){return t&&t.role==='Teacher'&&t.active!==false&&coTLs(tlid).indexOf(t.tl)>-1;}
+function seesFn(tlid){var ids=coTLs(tlid),o=(tlid===CUR)?overseesOf(tlid):[];
+  return function(t){return !!(t&&t.role==='Teacher'&&t.active!==false&&(ids.indexOf(t.tl)>-1||(o.length>0&&o.indexOf(bridgeNorm(clusterOf(t)))>-1)));};}
+function tlSees(t,tlid){return seesFn(tlid)(t);}
 /* ---- what the signed-in person is allowed to see on Dashboard and Reports ----
    The PM sees the whole programme, so every one of these returns the unfiltered set and the
    PM's screens are byte-identical to before. A Team Leader sees the teachers they manage -
@@ -1795,10 +1797,10 @@ function tlSees(t,tlid){return t&&t.role==='Teacher'&&t.active!==false&&coTLs(tl
 function scopeIsTL(){var me=u(CUR);return !!(me&&me.role==='TL');}
 function scopeTeachers(){
   if(!scopeIsTL())return DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
-  return DB.users.filter(function(x){return tlSees(x,CUR);});}
+  return DB.users.filter(seesFn(CUR));}
 function scopeTLs(){
   if(!scopeIsTL())return DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
-  var ids=coTLs(CUR);
+  var ids=coTLs(CUR).concat(overseenTLs(CUR));
   return DB.users.filter(function(x){return x.role==='TL'&&x.active!==false&&ids.indexOf(x.id)>-1;});}
 function scopeMarks(){
   var all=(DB.bridgeMarks||[]);
@@ -1806,9 +1808,10 @@ function scopeMarks(){
   var tch=scopeTeachers(),mine=bridgeNorm((u(CUR)||{}).name||'');
   return all.filter(function(m){
     if(!m)return false;
+    if(inOversight(CUR,m.cluster))return true;
     if(mine&&bridgeNorm(m.head||'')===mine)return true;
     return tch.some(function(t){return bridgeOwnsSchool(t,m);});});}
-function schoolsForTL(tlid){var set={};DB.users.forEach(function(t){if(t.role==='Teacher'&&tlSees(t,tlid)){var sc=(t.setupSchools&&t.setupSchools.length)?t.setupSchools:(t.setupSchool?[t.setupSchool]:[]);sc.forEach(function(s){if(s)set[s]=1;});}});return Object.keys(set).sort();}function peerTLs(tlid){var t=u(tlid);var out=((t&&t.monitorsTLs)||[]).slice();if(tlid===CUR)reportsOf(tlid).forEach(function(id){if(out.indexOf(id)<0)out.push(id);});return out;}
+function schoolsForTL(tlid){var set={},_sees=seesFn(tlid);DB.users.forEach(function(t){if(t.role==='Teacher'&&_sees(t)){var sc=(t.setupSchools&&t.setupSchools.length)?t.setupSchools:(t.setupSchool?[t.setupSchool]:[]);sc.forEach(function(s){if(s)set[s]=1;});}});return Object.keys(set).sort();}function peerTLs(tlid){var t=u(tlid);var out=((t&&t.monitorsTLs)||[]).slice();if(tlid===CUR)reportsOf(tlid).forEach(function(id){if(out.indexOf(id)<0)out.push(id);});if(tlid===CUR)overseenTLs(tlid).forEach(function(id){if(out.indexOf(id)<0)out.push(id);});return out;}
 /* ---- cluster head (v9.18) ----
    A team leader may report to another team leader, who is then their cluster head. Nothing
    stores the words "cluster head": a leader with anyone reporting to them simply is one, and
@@ -1823,6 +1826,24 @@ function muSetReportsTo(tlid,headId){headId=headId?String(headId):'';var x=u(tli
   if(!muCanReportTo(tlid,headId)){toast(T('Not allowed — only one level. A leader with people under them cannot report to anyone, and nobody can report to someone who reports to someone.','મંજૂર નથી — ફક્ત એક સ્તર.'));renderAll();return false;}
   x.reportsTo=headId;save();
   if(FS){try{syncTrack(FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,reportsTo:headId,updatedAt:Date.now()},{merge:true}));}catch(err){console.warn('muSetReportsTo',err);}}
+  toast(T('Updated','બદલ્યું')+' ✓');renderAll();return true;}
+/* ---- overseeing an NGO (v9.19) ----
+   Guru's top level splits by NGO, not by person: Souvik oversees KCT, Dnyaneshwar JCT, and
+   Jignesh runs both. "Reports to" cannot give one person two bosses who each see half, so a
+   leader can instead oversee whole NGOs. Own view only, like reportsOf. An overseer is left out
+   of every other overseer's view, so two people over the same NGO never see each other. */
+function overseesOf(tlid){var x=u(tlid);if(!x||x.role!=='TL'||x.active===false)return [];return (x.oversees||[]).map(function(c){return bridgeNorm(c);}).filter(Boolean);}
+function inOversight(tlid,code){var o=overseesOf(tlid);return !!code&&o.indexOf(bridgeNorm(code))>-1;}
+function overseenTLs(tlid){var o=overseesOf(tlid);if(!o.length)return [];
+  return DB.users.filter(function(x){if(!x||x.role!=='TL'||x.active===false||x.id===tlid)return false;
+    if(x.oversees&&x.oversees.length)return false;
+    if(o.indexOf(bridgeNorm(clusterOf(x)))>-1)return true;
+    return reportsOf(x.id).some(function(r){return o.indexOf(bridgeNorm(clusterOf(u(r))))>-1;});}).map(function(x){return x.id;});}
+function muSetOversees(tlid,code,on){var x=u(tlid);if(!x||x.role!=='TL')return false;code=(code==null?'':String(code)).trim();if(!code)return false;
+  var set=(x.oversees||[]).slice(),k=bridgeNorm(code),i=-1;set.forEach(function(c,j){if(bridgeNorm(c)===k)i=j;});
+  if(on&&i===-1)set.push(code);else if(!on&&i>-1)set.splice(i,1);else return false;
+  x.oversees=set;save();
+  if(FS){try{syncTrack(FS.collection('appusers').doc(tlid).set({id:tlid,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,oversees:set,updatedAt:Date.now()},{merge:true}));}catch(err){console.warn('muSetOversees',err);}}
   toast(T('Updated','બદલ્યું')+' ✓');renderAll();return true;}
 /* The Manage users control. A leader with people under them gets a count instead of a
    dropdown, because one level is the rule: they cannot be put under anyone. */
@@ -2252,7 +2273,7 @@ function impCard(){
     +'<div style="font-weight:800;margin:12px 0 6px">'+c.create.length+' '+T('will be added','ઉમેરાશે')+'</div>'+tbl
     +'<button class="btn block" style="margin-top:10px" onclick="impRun()">'+T('Add these teachers','આ શિક્ષકો ઉમેરો')+'</button>'
     +'<button class="btn ghost block" style="margin-top:8px" onclick="impClear()">'+T('Cancel','રદ કરો')+'</button></div>';}
-function detailUsers(){var addCard='<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Add user','નવો યુઝર')+'</h3><label>'+T('Name','નામ')+'</label><input id="mu_name" class="fld"><label>'+T('Mobile number','મોબાઇલ નંબર')+'</label><input id="mu_phone" class="fld" inputmode="numeric"><label>'+T('Role','ભૂમિકા')+'</label><select id="mu_role" class="fld" onchange="muRoleChange()"><option value="Teacher">Teacher</option><option value="TL">Team Leader</option><option value="PM">PM</option></select><div id="mu_tlwrap"><label>'+T('Under Team Leader','ટીમ લીડર હેઠળ')+'</label><select id="mu_tl" class="fld">'+muTlOpts('')+'</select></div><div id="mu_clwrap" style="display:none"><label>'+T('NGO / cluster code (e.g. SVT, KCT, JCT, Dahod, GST)','NGO / ક્લસ્ટર કોડ (દા.ત. SVT, KCT, JCT, Dahod, GST)')+'</label><input id="mu_cluster" class="fld"></div><div class="muted" style="font-size:12px;margin:6px 0">'+T('Password = last 4 digits of the mobile number.','પાસવર્ડ = મોબાઇલના છેલ્લા 4 અંક.')+'</div><label>'+T('Password (optional)','પાસવર્ડ (વૈકલ્પિક)')+'</label><input id="mu_pw" class="fld" placeholder="'+T('Blank = last 4 digits','ખાલી = છેલ્લા 4 અંક')+'"><button class="btn block" onclick="muAdd()">'+T('Add user','યુઝર ઉમેરો')+'</button></div>';var roles=['PM','TL','Teacher'];var listCard='';roles.forEach(function(role){var us=DB.users.filter(function(x){return x.role===role;});if(!us.length)return;listCard+='<div class="card"><h3>'+role+' ('+us.length+')</h3>'+us.map(function(x){var cl=clusterOf(x);var inactive=x.active===false;var roleSel='<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:110px" onchange="muSetRole(this.dataset.id,this.value)">'+['Teacher','TL','PM'].map(function(r){return '<option '+(x.role===r?'selected':'')+'>'+r+'</option>';}).join('')+'</select>';var ra=(x.role==='Teacher')?'<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:140px" onchange="muReassign(this.dataset.id,this.value)">'+muTlOpts(x.tl)+'</select>':'';var rt=muReportsSel(x);var ngoSel=(x.role==='TL'||x.role==='Teacher')?('<select class="fld" data-id="'+x.id+'" title="'+(x.role==='Teacher'?(x.cluster?T('NGO set on this teacher','આ શિક્ષક પર સેટ કરેલ NGO'):T('NGO inherited from their team leader','ટીમ લીડર પરથી આવેલ NGO')):T('NGO','NGO'))+'" style="padding:5px 7px;max-width:110px" onchange="muSetCluster(this.dataset.id,this.value)">'+ngoOpts(cl)+'</select>'):'';var seesRow='';if(x.role==='TL'){var others=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others.length){var seesSet=x.seesAlso||[];var chips=others.map(function(y){var on=seesSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetSeesAlso(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');seesRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also sees teams of:','આ પણ ટીમો જુએ છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips+'</div></div>';}}var monitorsRow='';if(x.role==='TL'){var others2=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others2.length){var monSet=x.monitorsTLs||[];var chips2=others2.map(function(y){var on=monSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetMonitorsTL(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');monitorsRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also monitors:','આ પણ મોનિટર કરે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips2+'</div></div>';}}return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(inactive?'opacity:.55':'')+'"><div style="flex:1;min-width:130px"><div style="font-weight:700">'+x.name+(x.role!=='TL'&&cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':'')+(inactive?' <span class="pill r" style="font-size:10px">'+T('inactive','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(x.phone||'')+'</div></div>'+roleSel+ngoSel+ra+rt+'<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muSetActive(this.dataset.id,'+(inactive?'true':'false')+')">'+(inactive?T('Activate','ચાલુ કરો'):T('Deactivate','બંધ કરો'))+'</button>'+(muCanReset(x)?('<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muChangePw(this.dataset.id)">'+T('Change password','પાસવર્ડ બદલો')+'</button>'):'')+seesRow+monitorsRow+'</div>';}).join('')+'</div>';});/* bulk assign panel */
+function detailUsers(){var addCard='<div class="card"><h3><i class="ti ti-user-plus"></i> '+T('Add user','નવો યુઝર')+'</h3><label>'+T('Name','નામ')+'</label><input id="mu_name" class="fld"><label>'+T('Mobile number','મોબાઇલ નંબર')+'</label><input id="mu_phone" class="fld" inputmode="numeric"><label>'+T('Role','ભૂમિકા')+'</label><select id="mu_role" class="fld" onchange="muRoleChange()"><option value="Teacher">Teacher</option><option value="TL">Team Leader</option><option value="PM">PM</option></select><div id="mu_tlwrap"><label>'+T('Under Team Leader','ટીમ લીડર હેઠળ')+'</label><select id="mu_tl" class="fld">'+muTlOpts('')+'</select></div><div id="mu_clwrap" style="display:none"><label>'+T('NGO / cluster code (e.g. SVT, KCT, JCT, Dahod, GST)','NGO / ક્લસ્ટર કોડ (દા.ત. SVT, KCT, JCT, Dahod, GST)')+'</label><input id="mu_cluster" class="fld"></div><div class="muted" style="font-size:12px;margin:6px 0">'+T('Password = last 4 digits of the mobile number.','પાસવર્ડ = મોબાઇલના છેલ્લા 4 અંક.')+'</div><label>'+T('Password (optional)','પાસવર્ડ (વૈકલ્પિક)')+'</label><input id="mu_pw" class="fld" placeholder="'+T('Blank = last 4 digits','ખાલી = છેલ્લા 4 અંક')+'"><button class="btn block" onclick="muAdd()">'+T('Add user','યુઝર ઉમેરો')+'</button></div>';var roles=['PM','TL','Teacher'];var listCard='';roles.forEach(function(role){var us=DB.users.filter(function(x){return x.role===role;});if(!us.length)return;listCard+='<div class="card"><h3>'+role+' ('+us.length+')</h3>'+us.map(function(x){var cl=clusterOf(x);var inactive=x.active===false;var roleSel='<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:110px" onchange="muSetRole(this.dataset.id,this.value)">'+['Teacher','TL','PM'].map(function(r){return '<option '+(x.role===r?'selected':'')+'>'+r+'</option>';}).join('')+'</select>';var ra=(x.role==='Teacher')?'<select class="fld" data-id="'+x.id+'" style="padding:5px 7px;max-width:140px" onchange="muReassign(this.dataset.id,this.value)">'+muTlOpts(x.tl)+'</select>':'';var rt=muReportsSel(x);var ngoSel=(x.role==='TL'||x.role==='Teacher')?('<select class="fld" data-id="'+x.id+'" title="'+(x.role==='Teacher'?(x.cluster?T('NGO set on this teacher','આ શિક્ષક પર સેટ કરેલ NGO'):T('NGO inherited from their team leader','ટીમ લીડર પરથી આવેલ NGO')):T('NGO','NGO'))+'" style="padding:5px 7px;max-width:110px" onchange="muSetCluster(this.dataset.id,this.value)">'+ngoOpts(cl)+'</select>'):'';var seesRow='';if(x.role==='TL'){var others=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others.length){var seesSet=x.seesAlso||[];var chips=others.map(function(y){var on=seesSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetSeesAlso(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');seesRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also sees teams of:','આ પણ ટીમો જુએ છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips+'</div></div>';}}var monitorsRow='';if(x.role==='TL'){var others2=DB.users.filter(function(y){return y.role==='TL'&&y.active!==false&&y.id!==x.id;});if(others2.length){var monSet=x.monitorsTLs||[];var chips2=others2.map(function(y){var on=monSet.indexOf(y.id)>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetMonitorsTL(\''+x.id+'\',\''+y.id+'\','+(!on)+')">'+y.name+'</span>';}).join('');monitorsRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Also monitors:','આ પણ મોનિટર કરે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips2+'</div></div>';}}var ovRow='';if(x.role==='TL'){var ngos3=ngoActive();if(ngos3.length){var ovSet=(x.oversees||[]).map(function(c){return bridgeNorm(c);});var chips3=ngos3.map(function(n){var on=ovSet.indexOf(bridgeNorm(n.code))>-1;return '<span class="chip '+(on?'on':'')+'" onclick="muSetOversees(\''+x.id+'\',\''+escAJ(n.code)+'\','+(!on)+')">'+escA(n.code)+'</span>';}).join('');ovRow='<div style="width:100%;margin-top:6px"><div class="muted" style="font-size:11.5px;margin-bottom:4px">'+T('Oversees NGOs:','આ NGO સંભાળે છે:')+'</div><div class="chips" style="margin-bottom:0">'+chips3+'</div></div>';}}return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+(inactive?'opacity:.55':'')+'"><div style="flex:1;min-width:130px"><div style="font-weight:700">'+x.name+(x.role!=='TL'&&cl?' <span class="pill b" style="font-size:10px">'+escA(cl)+'</span>':'')+(inactive?' <span class="pill r" style="font-size:10px">'+T('inactive','બંધ')+'</span>':'')+'</div><div class="muted" style="font-size:12px">'+(x.phone||'')+'</div></div>'+roleSel+ngoSel+ra+rt+'<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muSetActive(this.dataset.id,'+(inactive?'true':'false')+')">'+(inactive?T('Activate','ચાલુ કરો'):T('Deactivate','બંધ કરો'))+'</button>'+(muCanReset(x)?('<button class="btn ghost" style="padding:5px 9px;font-size:12px" data-id="'+x.id+'" onclick="muChangePw(this.dataset.id)">'+T('Change password','પાસવર્ડ બદલો')+'</button>'):'')+seesRow+monitorsRow+ovRow+'</div>';}).join('')+'</div>';});/* bulk assign panel */
 var allTLs=DB.users.filter(function(x){return x.role==='TL'&&x.active!==false;});
 var allTeachers=DB.users.filter(function(x){return x.role==='Teacher'&&x.active!==false;});
 var clusters=[...new Set(allTLs.map(clusterOf).concat(allTeachers.map(clusterOf)).filter(Boolean))].sort();
@@ -3357,6 +3378,7 @@ function ngoRename(id,newCode){var n=ngoById(id);if(!n)return false;
   var oldCode=n.code,imp=ngoImpact(oldCode);
   if(!confirm(T('Rename ','નામ બદલો ')+oldCode+' → '+newCode+'?\n\n'+imp.tls.length+T(' team leader(s), ',' ટીમ લીડર, ')+imp.teachers.length+T(' teacher(s) and ',' શિક્ષક અને ')+imp.recs.length+T(' bridge course record(s) will move.',' બ્રિજ કોર્સ રેકોર્ડ ખસેડાશે.')))return false;
   imp.tls.forEach(function(x){x.cluster=newCode;if(FS){try{FS.collection('appusers').doc(x.id).set({id:x.id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:newCode,active:x.active!==false,updatedAt:Date.now()},{merge:true});}catch(err){console.warn('ngoRename tl',err);}}});
+  (DB.users||[]).forEach(function(x){if(!x||!x.oversees||!x.oversees.length)return;var hit=false;var nx=x.oversees.map(function(c){if(bridgeNorm(c)===bridgeNorm(oldCode)){hit=true;return newCode;}return c;});if(!hit)return;x.oversees=nx;if(FS){try{FS.collection('appusers').doc(x.id).set({id:x.id,name:x.name,role:x.role,phone:x.phone,tl:x.tl||'',cluster:x.cluster||'',active:x.active!==false,oversees:nx,updatedAt:Date.now()},{merge:true});}catch(err){console.warn('ngoRename oversees',err);}}});
   var oldIds=[];
   imp.recs.forEach(function(m){oldIds.push(m.id);m.cluster=newCode;m.id=bridgeId(newCode,m.school);m.updatedAt=Date.now();});
   var live={};(DB.bridgeMarks||[]).forEach(function(m){if(m&&m.id)live[m.id]=m;});
@@ -3493,7 +3515,7 @@ function detailMyActions(){
     <div class="card">${acts.length?acts.sort((x,y)=>x.a.due.localeCompare(y.a.due)).map(o=>`<div class="item ${overdue(o.a.due,'open')?'r':''}"><span>${o.a.text}</span><span class="x">${overdue(o.a.due,'open')?'⚠ ':''}${o.a.due}</span><button class="btn sm" style="margin-left:8px" onclick="closeAction('${o.eid}',${o.i})">${T('Done','થયું')}</button></div>`).join(''):`<div class="empty">${T('No open action items 🎉','કોઈ ખુલ્લા એક્શન નથી')}</div>`}</div>`;
 }
 function detailMyTeachers(){
-  var everyone=DB.users.filter(x=>tlSees(x,CUR));
+  var everyone=DB.users.filter(seesFn(CUR));
   /* Only worth offering when this leader actually has more than one NGO - a single chip
      beside 'All' filters nothing and is just another thing to read. */
   var cset={};everyone.forEach(function(t){var c=clusterOf(t);if(c)cset[c]=1;});
