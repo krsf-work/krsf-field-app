@@ -326,7 +326,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.19'; /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
+const APP_VERSION='9.20'; /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -2320,7 +2320,7 @@ var MU_BUSY=false;
    muAdd; gst was typed into the import's prefix box for the 28 GST teachers. Anything added
    here is tried in order before the PM is asked, so a new NGO imported under its own prefix
    belongs in this list. */
-var PWD_KNOWN_PREFIXES=['krsf','gst'];
+var PWD_KNOWN_PREFIXES=['krsf','gst','neaid']; /* neaid: NEAID's teachers were imported with it on 2026-09-15 */
 function muGuessPasswords(phone){var last4=String(phone||'').slice(-4),out=[],i,p;
   for(i=0;i<PWD_KNOWN_PREFIXES.length;i++){p=PWD_KNOWN_PREFIXES[i]+last4;if(out.indexOf(p)<0)out.push(p);}
   return out;}
