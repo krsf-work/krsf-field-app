@@ -328,7 +328,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.25'; /* v9.25 - Punch In / Punch Out removed everywhere (Guru does not use it), and with it GPS capture; old diaries keep their punch times and locations. The PM Overview no longer shows the Team breakdown and Insights cards (Guru does not use them). */ /* v9.24 - toasts sit above the phone bottom bar instead of behind it. */ /* v9.23 - ready for 1,000 people: screens built from indexes instead of re-scanning every diary per teacher; Firebase reads cut about fifteen-fold (only what changed is fetched between daily passes); a leader's phone now gets the full history of every teacher in view, including teachers moved to them; the PM's phone overflows into IndexedDB instead of silently dropping diaries; unsent diaries are re-sent on every open; the Firebase library is kept for offline use. */ /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
+const APP_VERSION='9.26'; /* v9.26 - bridge course: progress runs to each school's latest figure (Mid September where September End is not in yet); each upload keeps its column names, the school page shows all three figures by name, and the report says how many schools have the last period. */ /* v9.25 - Punch In / Punch Out removed everywhere (Guru does not use it), and with it GPS capture; old diaries keep their punch times and locations. The PM Overview no longer shows the Team breakdown and Insights cards (Guru does not use them). */ /* v9.24 - toasts sit above the phone bottom bar instead of behind it. */ /* v9.23 - ready for 1,000 people: screens built from indexes instead of re-scanning every diary per teacher; Firebase reads cut about fifteen-fold (only what changed is fetched between daily passes); a leader's phone now gets the full history of every teacher in view, including teachers moved to them; the PM's phone overflows into IndexedDB instead of silently dropping diaries; unsent diaries are re-sent on every open; the Firebase library is kept for offline use. */ /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -3014,6 +3014,9 @@ function bridgeNewCluster(head){if(!BRIDGE_REVIEW)return;var v=(prompt(T('New NG
 function bridgeLinkSchool(i,choice){if(!BRIDGE_REVIEW)return;BRIDGE_REVIEW.linked[i]=choice;renderDetail();}
 function bridgeCancelReview(){BRIDGE_REVIEW=null;BRIDGE_SEL=null;BRIDGE_LINK=null;renderDetail();}
 function bridgeUnmappedHeads(){if(!BRIDGE_REVIEW)return [];return BRIDGE_REVIEW.heads.filter(function(h){return !BRIDGE_REVIEW.headMap[h];});}
+/* v9.26: strings or null only - Firebase refuses a write holding undefined */
+function bridgeSavePeriods(P){if(!P)return null;var o={};BRIDGE_SUBJ.forEach(function(k){var p=P[k]||{};
+  o[k]={start:p.start==null?null:String(p.start),mid:p.mid==null?null:String(p.mid),end:p.end==null?null:String(p.end)};});return o;}
 function bridgeConfirmSave(){var R=BRIDGE_REVIEW;if(!R)return;
   if(bridgeUnmappedHeads().length){toast(T('Choose a cluster for every cluster head first','પહેલા દરેક ક્લસ્ટર હેડ માટે ક્લસ્ટર પસંદ કરો'));return;}
   var byId={};(DB.bridgeMarks||[]).forEach(function(x){if(x&&x.id)byId[x.id]=x;});var wrote={};
@@ -3021,7 +3024,7 @@ function bridgeConfirmSave(){var R=BRIDGE_REVIEW;if(!R)return;
     var m=R.matches[i]||{},ref=null;
     if(m.kind==='exact'||m.kind==='saved')ref=m.ref||null;
     else if(m.kind==='close'&&R.linked[i])ref=R.linked[i];
-    var rec={id:bridgeId(cluster,r.school),cluster:cluster,head:r.head,school:r.school,schoolRef:ref||null,students:r.students,reading:r.reading,writing:r.writing,maths:r.maths,uploadedBy:CUR,updatedAt:Date.now()};
+    var rec={id:bridgeId(cluster,r.school),cluster:cluster,head:r.head,school:r.school,schoolRef:ref||null,students:r.students,reading:r.reading,writing:r.writing,maths:r.maths,periods:bridgeSavePeriods(R.periods),uploadedBy:CUR,updatedAt:Date.now()};
     byId[rec.id]=rec;pushBridgeMark(rec);wrote[rec.id]=1;});
   var n=Object.keys(wrote).length;
   DB.bridgeMarks=Object.keys(byId).map(function(k){return byId[k];});
@@ -3029,10 +3032,36 @@ function bridgeConfirmSave(){var R=BRIDGE_REVIEW;if(!R)return;
   R.rows.forEach(function(r,i){var m=R.matches[i]||{};if(m.kind==='close'&&R.linked[i]!==undefined)DB.bridgeSchoolMap[bridgeNorm(r.school)]=R.linked[i];});
   save();BRIDGE_REVIEW=null;toast(n+' '+T('schools saved','શાળા સાચવી')+' ✓');renderAll();}
 /* ---- bridge course: aggregation (pure over DB.bridgeMarks) ---- */
-function bridgeGain(s){if(!s||s.start==null||s.end==null)return null;return Math.round((s.end-s.start)*100)/100;}
+/* v9.26: a school's latest figure is its end figure, or the middle one when the end column is
+   not filled for it yet. Progress runs from Start to that, so a school measured in mid-September
+   is not "not re-measured" just because September End was filled for only some schools. */
+function bridgeLatest(s){if(!s)return null;return s.end!=null?s.end:(s.mid!=null?s.mid:null);}
+function bridgeGain(s){if(!s||s.start==null)return null;var e=bridgeLatest(s);if(e==null)return null;return Math.round((e-s.start)*100)/100;}
+function bridgePLabel(l){return String(l==null?'':l).replace(/\s*level\s*$/i,'').trim();}
+/* the three figures of one subject, named after the columns they came from; an upload saved
+   before v9.26 kept no names, so it reads Start / Middle / End */
+function bridgeFigLine(m,k){var s=(m&&m[k])||{},P=(m&&m.periods&&m.periods[k])||null,gen={start:'Start',mid:'Middle',end:'End'},out=[];
+  ['start','mid','end'].forEach(function(slot){var lab=bridgePLabel(P?P[slot]:gen[slot]),v=s[slot];
+    if(!lab){if(v==null)return;lab=gen[slot];}
+    out.push('<span style="white-space:nowrap">'+escA(lab)+' <b>'+(v==null?'—':bridgeF2(v))+'</b></span>');});
+  return out.join(' <span class="muted">→</span> ');}
+/* "September End measured in 16 of 74 schools. The other 58 are shown up to Mid September." -
+   one line per upload layout, only where the last column is part-filled */
+function bridgeCoverageNote(list){var g={},order=[];
+  (list||[]).forEach(function(m){if(!m||!m.periods)return;var P=null;
+    BRIDGE_SUBJ.forEach(function(k){var p=m.periods[k];if(!P&&p&&p.end)P=p;});if(!P)return;
+    var key=P.end+'|'+(P.mid||'');if(!g[key]){g[key]={end:P.end,mid:P.mid,n:0,e:0,r:0};order.push(key);}
+    var o=g[key],hasE=false,hasM=false;o.n++;
+    BRIDGE_SUBJ.forEach(function(k){var s=m[k]||{};if(s.end!=null)hasE=true;else if(s.mid!=null)hasM=true;});
+    if(hasE)o.e++;else if(hasM)o.r++;});
+  var lines=order.map(function(key){var o=g[key];if(o.e>=o.n)return '';
+    return '<div style="font-size:12.5px;padding:2px 0"><b>'+escA(bridgePLabel(o.end))+'</b> '+T('measured in','માપ્યું')+' '+o.e+' '+T('of','માંથી')+' '+o.n+' '+(o.n===1?T('school','શાળા'):T('schools','શાળા'))+'.'
+      +((o.r&&o.mid)?(' '+T('The other','બાકીની')+' '+o.r+' '+T('are shown up to','બતાવી છે')+' '+escA(bridgePLabel(o.mid))+'.'):'')+'</div>';}).filter(Boolean);
+  if(!lines.length)return '';
+  return '<div class="card" style="border-left:3px solid #eda100;border-radius:0">'+lines.join('')+'</div>';}
 function bridgeRow(m){var gains=[],decline=false,anyEnd=false,allEnd=true,flat=true;
   BRIDGE_SUBJ.forEach(function(k){var s=m[k]||{},g=bridgeGain(s);
-    if(s.end!=null)anyEnd=true;else allEnd=false;
+    if(bridgeLatest(s)!=null)anyEnd=true;else allEnd=false;
     if(g==null){flat=false;return;}
     gains.push(g);if(g<0)decline=true;if(g!==0)flat=false;});
   var avg=gains.length?Math.round((gains.reduce(function(a,b){return a+b;},0)/gains.length)*100)/100:null;
@@ -3141,7 +3170,7 @@ function bridgeGroupStats(list){var o={n:list.length,subj:{},lsum:0,ln:0};
   BRIDGE_SUBJ.forEach(function(k){o.subj[k]={a:0,b:0,n:0,ls:0,ln:0};});
   list.forEach(function(m){
     BRIDGE_SUBJ.forEach(function(k){var s=m[k]||{},t=o.subj[k];
-      if(s.start!=null&&s.end!=null){t.a+=s.start;t.b+=s.end;t.n++;}
+      var le=bridgeLatest(s);if(s.start!=null&&le!=null){t.a+=s.start;t.b+=le;t.n++;}
       var nl=bridgeNowLevel(s);if(nl!=null){t.ls+=nl;t.ln++;}
       if(s.start!=null){t.sa=(t.sa||0)+s.start;t.sn=(t.sn||0)+1;}});
     var al=bridgeAvgLevel(m);if(al!=null){o.lsum+=al;o.ln++;}});
@@ -3412,8 +3441,9 @@ function bridgeDetailView(){var m=(DB.bridgeMarks||[]).filter(function(x){return
     var badge=d==null?('<span class="muted" style="font-size:11.5px">'+T('no end data','અંતનો ડેટા નથી')+'</span>'):('<span style="font-weight:800;font-size:12.5px;color:'+(d<0?'#b3261e':(d===0?'#6b7280':'#1baf7a'))+'">'+(d>0?'+':'')+d.toFixed(2)+'</span>');
     var t=nl==null?0:Math.max(0,Math.min(1,nl/BRIDGE_MAX));
     var bar='<div style="position:relative;flex:1;height:8px;border-radius:4px;background:var(--line)">'+(nl==null?'':'<span style="position:absolute;left:0;top:0;height:8px;border-radius:4px;width:'+(t*100).toFixed(1)+'%;background:rgb('+BRIDGE_RGB[k]+')"></span>')+'<span style="position:absolute;left:50%;top:-2px;width:1px;height:12px;background:var(--muted);opacity:.35"></span></div>';
-    return '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><span style="width:58px;font-size:12px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span>'+bridgeDumbbell(k,s.start,s.end,mx,true)+badge+'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-top:5px"><span style="width:58px;font-size:10.5px;color:var(--muted);flex-shrink:0">'+T('out of 10','10 માંથી')+'</span>'+bar+'<span style="width:74px;text-align:right;font-size:11.5px;font-weight:700">'+(nl==null?'—':nl.toFixed(2)+' / 10')+'</span></div></div>';}).join('');
+    return '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><span style="width:58px;font-size:12px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span>'+bridgeDumbbell(k,s.start,bridgeLatest(s),mx,true)+badge+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-top:5px"><span style="width:58px;font-size:10.5px;color:var(--muted);flex-shrink:0">'+T('out of 10','10 માંથી')+'</span>'+bar+'<span style="width:74px;text-align:right;font-size:11.5px;font-weight:700">'+(nl==null?'—':nl.toFixed(2)+' / 10')+'</span></div>'
+      +'<div style="display:flex;gap:8px;margin-top:5px"><span style="width:58px;flex-shrink:0"></span><span style="font-size:11.5px;color:var(--muted);line-height:1.5">'+bridgeFigLine(m,k)+'</span></div></div>';}).join('');
   var al=bridgeAvgLevel(m);
   var avgBox='<div class="card" style="display:flex;align-items:center;gap:12px"><div><div class="muted" style="font-size:11px;text-transform:uppercase;font-weight:700">'+T('Average now','અત્યારે સરેરાશ')+'</div><div style="font-size:22px;font-weight:800">'+(al==null?'—':al.toFixed(2))+' <span class="muted" style="font-size:13px;font-weight:400">/ 10</span></div></div><div style="flex:1"><div style="height:10px;border-radius:5px;background:var(--line);position:relative"><span style="position:absolute;left:0;top:0;height:10px;border-radius:5px;width:'+(al==null?0:Math.min(100,al/BRIDGE_MAX*100)).toFixed(1)+'%;background:var(--brand-d)"></span><span style="position:absolute;left:50%;top:-3px;width:1px;height:16px;background:var(--muted);opacity:.35"></span></div><div class="muted" style="font-size:10px;display:flex;justify-content:space-between;margin-top:3px"><span>0</span><span>5</span><span>10</span></div></div></div>';
   var why=r.reason==='noend'?T('No latest figure yet','હજુ છેલ્લો આંકડો નથી'):(r.reason==='decline'?T('A subject went down','એક વિષય ઘટ્યો'):(r.reason==='low'?T('Small gain so far','અત્યાર સુધી થોડો સુધારો'):T('On track','સારી પ્રગતિ')));
@@ -3549,12 +3579,12 @@ function bridgeGainBandsView(st){
 /* A school has NO LATEST DATA when not one of its three subjects carries a July-end figure.
    That is different from a partly-filled row, where somebody started entering and stopped -
    the two are counted separately because they need different chasing. */
-function bridgeNoLatest(m){if(!m)return false;var e=0;BRIDGE_SUBJ.forEach(function(k){if((m[k]||{}).end!=null)e++;});return e===0;}
+function bridgeNoLatest(m){if(!m)return false;var e=0;BRIDGE_SUBJ.forEach(function(k){if(bridgeLatest(m[k])!=null)e++;});return e===0;}
 /* Compared against the number of subjects carrying ANY figure, not the number with a start.
    Anchoring on starts meant a school with reading{start,end}, writing{end}, maths{start} scored
    e=2 s=2 and was called complete - so maths was still waiting and the school appeared in no
    row of the panel whose whole job is chasing those figures. */
-function bridgePartialLatest(m){if(!m)return false;var e=0,any=0;BRIDGE_SUBJ.forEach(function(k){var x=m[k]||{};if(x.end!=null)e++;if(x.end!=null||x.start!=null||x.mid!=null)any++;});return e>0&&e<any;}
+function bridgePartialLatest(m){if(!m)return false;var e=0,any=0;BRIDGE_SUBJ.forEach(function(k){var x=m[k]||{};if(bridgeLatest(x)!=null)e++;if(x.end!=null||x.start!=null||x.mid!=null)any++;});return e>0&&e<any;}
 /* Grouped by NGO, the unit the filter chips already use, but the cluster HEAD is named too:
    they are the person who owes the figure, and chasing is the whole point of this panel. */
 function bridgeMissingStats(list){
@@ -3685,7 +3715,7 @@ function bridgePortfolio(bA){
      is the one panel you act on rather than read. */
   /* The two band charts share a row; the two TABLES share the row below it. Both tables are
      things you act on rather than skim, and both are now compact enough to sit side by side. */
-  return kpis+subjKpis+'<div class="pf-three pf-gap">'+bands+gains+'</div>'
+  return bridgeCoverageNote(list)+kpis+subjKpis+'<div class="pf-three pf-gap">'+bands+gains+'</div>'
     +((ngoRows||bridgeMissingView(list))?('<div class="pf-two pf-gap">'+ngoRows+bridgeMissingView(list)+'</div>'):'')+movers+insight;}
 function bridgeNgoChart(){var all=scopeMarks();if(!all.length)return '';var g=bridgeNgoGroups(all);if(g.length<2)return '';return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Compare NGOs','NGO સરખામણી')+'</h3>'+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+(BRIDGE_VIEW==='level'?T('Average level now, out of 10, across each NGO’s schools.','દરેક NGO ની શાળાઓનું સરેરાશ સ્તર, 10 માંથી.'):T('Average gain across each NGO’s schools. Hollow dot = start, solid dot = latest figure.','દરેક NGO ની શાળાઓનો સરેરાશ સુધારો.'))+'</div>'+bridgeGroupView(g)+'</div>';}
 /* ---- NGO master (v5.9) ---- */
