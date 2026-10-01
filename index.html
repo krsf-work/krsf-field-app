@@ -256,6 +256,30 @@
 .challenge-line{margin-top:6px;font-size:13px;color:#dc2626;font-weight:600}
 .log-empty{font-style:italic;font-size:13px}
 .bulk-panel{background:var(--panel);border-radius:12px;padding:14px;margin-bottom:14px;border:1px solid var(--line)}
+/* v9.27 bridge course report */
+.bc-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bc-row+.bc-row{margin-top:6px}
+.bc-lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;min-width:38px}
+.bc-pers{display:flex;gap:5px;flex-wrap:wrap}
+.bc-per{border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer;background:#fff;white-space:nowrap}
+.bc-per small{font-weight:500;color:var(--muted);margin-left:4px}.bc-per.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);cursor:default}.bc-per.on small{color:var(--brand-ink)}.bc-per.off{opacity:.38;cursor:not-allowed}
+.bc-presets{display:flex;flex-wrap:wrap;gap:4px 12px;flex:1 1 220px;min-width:0}
+.bc-preset{font-size:12px;color:var(--brand-d);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+.bc-two{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}.bc-four{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.bc-fact{background:#f7f8fa;border-radius:10px;padding:9px 11px}.bc-fact .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700}
+.bc-fact .v{font-size:16px;font-weight:800;margin-top:2px}.bc-fact .n{font-size:11.5px;color:var(--muted);margin-top:2px}
+.bc-sts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.bc-st{cursor:pointer;font-size:12.5px;font-weight:600;border-radius:8px;padding:2px 6px 2px 2px;border:1px solid transparent}.bc-st.on{border-color:var(--brand-d);background:var(--brand-tint)}
+.bc-tap{cursor:pointer}.bc-tap:hover{border-color:#d7b84a}.bc-sel{outline:2px solid var(--brand);outline-offset:-1px}
+.bc-tip{position:absolute;display:none;pointer-events:none;background:#1b2030;color:#fff;border-radius:9px;padding:8px 10px;font-size:12px;line-height:1.5;min-width:150px;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.bc-warn{border-left:3px solid var(--gA);background:#fffaf0;padding:8px 10px;border-radius:0 8px 8px 0;font-size:12.5px;margin-top:8px}
+tr.bc-on td{background:var(--brand-tint)}tr.bc-tot td{font-weight:700;background:#fafbfc}
+.bc-sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+.bc-band{display:grid;grid-template-columns:50px 1fr;gap:9px;align-items:center;margin:7px 0}.bc-bl{font-weight:700;font-size:12.5px}
+.bc-bar2{display:flex;align-items:center;gap:7px;font-size:12px;margin:2px 0}.bc-bar2 span{height:11px;border-radius:3px;display:inline-block;min-width:2px}
+.bc-tbl{min-width:860px}.bc-tbl td{vertical-align:top}
+.bc-tl{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:5px;margin-top:5px}
+.bc-tc{background:#f7f8fa;border-radius:8px;padding:5px 7px;font-size:11px;color:var(--muted);line-height:1.3}.bc-tc b{display:block;font-size:13.5px;color:var(--ink)}
+.bc-tc.empty b{color:#b8bec8}.bc-tc.from{outline:2px solid #9aa4b2;background:#fff}.bc-tc.to{outline:2px solid var(--brand-d);background:var(--brand-tint)}
+@media(max-width:700px){.bc-two{grid-template-columns:1fr}.bc-four{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -328,7 +352,7 @@
 <script>
 /* ===================== DATA ===================== */
 const KEY='krsf_md_v3';
-const APP_VERSION='9.26'; /* v9.26 - bridge course: progress runs to each school's latest figure (Mid September where September End is not in yet); each upload keeps its column names, the school page shows all three figures by name, and the report says how many schools have the last period. */ /* v9.25 - Punch In / Punch Out removed everywhere (Guru does not use it), and with it GPS capture; old diaries keep their punch times and locations. The PM Overview no longer shows the Team breakdown and Insights cards (Guru does not use them). */ /* v9.24 - toasts sit above the phone bottom bar instead of behind it. */ /* v9.23 - ready for 1,000 people: screens built from indexes instead of re-scanning every diary per teacher; Firebase reads cut about fifteen-fold (only what changed is fetched between daily passes); a leader's phone now gets the full history of every teacher in view, including teachers moved to them; the PM's phone overflows into IndexedDB instead of silently dropping diaries; unsent diaries are re-sent on every open; the Firebase library is kept for offline use. */ /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
+const APP_VERSION='9.27'; /* v9.27 - bridge course report: compare any two months or tests, every number says which months and how many schools; month-by-month chart; one rule for On track / Needs attention; uploads keep every test column and each school's teacher link, and ask before a cluster head's schools move to another NGO. */ /* v9.26 - bridge course: progress runs to each school's latest figure (Mid September where September End is not in yet); each upload keeps its column names, the school page shows all three figures by name, and the report says how many schools have the last period. */ /* v9.25 - Punch In / Punch Out removed everywhere (Guru does not use it), and with it GPS capture; old diaries keep their punch times and locations. The PM Overview no longer shows the Team breakdown and Insights cards (Guru does not use them). */ /* v9.24 - toasts sit above the phone bottom bar instead of behind it. */ /* v9.23 - ready for 1,000 people: screens built from indexes instead of re-scanning every diary per teacher; Firebase reads cut about fifteen-fold (only what changed is fetched between daily passes); a leader's phone now gets the full history of every teacher in view, including teachers moved to them; the PM's phone overflows into IndexedDB instead of silently dropping diaries; unsent diaries are re-sent on every open; the Firebase library is kept for offline use. */ /* v9.17 - some failures mean stop, not try harder. The prefix walk added in 9.16 had a flaw found on its first real use: when there is no login for that number at all, no password can ever work, yet the walk tried every prefix and then put a password box in front of the PM - so the message that would have named the real problem was never reached, which is the least useful thing that could have happened. muPwHopeless now names the codes where another attempt is pointless - no account, a malformed address, a disabled account, sign-in not allowed, or Firebase having locked the account after too many tries - and any of them stops at once and says what is wrong. A plain wrong password still walks every prefix and then asks, once. 1,776 checks; 5 new mutations caught, including one that puts the flaw straight back. */
 // ===== PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console > Project settings > Web app) =====
 const firebaseConfig = { apiKey:"AIzaSyCkO3m-iI6qPyWkzY04tJlohtUymKXMJZM", authDomain:"krsf-field-app.firebaseapp.com", projectId:"krsf-field-app", storageBucket:"krsf-field-app.firebasestorage.app", messagingSenderId:"16919907999", appId:"1:16919907999:web:87ea4d8be972782d345caa" };
 // =================================================================================================
@@ -2214,46 +2238,9 @@ function detailReports(){
     var bA=bridgeAgg(BRIDGE_CLUS);
     var bBtns=scopeIsTL()?'':'<div style="display:flex;gap:8px;align-items:center"><button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="downloadBridgeTemplate()">⬇ '+T('Bridge template','બ્રિજ ટેમ્પલેટ')+'</button><button class="btn" style="width:auto;padding:8px 12px;font-size:12.5px;flex-shrink:0" onclick="document.getElementById(\'bridgeFile\').click()">⬆ '+T('Upload bridge course','બ્રિજ કોર્સ અપલોડ')+'</button><input type="file" id="bridgeFile" accept=".csv" style="display:none" onchange="bridgeFileChange(event)"></div>';
     var bChips=bClus.length>1?('<div class="chips"><span class="chip '+(BRIDGE_CLUS==='all'?'on':'')+'" onclick="setBridgeClus(\'all\')">'+T('All','બધા')+'</span>'+bClus.map(function(c){return '<span class="chip '+(BRIDGE_CLUS===c?'on':'')+'" onclick="setBridgeClus(\''+escAJ(c)+'\')">'+escA(c)+'</span>';}).join('')+'</div>'):'';
-    var att=[];
-    if(bA.declines.length)att.push('<div style="font-size:13px;margin-top:3px"><b style="color:#b3261e">'+T('Went down','ઘટાડો')+':</b> '+bA.declines.map(function(r){return escA(r.m.school);}).join(', ')+'</div>');
-    if(bA.missing.length)att.push('<div style="font-size:13px;margin-top:3px"><b>'+T('No latest figure yet','હજુ છેલ્લો આંકડો નથી')+':</b> '+bA.missing.length+' '+T('schools','શાળા')+'</div>');
-    if(bA.flat.length)att.push('<div style="font-size:13px;margin-top:3px"><b style="color:#eda100">'+T('Start and end identical — please check','શરૂઆત અને અંત સરખા — તપાસો')+':</b> '+bA.flat.map(function(r){return escA(r.m.school);}).join(', ')+'</div>');
-    var bAtt=att.length?('<div class="card"><h3><i class="ti ti-flag"></i> '+T('Needs attention','ધ્યાન જરૂરી')+'</h3>'+att.join('')+'</div>'):'';
-    var bHint=(BRIDGE_VIEW==='level')?T('Level reached so far, out of 10. Darker = higher. Tap a school for its detail.','અત્યાર સુધીનું સ્તર, 10 માંથી. ઘાટો = વધારે. વિગત માટે શાળા પર દબાવો.'):T('Gain from start of course to the latest figure. Darker = bigger gain. Tap a school for its detail.','શરૂઆતથી છેલ્લા આંકડા સુધીનો સુધારો. ઘાટો = વધુ સુધારો. વિગત માટે શાળા પર દબાવો.');
-    var bInner;
-    if(!bA.rows.length){bInner='<div class="empty">'+(scopeIsTL()?T('No bridge course figures for your schools yet. Your programme manager uploads these.','તમારી શાળાના બ્રિજ કોર્સ આંકડા હજુ નથી. પ્રોગ્રામ મેનેજર આ અપલોડ કરે છે.'):T('No bridge course data yet — upload a CSV to begin.','હજુ બ્રિજ કોર્સ ડેટા નથી — શરૂ કરવા CSV અપલોડ કરો.'))+'</div>';}
-    else if(BRIDGE_GROUP==='teacher'){
-      var tg=bridgeTeacherGroups(bA.rows.map(function(r){return r.m;}));
-      var gap=tg.unmatched.length?('<div class="card" style="border-left:3px solid #eda100;border-radius:0;margin:8px 0 0"><div style="font-weight:700;font-size:12.5px">'+tg.unmatched.length+' '+T('schools are not linked to any teacher','શાળા કોઈ શિક્ષક સાથે જોડાયેલ નથી')+'</div><div class="muted" style="font-size:11.5px;margin-top:3px">'+T('A school links to a teacher through the schools that teacher entered in Setup. These have no match yet, so they are missing from every teacher below.','શિક્ષકે Setup માં લખેલી શાળા દ્વારા જોડાણ થાય છે. આમનું જોડાણ નથી, તેથી નીચેના કોઈ શિક્ષકમાં ગણાયેલ નથી.')+'</div><div style="font-size:12px;margin-top:5px">'+tg.unmatched.slice(0,14).map(function(m){return escA(m.school);}).join(' · ')+(tg.unmatched.length>14?(' … +'+(tg.unmatched.length-14)):'')+'</div></div>'):'';
-      bInner=(tg.groups.length?bridgeGroupView(tg.groups):('<div class="empty">'+T('No teacher is linked to a bridge course school yet','હજુ કોઈ શિક્ષક બ્રિજ કોર્સ શાળા સાથે જોડાયેલ નથી')+'</div>'))+gap;
-    }
-    /* Schools show every level AND every change at once in the table, so the gain/level
-       toggle is meaningless here — it only applies to the aggregated Teacher and NGO views. */
-    else{var bUn=bridgeUnlinked(bA.rows.map(function(r){return r.m;}));
-      var bLinkBtn=scopeIsTL()?'':'<button class="btn'+(bUn.length?'':' ghost')+' block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+(bUn.length?(T('Link teachers to','શિક્ષક જોડો —')+' '+bUn.length+' '+(bUn.length===1?T('school','શાળા'):T('schools','શાળા'))):T('Change teacher links','શિક્ષક બદલો'))+'</button>';
-      /* Band filter applies to the TABLE only. If it ever empties the table the banner still
-         renders, so there is always a visible way back out of the filter. */
-      var bRows=bA.rows,bBanner='',bWhat='',bClear='';
-      if(BRIDGE_BAND!=null){
-        bRows=bA.rows.filter(function(r){return bridgeInBand(r.m,BRIDGE_BAND);});
-        bWhat=T('Showing schools at','બતાવેલ સ્તર')+' '+bridgeBandLabel(BRIDGE_BAND)+' '+T('out of 10','10 માંથી');
-        bClear='bridgeSetBand('+BRIDGE_BAND+')';}
-      else if(BRIDGE_GBAND!=null){
-        bRows=bA.rows.filter(function(r){return bridgeInGainBand(r.m,BRIDGE_GBAND);});
-        bWhat=(BRIDGE_GBAND===0?T('Showing schools that went down','ઘટાડો થયેલ શાળા'):(T('Showing schools that improved by','સુધારો')+' '+bridgeGainBandLabel(BRIDGE_GBAND)));
-        bClear='bridgeSetGainBand('+BRIDGE_GBAND+')';}
-      else if(BRIDGE_MISS!=null){
-        bRows=bA.rows.filter(function(r){return bridgeNoLatest(r.m)&&(r.m.cluster||'—')===BRIDGE_MISS;});
-        bWhat=T('Showing schools with no latest figure in','તાજા આંકડા વગરની શાળા —')+' '+escA(BRIDGE_MISS);
-        bClear='bridgeSetMiss(\''+escAJ(BRIDGE_MISS)+'\')';}
-      if(bWhat)bBanner='<div class="card" style="margin:0 0 8px;padding:9px 11px;background:var(--brand-tint);border-color:#f6df91;display:flex;align-items:center;gap:9px;flex-wrap:wrap"><div style="flex:1;min-width:150px;font-size:12.5px;font-weight:700;color:var(--brand-d)">'+bWhat+' · '+bRows.length+' '+(bRows.length===1?T('school','શાળા'):T('schools','શાળા'))+'</div><span onclick="'+bClear+'" style="cursor:pointer;background:var(--brand-d);color:#fff;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;white-space:nowrap">'+T('Show all','બધી બતાવો')+'</span></div>';
-      bInner=bBanner+bLinkBtn+'<div class="muted" style="font-size:11.5px;margin-bottom:6px">'+T('Tap a column heading to sort. Tap a row for that school.','ક્રમમાં ગોઠવવા કૉલમનું નામ દબાવો. વિગત માટે હરોળ દબાવો.')+'</div>'+(bRows.length?bridgeTable(bRows):('<div class="empty">'+T('No school sits in this band.','આ બેન્ડમાં કોઈ શાળા નથી.')+'</div>'));}
-    var bSchools=(BRIDGE_GROUP!=='teacher'&&bA.rows.length);
-    var bList='<div class="card" id="bridgeSchools">'+(bA.rows.length?bridgeGroupToggle()+(bSchools?'':bridgeViewToggle()):'')+bInner+'</div>';
-    /* The overview sits above the NGO comparison, not below it: the mock-up's own order is
-       headline numbers first, breakdowns after, and bChips scopes the overview so the filter
-       has to come before the numbers it changes. */
-    return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+(scopeIsTL()?(T('Bridge course — my schools','બ્રિજ કોર્સ — મારી શાળા')):T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ'))+'</div></div>'+bBtns+'</div>'+modeToggle+bChips+bridgePortfolio(bA)+bridgeNgoChart()+bAtt+bList;
+    /* v9.27 - one page that says what it compares: see bridgeReport927 */
+    var bEmpty=bA.rows.length?'':('<div class="card"><div class="empty">'+(scopeIsTL()?T('No bridge course figures for your schools yet. Your programme manager uploads these.','તમારી શાળાના બ્રિજ કોર્સ આંકડા હજુ નથી. પ્રોગ્રામ મેનેજર આ અપલોડ કરે છે.'):T('No bridge course data yet — upload a CSV to begin.','હજુ બ્રિજ કોર્સ ડેટા નથી — શરૂ કરવા CSV અપલોડ કરો.'))+'</div></div>');
+    return '<div class="dhead pf-gap" style="justify-content:space-between"><div><div class="dh-name">'+T('Reports','રિપોર્ટ')+'</div><div class="dh-sub">'+(scopeIsTL()?(T('Bridge course — my schools','બ્રિજ કોર્સ — મારી શાળા')):T('Bridge course — school progress','બ્રિજ કોર્સ — શાળા પ્રગતિ'))+'</div></div>'+bBtns+'</div>'+modeToggle+bChips+bridgeReport927(bA)+bEmpty;
   }
   if(REPORT_MODE==='hours'){
     var hClusters=clustersInScope();
@@ -2979,8 +2966,10 @@ function parseBridgeCSV(text){
     rows.push({head:d.head,school:d.school,students:st,
       reading:{start:slot('reading','start'),mid:slot('reading','mid'),end:slot('reading','end')},
       writing:{start:slot('writing','start'),mid:slot('writing','mid'),end:slot('writing','end')},
-      maths:{start:slot('maths','start'),mid:slot('maths','mid'),end:slot('maths','end')}});});
-  return {rows:rows,heads:heads,skipped:skipped,total:total,periods:periods};}
+      maths:{start:slot('maths','start'),mid:slot('maths','mid'),end:slot('maths','end')},
+      /* v9.27: every test column, so any two months can be compared later */
+      series:(function(){var o={};SUBS.forEach(function(k){o[k]=per[k].map(function(p){return {l:String(p.label||''),v:num(p.col)};});});return o;})()});});
+  return {rows:rows,heads:heads,skipped:skipped,total:total,periods:periods,cols:(function(){var o={};SUBS.forEach(function(k){o[k]=per[k].map(function(p){return String(p.label||'');});});return o;})()};}
 /* ---- bridge course: matching (people exact-only, schools fuzzy) ---- */
 function bridgeResolveHead(head){var h=(head==null?'':String(head)).trim();if(!h)return null;var k=bridgeNorm(h),i;
   /* recognising a code is broader than offering it: a retired NGO, or one that predates
@@ -3005,7 +2994,32 @@ function bridgeMatchSchools(rows){var cands=bridgeSchoolCandidates(),map=DB.brid
 /* ---- bridge course: review state + the only write path ---- */
 function bridgeBuildReview(text){var p=parseBridgeCSV(text),headMap={},headVia={};
   p.heads.forEach(function(h){var r=bridgeResolveHead(h);if(r){headMap[h]=r.cluster;headVia[h]=r.via;}});
-  return {rows:p.rows,heads:p.heads,matches:bridgeMatchSchools(p.rows),headMap:headMap,headVia:headVia,linked:{},skipped:p.skipped,total:p.total,periods:p.periods};}
+  return {rows:p.rows,heads:p.heads,matches:bridgeMatchSchools(p.rows),headMap:headMap,headVia:headVia,linked:{},skipped:p.skipped,total:p.total,periods:p.periods,cols:p.cols,moveChoice:{}};}
+/* v9.27 - a school this cluster head already has under ANOTHER NGO. Saving it under the new
+   one would list it twice (bridgeId embeds the NGO), and the copy under the old NGO keeps the
+   teacher link. Same head AND same school name only: two NGOs can each have a school with
+   the same name, and those must never be merged. */
+function bridgeMoves(R){var out={byRow:{},byHead:{}};if(!R)return out;
+  var ids={},byName={};(DB.bridgeMarks||[]).forEach(function(m){if(!m||!m.id)return;ids[m.id]=m;var k=bridgeNorm(m.school);(byName[k]=byName[k]||[]).push(m);});
+  R.rows.forEach(function(r,i){var c=R.headMap[r.head];if(!c)return;if(ids[bridgeId(c,r.school)])return;
+    var others=(byName[bridgeNorm(r.school)]||[]).filter(function(m){return m.cluster!==c&&bridgeNorm(m.head||'')===bridgeNorm(r.head);});if(!others.length)return;
+    others.sort(function(a,b){return (b.updatedAt||0)-(a.updatedAt||0);});var ex=others[0];
+    out.byRow[i]={ex:ex,head:r.head,to:c};var h=out.byHead[r.head]||(out.byHead[r.head]={head:r.head,to:c,from:{},n:0});h.n++;h.from[ex.cluster]=1;});
+  return out;}
+function bridgeSetMove(head,v){if(!BRIDGE_REVIEW)return;BRIDGE_REVIEW.moveChoice[head]=v;renderDetail();}
+function bridgeMovesCard927(R){var mv=bridgeMoves(R),hs=Object.keys(mv.byHead);if(!hs.length)return '';
+  return '<div class="card" style="border-left:3px solid #eda100;border-radius:0"><h3><i class="ti ti-alert-triangle"></i> Schools already under another NGO</h3>'
+    +hs.map(function(h){var o=mv.byHead[h],from=Object.keys(o.from).join(', '),ch=(R.moveChoice||{})[h]==='move'?'move':'keep';
+      return '<div class="mrow" style="border:1px solid var(--line);margin-bottom:6px;display:block"><div style="font-size:13px"><b>'+escA(h)+'</b>: '+bridgeN(o.n,'school is','schools are')+' already under <b>'+escA(from)+'</b>. This file puts '+(o.n===1?'it':'them')+' under <b>'+escA(o.to)+'</b>.</div>'
+        +'<div class="muted" style="font-size:12px;margin-top:2px">Either way each school stays listed once, with its teacher link.</div>'
+        +'<div class="chips" style="margin-top:5px"><span class="chip '+(ch==='keep'?'on':'')+'" onclick="bridgeSetMove(\''+escAJ(h)+'\',\'keep\')">Keep under '+escA(from)+'</span><span class="chip '+(ch==='move'?'on':'')+'" onclick="bridgeSetMove(\''+escAJ(h)+'\',\'move\')">Move to '+escA(o.to)+'</span></div></div>';}).join('')+'</div>';}
+function bridgeKeepNote927(R){var cols=(R.cols&&(R.cols.reading||R.cols.writing||R.cols.maths))||[];
+  var mv=bridgeMoves(R),ids={},linked=0;(DB.bridgeMarks||[]).forEach(function(m){if(m&&m.id)ids[m.id]=m;});
+  R.rows.forEach(function(r,i){var c=R.headMap[r.head];if(!c)return;var x=mv.byRow[i],ex=ids[bridgeId(c,r.school)]||(x?x.ex:null);if(ex&&ex.teacherId)linked++;});
+  var names=cols.map(function(l){var mt=bridgeLabMeta(l);return mt?mt.tname:String(l||'').replace(/\s*level\s*$/i,'');}).filter(function(x){return x;});
+  return '<div class="card"><h3><i class="ti ti-table"></i> What will be kept</h3>'
+    +'<div style="font-size:13px"><b>'+bridgeN(names.length,'test column','test columns')+'</b> for each subject: '+escA(names.join(', '))+'. All are kept, so any two months can be compared on the report.</div>'
+    +(linked?'<div style="font-size:13px;margin-top:6px"><b>Teacher links kept.</b> '+bridgeN(linked,'school already linked to a teacher stays','schools already linked to a teacher stay')+' linked.</div>':'')+'</div>';}
 function bridgeSetHead(head,cluster){if(!BRIDGE_REVIEW)return;cluster=(cluster==null?'':String(cluster)).trim();if(!cluster||cluster.length>24)return;BRIDGE_REVIEW.headMap[head]=cluster;BRIDGE_REVIEW.headVia[head]='manual';renderDetail();}
 function bridgeNewCluster(head){if(!BRIDGE_REVIEW)return;var v=(prompt(T('New NGO / cluster code (e.g. GST)','નવો NGO / ક્લસ્ટર કોડ (દા.ત. GST)'))||'').trim();if(!v)return;
   if(v.length>24){toast(T('Too long — use a short code like KCT','બહુ લાંબું — KCT જેવો ટૂંકો કોડ વાપરો'));return;}
@@ -3019,13 +3033,21 @@ function bridgeSavePeriods(P){if(!P)return null;var o={};BRIDGE_SUBJ.forEach(fun
   o[k]={start:p.start==null?null:String(p.start),mid:p.mid==null?null:String(p.mid),end:p.end==null?null:String(p.end)};});return o;}
 function bridgeConfirmSave(){var R=BRIDGE_REVIEW;if(!R)return;
   if(bridgeUnmappedHeads().length){toast(T('Choose a cluster for every cluster head first','પહેલા દરેક ક્લસ્ટર હેડ માટે ક્લસ્ટર પસંદ કરો'));return;}
-  var byId={};(DB.bridgeMarks||[]).forEach(function(x){if(x&&x.id)byId[x.id]=x;});var wrote={};
+  var byId={};(DB.bridgeMarks||[]).forEach(function(x){if(x&&x.id)byId[x.id]=x;});var wrote={},mv=bridgeMoves(R),gone=[];
   R.rows.forEach(function(r,i){var cluster=R.headMap[r.head];if(!cluster)return;
+    /* v9.27: a school this head already has under another NGO is updated where it is, unless
+       the PM chose to move it - then it is re-keyed the way an NGO rename does it */
+    var mvi=mv.byRow[i],ex=null;if(mvi){if((R.moveChoice||{})[r.head]==='move')ex=mvi.ex;else cluster=mvi.ex.cluster;}
     var m=R.matches[i]||{},ref=null;
     if(m.kind==='exact'||m.kind==='saved')ref=m.ref||null;
     else if(m.kind==='close'&&R.linked[i])ref=R.linked[i];
-    var rec={id:bridgeId(cluster,r.school),cluster:cluster,head:r.head,school:r.school,schoolRef:ref||null,students:r.students,reading:r.reading,writing:r.writing,maths:r.maths,periods:bridgeSavePeriods(R.periods),uploadedBy:CUR,updatedAt:Date.now()};
-    byId[rec.id]=rec;pushBridgeMark(rec);wrote[rec.id]=1;});
+    var rec={id:bridgeId(cluster,r.school),cluster:cluster,head:r.head,school:r.school,schoolRef:ref||null,students:r.students,reading:r.reading,writing:r.writing,maths:r.maths,periods:bridgeSavePeriods(R.periods),series:bridgeSaveSeries(r.series),uploadedBy:CUR,updatedAt:Date.now()};
+    /* v9.27: the file carries no teacher links, so the link already on the school is kept.
+       Rebuilding the record without it showed linked schools as "not linked" until the next sync. */
+    var prev=byId[rec.id]||ex;if(prev&&Object.prototype.hasOwnProperty.call(prev,'teacherId'))rec.teacherId=(prev.teacherId==null?null:prev.teacherId);
+    byId[rec.id]=rec;pushBridgeMark(rec);wrote[rec.id]=1;
+    if(ex&&ex.id!==rec.id&&byId[ex.id]===ex){delete byId[ex.id];gone.push(ex.id);}});
+  gone.forEach(function(oid){if(wrote[oid])return;if(FS){try{syncTrack(FS.collection('bridgeMarks').doc(String(oid)).delete());}catch(err){console.warn('bridge move del',err);}}});
   var n=Object.keys(wrote).length;
   DB.bridgeMarks=Object.keys(byId).map(function(k){return byId[k];});
   R.heads.forEach(function(h){if(R.headMap[h])DB.bridgeClusterMap[bridgeNorm(h)]=R.headMap[h];});
@@ -3100,7 +3122,7 @@ function bridgeReviewView(){var R=BRIDGE_REVIEW;if(!R)return '';
   var saveBtn='<button class="btn block'+(blocked?' bridge-save-off':'')+'"'+(blocked?' disabled style="opacity:.5"':'')+' onclick="bridgeConfirmSave()">'+T('Save','સાચવો')+' '+R.rows.length+' '+T('schools','શાળા')+'</button>';
   var skipNote=R.skipped.length?('<div class="muted" style="font-size:12px;margin-top:6px">'+R.skipped.length+' '+T('rows skipped','હરોળ છોડી')+'</div>'):'';
   return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+T('Check before saving','સાચવતા પહેલા તપાસો')+'</div><div class="dh-sub">'+R.rows.length+' '+T('schools in this file','શાળા આ ફાઇલમાં')+'</div></div></div>'
-    +bridgePeriodNote(R.periods)
+    +bridgePeriodNote(R.periods)+bridgeKeepNote927(R)+bridgeMovesCard927(R)
     +(heads?('<div class="card"><h3><i class="ti ti-users"></i> '+T('Cluster heads','ક્લસ્ટર હેડ')+'</h3>'+heads+'</div>'):'')
     +(closes?('<div class="card"><h3><i class="ti ti-alert-triangle"></i> '+T('Check these school names','આ શાળાનાં નામ તપાસો')+'</h3>'+closes+'</div>'):'')
     +newBlock
@@ -3443,13 +3465,14 @@ function bridgeDetailView(){var m=(DB.bridgeMarks||[]).filter(function(x){return
     var bar='<div style="position:relative;flex:1;height:8px;border-radius:4px;background:var(--line)">'+(nl==null?'':'<span style="position:absolute;left:0;top:0;height:8px;border-radius:4px;width:'+(t*100).toFixed(1)+'%;background:rgb('+BRIDGE_RGB[k]+')"></span>')+'<span style="position:absolute;left:50%;top:-2px;width:1px;height:12px;background:var(--muted);opacity:.35"></span></div>';
     return '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px"><span style="width:58px;font-size:12px;color:var(--muted);flex-shrink:0">'+bridgeSubjLabel(k)+'</span>'+bridgeDumbbell(k,s.start,bridgeLatest(s),mx,true)+badge+'</div>'
       +'<div style="display:flex;align-items:center;gap:8px;margin-top:5px"><span style="width:58px;font-size:10.5px;color:var(--muted);flex-shrink:0">'+T('out of 10','10 માંથી')+'</span>'+bar+'<span style="width:74px;text-align:right;font-size:11.5px;font-weight:700">'+(nl==null?'—':nl.toFixed(2)+' / 10')+'</span></div>'
-      +'<div style="display:flex;gap:8px;margin-top:5px"><span style="width:58px;flex-shrink:0"></span><span style="font-size:11.5px;color:var(--muted);line-height:1.5">'+bridgeFigLine(m,k)+'</span></div></div>';}).join('');
+      +'</div>';}).join('');
   var al=bridgeAvgLevel(m);
   var avgBox='<div class="card" style="display:flex;align-items:center;gap:12px"><div><div class="muted" style="font-size:11px;text-transform:uppercase;font-weight:700">'+T('Average now','અત્યારે સરેરાશ')+'</div><div style="font-size:22px;font-weight:800">'+(al==null?'—':al.toFixed(2))+' <span class="muted" style="font-size:13px;font-weight:400">/ 10</span></div></div><div style="flex:1"><div style="height:10px;border-radius:5px;background:var(--line);position:relative"><span style="position:absolute;left:0;top:0;height:10px;border-radius:5px;width:'+(al==null?0:Math.min(100,al/BRIDGE_MAX*100)).toFixed(1)+'%;background:var(--brand-d)"></span><span style="position:absolute;left:50%;top:-3px;width:1px;height:16px;background:var(--muted);opacity:.35"></span></div><div class="muted" style="font-size:10px;display:flex;justify-content:space-between;margin-top:3px"><span>0</span><span>5</span><span>10</span></div></div></div>';
-  var why=r.reason==='noend'?T('No latest figure yet','હજુ છેલ્લો આંકડો નથી'):(r.reason==='decline'?T('A subject went down','એક વિષય ઘટ્યો'):(r.reason==='low'?T('Small gain so far','અત્યાર સુધી થોડો સુધારો'):T('On track','સારી પ્રગતિ')));
+  var why=r.reason==='noend'?'Not re-measured':(r.reason==='decline'?'Needs attention — a subject went down':(r.reason==='low'?'Needs attention — progress under 0.80':'On track'));
   var flag=r.flat?('<div class="card" style="border-left:3px solid #eda100;border-radius:0"><div style="font-size:13px">'+T('Start and end are identical on every subject — please check whether the latest figures were really entered.','દરેક વિષયમાં શરૂઆત અને અંત સરખા છે — છેલ્લા આંકડા ખરેખર ભરાયા છે કે નહીં તપાસો.')+'</div></div>'):'';
   return '<div class="dhead" style="justify-content:space-between"><div><div class="dh-name">'+escA(m.school)+'</div><div class="dh-sub">'+escA(m.cluster||'')+' · '+(m.students||0)+' '+T('students','વિદ્યાર્થી')+' · '+why+'</div></div><button class="btn ghost" style="width:auto;padding:8px 12px;font-size:12.5px" onclick="bridgeBack()">← '+T('Back','પાછળ')+'</button></div>'
-   +avgBox+'<div class="card"><div class="muted" style="font-size:11.5px;margin-bottom:2px">'+T('Hollow dot = start of course · solid dot = latest figure','ખાલી ટપકું = શરૂઆત · ભરેલું ટપકું = છેલ્લો આંકડો')+'</div>'+lines+'</div>'+flag
+   +avgBox+'<div class="card"><div class="muted" style="font-size:11.5px;margin-bottom:2px">'+T('Hollow dot = start of course · solid dot = latest figure','ખાલી ટપકું = શરૂઆત · ભરેલું ટપકું = છેલ્લો આંકડો')+'</div>'+lines+'</div>'
+   +'<div class="card"><h3><i class="ti ti-list-check"></i> Every test</h3><div class="muted" style="font-size:11.5px">'+escA(bridgeStatusWhy(m))+(BRIDGE_CMP.to?(' Outlined: grey = '+escA(bridgePName(bridgePeriods([m],BRIDGE_CMP.mode),BRIDGE_CMP.from))+', yellow = '+escA(bridgePName(bridgePeriods([m],BRIDGE_CMP.mode),BRIDGE_CMP.to))+'.'):'')+'</div>'+bridgeTimeline927(m)+'</div>'+flag
    +bridgeTeacherBox(m)+(m.head?('<div class="card"><div class="muted" style="font-size:12px">'+T('Cluster head in the uploaded file','અપલોડ ફાઇલમાં ક્લસ્ટર હેડ')+'</div><div style="font-weight:700">'+escA(m.head)+'</div>'+(m.schoolRef&&m.schoolRef!==m.school?('<div class="muted" style="font-size:12px;margin-top:6px">'+T('Linked to Pragati school','પ્રગતિ શાળા સાથે જોડાયેલ')+': '+escA(m.schoolRef)+'</div>'):'')+'</div>'):'');}
 /* Always spans every cluster, ignoring the chip filter — the point is the comparison. */
 /* ---- portfolio overview (Direction 1 of the mock-up) ----
@@ -3718,6 +3741,266 @@ function bridgePortfolio(bA){
   return bridgeCoverageNote(list)+kpis+subjKpis+'<div class="pf-three pf-gap">'+bands+gains+'</div>'
     +((ngoRows||bridgeMissingView(list))?('<div class="pf-two pf-gap">'+ngoRows+bridgeMissingView(list)+'</div>'):'')+movers+insight;}
 function bridgeNgoChart(){var all=scopeMarks();if(!all.length)return '';var g=bridgeNgoGroups(all);if(g.length<2)return '';return '<div class="card"><h3><i class="ti ti-trending-up"></i> '+T('Compare NGOs','NGO સરખામણી')+'</h3>'+'<div class="muted" style="font-size:11.5px;margin-bottom:2px">'+(BRIDGE_VIEW==='level'?T('Average level now, out of 10, across each NGO’s schools.','દરેક NGO ની શાળાઓનું સરેરાશ સ્તર, 10 માંથી.'):T('Average gain across each NGO’s schools. Hollow dot = start, solid dot = latest figure.','દરેક NGO ની શાળાઓનો સરેરાશ સુધારો.'))+'</div>'+bridgeGroupView(g)+'</div>';}
+/* ---- v9.27 bridge course: every test kept, any two months compared ----
+   Guru, 1 Oct 2026: "There is tremendous amount of confusion in the reports ... how many
+   students, which data is it - september mid or september end ... Compare NGOs by subject?
+   Which month is this?" and then "You should also have provision to compare it on month to
+   month basis." Every number on the page now says which months it compares and how many
+   schools have both; a month's figure is its last test that month. An upload keeps every
+   test column (series), so any two months can be compared. Records saved before 9.27 hold
+   only start/mid/end; bridgeSeries rebuilds a series from those and their column names. */
+var BRIDGE_CMP={mode:'month',from:null,to:null,same:false,move:'all',status:'all',q:''};
+var BRIDGE_MON=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+var BRIDGE_MONTH_NAME=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var BRIDGE_TIPS=[];
+var _bLabC=new Map();
+/* What a column heading means: Start, or a month (school year from June) and mid or end. */
+function bridgeLabMeta(l){var key=String(l==null?'':l);if(_bLabC.has(key))return _bLabC.get(key);
+  var s=key.toLowerCase(),r=null,i;
+  /* an upload saved before 9.26 kept no column names: its figures are still Start -> latest,
+     shown under a period that says the month was not recorded rather than being dropped */
+  if(key==='~mid'||key==='~end'){var e=key==='~end';r={month:'nomonth',test:e?'nomonth.1':'nomonth.0',mrank:450,rank:e?901:900,ph:e?1:0,mname:'Latest (month not recorded)',tname:e?'End':'Middle'};_bLabC.set(key,r);return r;}
+  if(/start|baseline|begin/.test(s))r={month:'start',test:'start',mrank:-1,rank:-100,ph:0,mname:'Start',tname:'Start'};
+  else for(i=0;i<12;i++){if(new RegExp('\\b'+BRIDGE_MON[i]).test(s)){var ph=/mid/.test(s)?0:1,mr=(i+7)%12;
+      r={month:'m'+i,test:'m'+i+'.'+ph,mrank:mr,rank:mr*2+ph,ph:ph,mname:BRIDGE_MONTH_NAME[i],tname:(ph?BRIDGE_MONTH_NAME[i]+' End':'Mid '+BRIDGE_MONTH_NAME[i])};break;}}
+  _bLabC.set(key,r);return r;}
+function bridgeSeries(m,k){if(!m)return [];
+  if(m.series&&m.series[k]&&m.series[k].length)return m.series[k];
+  var s=m[k]||{},P=(m.periods&&m.periods[k])||{},out=[{l:P.start||'Start',v:s.start==null?null:s.start}];
+  if(P.mid||s.mid!=null)out.push({l:P.mid||'~mid',v:s.mid==null?null:s.mid});
+  if(P.end||s.end!=null)out.push({l:P.end||'~end',v:s.end==null?null:s.end});
+  return out;}
+/* strings or null and numbers or null only - Firebase refuses a write holding undefined */
+function bridgeSaveSeries(S){if(!S)return null;var o={};BRIDGE_SUBJ.forEach(function(k){
+  o[k]=(S[k]||[]).map(function(x){var v=(x&&typeof x.v==='number'&&isFinite(x.v))?x.v:null;return {l:x&&x.l!=null?String(x.l):'',v:v};});});return o;}
+/* a period's figure for one school and subject; in months, the last test that month.
+   Worked out once per record and mode: every panel asks for the same figures, and at 1,000
+   schools re-reading the series for each one made the page three times slower than 9.26.
+   Keyed on the record object, which an upload or a sync replaces rather than edits. */
+var _bPVC=new WeakMap();
+function bridgePVAll(m,mode){var c=_bPVC.get(m);if(!c){c={};_bPVC.set(m,c);}if(c[mode])return c[mode];var o={};
+  BRIDGE_SUBJ.forEach(function(k){bridgeSeries(m,k).forEach(function(x){if(!x||x.v==null)return;var mt=bridgeLabMeta(x.l);if(!mt)return;
+    var key=mode==='month'?mt.month:mt.test,e=o[key]||(o[key]={});
+    if(!e[k]||mt.ph>e[k].ph)e[k]={v:x.v,l:x.l,ph:mt.ph,name:mt.tname};});});
+  c[mode]=o;return o;}
+function bridgePV(m,k,mode,key){if(!m)return null;var e=bridgePVAll(m,mode)[key];return (e&&e[k])||null;}
+function bridgePeriods(list,mode){var by={},out=[];
+  (list||[]).forEach(function(m){var all=bridgePVAll(m,mode);Object.keys(all).forEach(function(key){var e=all[key],any=e.reading||e.writing||e.maths,mt=any?bridgeLabMeta(any.l):null;if(!mt)return;
+    if(!by[key]){by[key]={key:key,name:mode==='month'?mt.mname:mt.tname,rank:mode==='month'?(mt.month==='start'?-100:mt.mrank*2):mt.rank,n:0};out.push(by[key]);}
+    by[key].n++;});});
+  out.sort(function(a,b){return a.rank-b.rank;});return out;}
+function bridgeCmpFix(P){var C=BRIDGE_CMP,ix=function(k){for(var i=0;i<P.length;i++)if(P[i].key===k)return i;return -1;};
+  if(P.length<2){C.from=P.length?P[0].key:null;C.to=null;return;}
+  if(ix(C.from)<0)C.from=ix('start')>-1?'start':P[0].key;
+  if(ix(C.to)<0||ix(C.to)<=ix(C.from))C.to=P[P.length-1].key;
+  if(ix(C.to)<=ix(C.from))C.from=P[0].key;}
+function bridgePName(P,key){for(var i=0;i<P.length;i++)if(P[i].key===key)return P[i].name;return '—';}
+function bridgeCompare(list,mode,from,to){
+  return (list||[]).map(function(m){var r={m:m,subj:{},gains:[]};
+    BRIDGE_SUBJ.forEach(function(k){var a=from?bridgePV(m,k,mode,from):null,b=to?bridgePV(m,k,mode,to):null;
+      r.subj[k]={a:a,b:b,g:(a&&b)?Math.round((b.v-a.v)*100)/100:null};if(a&&b)r.gains.push(b.v-a.v);});
+    var mean=function(a){a=a.filter(function(x){return x!=null;});return a.length?a.reduce(function(p,c){return p+c;},0)/a.length:null;};
+    r.in=r.gains.length>0;r.chg=r.in?Math.round(mean(r.gains)*100)/100:null;
+    r.aAvg=mean(BRIDGE_SUBJ.map(function(k){var s=r.subj[k];return (s.a&&s.b)?s.a.v:null;}));
+    r.bAvg=mean(BRIDGE_SUBJ.map(function(k){var s=r.subj[k];return (s.a&&s.b)?s.b.v:null;}));
+    r.move=!r.in?'out':(r.chg>0?'up':(r.chg<0?'down':'same'));
+    return r;});}
+function bridgeMean(a){a=(a||[]).filter(function(x){return x!=null;});return a.length?a.reduce(function(p,c){return p+c;},0)/a.length:null;}
+function bridgeSg(v){return v==null?'—':((v>0?'+':(v<0?'−':''))+bridgeF2(Math.abs(v)));}
+function bridgeN(n,one,many){return n+' '+(n===1?one:many);}
+/* status since Start never depends on the months being compared */
+function bridgeStatusPill(m){var r=bridgeRowC(m);
+  if(r.reason==='ok')return '<span class="pf-pill g">On track</span>';
+  if(r.reason==='decline')return '<span class="pf-pill r">Went down</span>';
+  if(r.reason==='low')return '<span class="pf-pill a">Needs attention</span>';
+  return '<span class="pf-pill" style="background:#f2f4f7;color:#6b7280">Not re-measured</span>';}
+function bridgeStatusWhy(m){var r=bridgeRowC(m);
+  if(r.reason==='ok')return 'On track: progress of 0.80 or more since Start, and no subject went down.';
+  if(r.reason==='decline')return 'Needs attention: a subject went down since Start.';
+  if(r.reason==='low')return 'Needs attention: progress under 0.80 since Start.';
+  return 'Not re-measured: no figure after Start yet.';}
+function bridgeStatusKey(m){var r=bridgeRowC(m);return r.reason==='ok'?'ok':(r.reason==='noend'?'no':'att');}
+function bridgeRowC(m){if(!_RC)return bridgeRow(m);var c=_RC.brow||(_RC.brow=new Map()),r=c.get(m);if(!r){r=bridgeRow(m);c.set(m,r);}return r;}
+function setBridgeCmp(k,v){BRIDGE_CMP[k]=v;renderDetail();}
+function setBridgeCmpPair(a,b){BRIDGE_CMP.from=a;BRIDGE_CMP.to=b;renderDetail();}
+function setBridgeCmpMode(md){var C=BRIDGE_CMP;if(C.mode===md)return;
+  var conv=function(key){if(!key||key==='start')return key;var p=key.split('.');return md==='month'?p[0]:p[0]+'.1';};
+  C.mode=md;C.from=conv(C.from);C.to=conv(C.to);renderDetail();}
+function setBridgeCmpMove(k){BRIDGE_CMP.move=(BRIDGE_CMP.move===k?'all':k);BRIDGE_CMP.status='all';renderDetail();}
+function setBridgeCmpStatus(k){BRIDGE_CMP.status=(BRIDGE_CMP.status===k?'all':k);BRIDGE_CMP.move='all';renderDetail();}
+function bridgeTip(i){var el=document.getElementById('bTip');if(!el||!BRIDGE_TIPS[i])return;el.innerHTML=BRIDGE_TIPS[i].html;el.style.display='block';
+  var host=el.parentNode,w=host?host.clientWidth:0,x=BRIDGE_TIPS[i].x*(w/BRIDGE_TIPS[i].W);el.style.left=Math.max(0,Math.min(w-170,x+10))+'px';el.style.top='6px';}
+function bridgeTipOff(){var el=document.getElementById('bTip');if(el)el.style.display='none';}
+
+/* ---- the page ---- */
+function bridgeReport927(bA){
+  var list=bA.rows.map(function(r){return r.m;});
+  if(!list.length)return '';
+  var C=BRIDGE_CMP,P=bridgePeriods(list,C.mode);bridgeCmpFix(P);
+  var A=bridgePName(P,C.from),B=bridgePName(P,C.to),R=bridgeCompare(list,C.mode,C.from,C.to),both=R.filter(function(r){return r.in;});
+  var ix=function(k){for(var i=0;i<P.length;i++)if(P[i].key===k)return i;return -1;};
+  /* the comparison bar */
+  var btn=function(side,p,i){var on=C[side]===p.key,dis=side==='from'?i>=ix(C.to):i<=ix(C.from);
+    return '<span class="bc-per'+(on?' on':(dis?' off':''))+'"'+(dis||on?'':' onclick="setBridgeCmp(\''+side+'\',\''+escAJ(p.key)+'\')"')+'>'+escA(p.name)+'<small>'+p.n+'</small></span>';};
+  var presets=[];
+  if(P.length>=2){var last=P[P.length-1],prev=P[P.length-2];
+    if(ix('start')>-1&&last.key!=='start')presets.push(['start',last.key,'Start → '+last.name]);
+    if(prev.key!=='start')presets.push([prev.key,last.key,'Last two: '+prev.name+' → '+last.name]);
+    if(P.length>=3&&P[P.length-3].key!=='start')presets.push([P[P.length-3].key,prev.key,P[P.length-3].name+' → '+prev.name]);}
+  var bar='<div class="card bc-bar">'
+    +'<div class="bc-row"><span class="bc-lab">From</span><div class="bc-pers">'+P.map(function(p,i){return btn('from',p,i);}).join('')+'</div></div>'
+    +'<div class="bc-row"><span class="bc-lab">To</span><div class="bc-pers">'+P.map(function(p,i){return btn('to',p,i);}).join('')+'</div></div>'
+    +'<div class="bc-row" style="margin-top:8px"><div class="bc-presets">'+presets.map(function(x){return '<span class="bc-preset" onclick="setBridgeCmpPair(\''+escAJ(x[0])+'\',\''+escAJ(x[1])+'\')">'+escA(x[2])+'</span>';}).join('')+'</div>'
+    +'<div class="chips" style="margin:0"><span class="chip '+(C.mode==='month'?'on':'')+'" onclick="setBridgeCmpMode(\'month\')">Months</span><span class="chip '+(C.mode==='test'?'on':'')+'" onclick="setBridgeCmpMode(\'test\')">Every test</span></div></div>'
+    +'<div class="muted" style="font-size:11.5px;margin-top:6px">The small number is how many schools have a figure then. '+(C.mode==='month'?'A month\'s figure is its last test that month: the month-end test if done, otherwise mid-month.':'Each button is one test column from the file.')+'</div></div>';
+  /* what you are looking at */
+  var side=function(key,title){var by={},n=0;list.forEach(function(m){var x=bridgePV(m,'reading',C.mode,key)||bridgePV(m,'writing',C.mode,key)||bridgePV(m,'maths',C.mode,key);if(x){n++;by[x.name]=(by[x.name]||0)+1;}});
+    var parts=Object.keys(by).map(function(k){return '<b>'+escA(k)+'</b> '+bridgeN(by[k],'school','schools');});
+    return '<div class="bc-fact"><div class="l">'+title+'</div><div class="v">'+escA(bridgePName(P,key))+'</div><div class="n">'+(parts.join(' · ')||'No figures')+(n<list.length?' · <span style="color:var(--gR-tx)">'+(list.length-n)+' not measured</span>':'')+'</div></div>';};
+  var stu=both.reduce(function(a,r){return a+(r.m.students||0);},0),tot=list.reduce(function(a,m){return a+(m.students||0);},0);
+  var st={ok:0,att:0,no:0};list.forEach(function(m){st[bridgeStatusKey(m)]++;});
+  var stChip=function(k,lab,cls){return '<span class="bc-st'+(C.status===k?' on':'')+'" onclick="setBridgeCmpStatus(\''+k+'\')"><span class="pf-pill '+cls+'">'+st[k]+'</span> '+lab+'</span>';};
+  var flat=bA.flat.length?('<div class="muted" style="font-size:12px;margin-top:8px;color:var(--gA-tx)">'+bridgeN(bA.flat.length,'school has','schools have')+' identical Start and latest figures in every subject — check the file: '+bA.flat.map(function(r){return escA(r.m.school);}).join(', ')+'</div>'):'';
+  var old=list.filter(function(m){return !(m.series||m.periods);}).length;/* shown as Latest (month not recorded) */
+  var facts='<div class="card"><h3><i class="ti ti-info-circle"></i> What you are looking at</h3>'
+    +'<div class="muted" style="font-size:12.5px;margin-bottom:9px">'+(C.to?('Comparing <b style="color:var(--ink)">'+escA(A)+'</b> with <b style="color:var(--ink)">'+escA(B)+'</b>. Only schools with a figure in both are compared: <b style="color:var(--ink)">'+both.length+' of '+list.length+'</b>.'):'Only one test so far, so there is nothing to compare yet.')+'</div>'
+    +(C.to?'<div class="bc-two">'+side(C.from,'From')+side(C.to,'To')+'</div>':'')
+    +'<div class="bc-four">'
+    +'<div class="bc-fact"><div class="l">Schools</div><div class="v">'+list.length+'</div><div class="n">'+(BRIDGE_CLUS==='all'?'all NGOs':escA(BRIDGE_CLUS))+'</div></div>'
+    +'<div class="bc-fact"><div class="l">Students</div><div class="v">'+tot+'</div><div class="n">counted at the Start test'+(C.to&&stu!==tot?(' · '+stu+' in the schools compared'):'')+'</div></div>'
+    +'<div class="bc-fact" style="grid-column:span 2"><div class="l">Status since Start</div><div class="bc-sts">'+stChip('ok','on track','g')+stChip('att','need attention','a')+stChip('no','not re-measured','')+'</div><div class="n">On track = progress of 0.80 or more since Start, and no subject went down. Tap to list them.</div></div>'
+    +'</div>'+flat
+    +(old?'<div class="muted" style="font-size:12px;margin-top:8px">'+bridgeN(old,'school was','schools were')+' uploaded before months were recorded, so their latest figure is shown as "Latest (month not recorded)". Upload the latest file again to place them in their months.</div>':'')
+    +'</div>';
+  if(!C.to)return bar+facts+bridgeSchoolsCard927(bA,R,P,A,B);
+  /* tiles */
+  var a=bridgeMean(both.map(function(r){return r.aAvg;})),b=bridgeMean(both.map(function(r){return r.bAvg;})),g=bridgeMean(both.map(function(r){return r.chg;}));
+  var cnt=function(k){return both.filter(function(r){return r.move===k;}).length;};
+  var tile=function(key,lab,val,dlt,cls){return '<div class="pf-k'+(key?' bc-tap':'')+(key&&C.move===key?' bc-sel':'')+'"'+(key?' onclick="setBridgeCmpMove(\''+key+'\')"':'')+'><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="dlt '+(cls||'')+'">'+dlt+'</div></div>';};
+  var tiles='<div class="pf-kpis">'
+    +tile(null,'Average level, out of 10',bridgeF2(a)+' <span style="font-size:15px;color:var(--muted);font-weight:600">→</span> '+bridgeF2(b),escA(A)+' → '+escA(B)+', '+bridgeN(both.length,'school','schools'))
+    +tile(null,'Average change','<span style="color:'+(g<0?'var(--gR-tx)':'var(--gG-tx)')+'">'+bridgeSg(g)+'</span>',escA(B)+' minus '+escA(A)+', the 3 subjects averaged')
+    +tile(null,'Schools compared',both.length+'<span style="font-size:13px;color:var(--muted);font-weight:600"> / '+list.length+'</span>','have a figure in both '+escA(A)+' and '+escA(B))
+    +tile('up','Went up',String(cnt('up')),'average of the 3 subjects rose','up')
+    +tile('same','No change',String(cnt('same')),'average stayed the same')
+    +tile('down','Went down',String(cnt('down')),'average of the 3 subjects fell',cnt('down')?'down':'')
+    +'</div>';
+  /* by subject */
+  var subj='<div class="card"><h3><i class="ti ti-notes"></i> By subject</h3><div class="muted" style="font-size:12px;margin-bottom:8px">Average of the schools with both: <b style="color:var(--ink)">'+escA(A)+'</b> → <b style="color:var(--ink)">'+escA(B)+'</b>.</div><div class="pf-three">'
+    +BRIDGE_SUBJ.map(function(k){var rs=R.filter(function(r){return r.subj[k].g!=null;});
+      var sa=bridgeMean(rs.map(function(r){return r.subj[k].a.v;})),sb=bridgeMean(rs.map(function(r){return r.subj[k].b.v;})),sg=bridgeMean(rs.map(function(r){return r.subj[k].g;}));
+      return '<div class="pf-subk"><div class="lab"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgb('+BRIDGE_RGB[k]+');margin-right:6px"></span>'+bridgeSubjLabel(k)+'</div>'
+        +'<div style="display:flex;align-items:baseline;gap:6px;margin-top:5px;flex-wrap:wrap"><span style="font-size:20px;font-weight:800">'+bridgeF2(sa)+'</span><span class="muted">→</span><span style="font-size:20px;font-weight:800">'+bridgeF2(sb)+'</span><span class="muted" style="font-size:12px">/10</span><span style="font-weight:800;color:'+(sg<0?'var(--gR-tx)':'var(--gG-tx)')+'">'+bridgeSg(sg)+'</span></div>'
+        +'<div class="muted" style="font-size:11px;margin-top:3px">'+escA(A)+' → '+escA(B)+' · '+bridgeN(rs.length,'school','schools')+'</div></div>';}).join('')+'</div></div>';
+  return bar+facts+tiles+bridgeMonthCard927(list,P)+subj+bridgeNgoCard927(P,A,B)+bridgeBandsCard927(R,A,B)+bridgeSchoolsCard927(bA,R,P,A,B);}
+
+function bridgeMonthCard927(list,P){var C=BRIDGE_CMP;if(P.length<2)return '';
+  var has=function(m,p){return BRIDGE_SUBJ.some(function(k){return !!bridgePV(m,k,C.mode,p.key);});};
+  var every=list.filter(function(m){return P.every(function(p){return has(m,p);});}),base=C.same?every:list;
+  var ns=P.map(function(p){return base.filter(function(m){return has(m,p);}).length;});
+  var pts={};BRIDGE_SUBJ.forEach(function(k){pts[k]=P.map(function(p){return bridgeMean(base.map(function(m){var x=bridgePV(m,k,C.mode,p.key);return x?x.v:null;}));});});
+  var thin=function(i){return ns[i]<base.length/2;};
+  var W=(typeof window!=='undefined'&&window.innerWidth&&window.innerWidth<560)?340:640,H=250,l=28,r=W<480?80:100,t=14,b=46,mx=0;
+  BRIDGE_SUBJ.forEach(function(k){pts[k].forEach(function(v){if(v!=null&&v>mx)mx=v;});});
+  var ymax=Math.max(2,Math.ceil(mx+0.5)),X=function(i){return l+(P.length===1?0:i*(W-l-r)/(P.length-1));},Y=function(v){return t+(H-t-b)*(1-v/ymax);};
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="display:block;width:100%;height:auto" role="img" aria-label="Average level by '+(C.mode==='month'?'month':'test')+' for reading, writing and maths">',gi;
+  for(gi=0;gi<=ymax;gi++)svg+='<line x1="'+l+'" x2="'+(W-r+6)+'" y1="'+Y(gi)+'" y2="'+Y(gi)+'" stroke="#e6e9ef"/><text x="'+(l-7)+'" y="'+(Y(gi)+4)+'" text-anchor="end" font-size="11" fill="#6b7280">'+gi+'</text>';
+  P.forEach(function(p,i){svg+='<text x="'+X(i)+'" y="'+(H-b+18)+'" text-anchor="middle" font-size="'+(P.length>5?10:12)+'" font-weight="600" fill="#1b2030">'+escA(p.name)+'</text><text x="'+X(i)+'" y="'+(H-b+33)+'" text-anchor="middle" font-size="10.5" fill="'+(thin(i)?'#b45309':'#6b7280')+'">'+ns[i]+'</text>';});
+  BRIDGE_SUBJ.forEach(function(k){var c='rgb('+BRIDGE_RGB[k]+')',full=[];
+    /* a point covering under half the schools is a different set of schools, not a different
+       level: joining it would draw a dip or a jump that never happened, so the line skips it */
+    P.forEach(function(p,i){if(pts[k][i]!=null&&!thin(i))full.push(i);});
+    for(var j=1;j<full.length;j++)svg+='<line x1="'+X(full[j-1])+'" y1="'+Y(pts[k][full[j-1]])+'" x2="'+X(full[j])+'" y2="'+Y(pts[k][full[j]])+'" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/>';
+    pts[k].forEach(function(v,i){if(v==null)return;svg+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="5" fill="'+(thin(i)?'#fff':c)+'" stroke="'+(thin(i)?c:'#fff')+'" stroke-width="2"/>';});
+    var li=P.length-1;while(li>0&&(pts[k][li]==null||thin(li)))li--;
+    if(pts[k][li]!=null)svg+='<text x="'+(X(li)+9)+'" y="'+(Y(pts[k][li])+4)+'" font-size="11.5" font-weight="600" fill="#1b2030">'+bridgeSubjLabel(k)+' '+bridgeF2(pts[k][li])+'</text>';});
+  BRIDGE_TIPS=[];
+  P.forEach(function(p,i){var x0=i===0?l-20:(X(i-1)+X(i))/2,x1=i===P.length-1?W-r+20:(X(i)+X(i+1))/2;
+    BRIDGE_TIPS[i]={x:X(i),W:W,html:'<b>'+escA(p.name)+'</b> · '+bridgeN(ns[i],'school','schools')+BRIDGE_SUBJ.map(function(k){return '<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgb('+BRIDGE_RGB[k]+');margin-right:6px"></span>'+bridgeSubjLabel(k)+' <b>'+bridgeF2(pts[k][i])+'</b></div>';}).join('')};
+    svg+='<rect x="'+x0+'" y="'+t+'" width="'+(x1-x0)+'" height="'+(H-t-b+36)+'" fill="transparent" onmouseenter="bridgeTip('+i+')" onclick="bridgeTip('+i+')"/>';});
+  svg+='</svg>';
+  var thinP=P.filter(function(p,i){return thin(i);});
+  var steps=P.slice(1).map(function(p,i){var pr=P[i],pair=base.filter(function(m){return has(m,pr)&&has(m,p);}).length;
+    return {lab:pr.name+' → '+p.name,n:pair,d:BRIDGE_SUBJ.map(function(k){return bridgeMean(base.map(function(m){var a=bridgePV(m,k,C.mode,pr.key),b2=bridgePV(m,k,C.mode,p.key);return (a&&b2)?b2.v-a.v:null;}));})};});
+  var tbl='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:10px"><table class="pf-mx"><tr><th>Subject</th>'+P.map(function(p,i){return '<th>'+escA(p.name)+'<div style="font-weight:500">'+ns[i]+' schools</div></th>';}).join('')
+    +steps.map(function(s){return '<th>'+escA(s.lab)+'<div style="font-weight:500">'+s.n+' in both</div></th>';}).join('')+'</tr>'
+    +BRIDGE_SUBJ.map(function(k,ki){return '<tr><td style="text-align:left;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgb('+BRIDGE_RGB[k]+');margin-right:6px"></span>'+bridgeSubjLabel(k)+'</td>'
+      +pts[k].map(function(v,i){return '<td'+(thin(i)?' style="color:var(--gA-tx)"':'')+'>'+bridgeF2(v)+'</td>';}).join('')
+      +steps.map(function(s){var d=s.d[ki];return '<td style="font-weight:800;color:'+(d<0?'var(--gR-tx)':'var(--gG-tx)')+'">'+bridgeSg(d)+'</td>';}).join('')+'</tr>';}).join('')+'</table></div>';
+  return '<div class="card"><h3><i class="ti ti-activity"></i> '+(C.mode==='month'?'Month by month':'Test by test')+'</h3>'
+    +'<div class="muted" style="font-size:12px;margin-bottom:8px">Average for each subject. '+(C.same?('Only the <b style="color:var(--ink)">'+bridgeN(every.length,'school','schools')+'</b> with a figure in every one.'):'Each point uses the schools measured then; the number under each name is how many.')+'</div>'
+    +'<div class="chips" style="margin:0 0 6px"><span class="chip '+(!C.same?'on':'')+'" onclick="setBridgeCmp(\'same\',false)">All schools</span><span class="chip '+(C.same?'on':'')+'" onclick="setBridgeCmp(\'same\',true)">Same '+every.length+' schools only</span></div>'
+    +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:4px">'+BRIDGE_SUBJ.map(function(k){return '<span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:3px;border-radius:2px;background:rgb('+BRIDGE_RGB[k]+')"></span>'+bridgeSubjLabel(k)+'</span>';}).join('')+(thinP.length?'<span class="muted" style="display:flex;align-items:center;gap:5px"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="#fff" stroke="#6b7280" stroke-width="2"/></svg>fewer than half the schools — not joined to the line</span>':'')+'</div>'
+    +'<div style="position:relative" onmouseleave="bridgeTipOff()">'+svg+'<div id="bTip" class="bc-tip"></div></div>'
+    +(thinP.length?('<div class="bc-warn"><b>'+thinP.map(function(p){return escA(p.name);}).join(', ')+'</b> '+(thinP.length===1?'has':'have')+' figures for only '+thinP.map(function(p){return ns[P.indexOf(p)];}).join(', ')+' of '+base.length+' schools. '+(thinP.length===1?'Its':'Their')+' average is for those schools alone, so it can sit below an earlier month without anything having gone down. Tap <b>Same '+every.length+' schools only</b> to compare like with like.</div>'):'')
+    +tbl+'<div class="muted" style="font-size:11.5px;margin-top:6px">Each change is worked out only on schools that have both, so it compares like with like.</div></div>';}
+
+function bridgeNgoCard927(P,A,B){var C=BRIDGE_CMP,all=scopeMarks(),by={},order=[];
+  all.forEach(function(m){var c=m.cluster||'—';if(!by[c]){by[c]=[];order.push(c);}by[c].push(m);});
+  if(order.length<2)return '';order.sort();
+  var row=function(name,L,cls,click){var R=bridgeCompare(L,C.mode,C.from,C.to),n=R.filter(function(r){return r.in;}).length;
+    return '<tr class="'+cls+'"'+(click?' onclick="'+click+'" style="cursor:pointer"':'')+'><td style="text-align:left"><b>'+escA(name)+'</b><div class="muted" style="font-size:10.5px;font-weight:500">'+n+' of '+bridgeN(L.length,'school','schools')+'</div></td>'
+      +BRIDGE_SUBJ.map(function(k){var rs=R.filter(function(r){return r.subj[k].g!=null;}),a=bridgeMean(rs.map(function(r){return r.subj[k].a.v;})),b=bridgeMean(rs.map(function(r){return r.subj[k].b.v;})),g=bridgeMean(rs.map(function(r){return r.subj[k].g;}));
+        return '<td>'+bridgeF2(a)+' <span class="muted">→</span> <b>'+bridgeF2(b)+'</b> <span style="font-weight:800;color:'+(g<0?'var(--gR-tx)':'var(--gG-tx)')+'">'+bridgeSg(g)+'</span></td>';}).join('')+'</tr>';};
+  return '<div class="card"><h3><i class="ti ti-building-community"></i> Compare NGOs</h3><div class="muted" style="font-size:12px;margin-bottom:6px">Average for each NGO\'s schools: <b style="color:var(--ink)">'+escA(A)+'</b> → <b style="color:var(--ink)">'+escA(B)+'</b>, and the change. Only schools with both. Tap a row to show only that NGO.</div>'
+    +'<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="pf-mx"><tr><th>NGO</th>'+BRIDGE_SUBJ.map(function(k){return '<th>'+bridgeSubjLabel(k)+'</th>';}).join('')+'</tr>'
+    +order.map(function(c){var on=BRIDGE_CLUS===c;return row(c,by[c],on?'bc-on':'','setBridgeClus(\''+(on?'all':escAJ(c))+'\')');}).join('')
+    +row('All schools',all,'bc-tot','')+'</table></div></div>';}
+
+function bridgeBandsCard927(R,A,B){var a=[0,0,0,0,0],b=[0,0,0,0,0];
+  R.forEach(function(r){if(!r.in)return;a[bridgeBand(r.aAvg)]++;b[bridgeBand(r.bAvg)]++;});
+  var mx=Math.max.apply(null,a.concat(b))||1;
+  return '<div class="card"><h3><i class="ti ti-table"></i> Where schools stand, out of 10</h3><div class="muted" style="font-size:12px;margin-bottom:6px">Schools in each band in <b style="color:var(--ink)">'+escA(A)+'</b> and in <b style="color:var(--ink)">'+escA(B)+'</b> (the 3 subjects averaged, schools with both).</div>'
+    +'<div style="display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:4px"><span><span class="bc-sw" style="background:#cbd2dc"></span>'+escA(A)+'</span><span><span class="bc-sw" style="background:var(--brand)"></span>'+escA(B)+'</span></div>'
+    +[0,1,2,3,4].map(function(i){var d=b[i]-a[i];return '<div class="bc-band"><div class="bc-bl">'+bridgeBandLabel(i)+'</div><div>'
+      +'<div class="bc-bar2"><span style="width:'+(a[i]/mx*62)+'%;background:#cbd2dc"></span>'+bridgeN(a[i],'school','schools')+' in '+escA(A)+'</div>'
+      +'<div class="bc-bar2"><span style="width:'+(b[i]/mx*62)+'%;background:var(--brand)"></span><b>'+bridgeN(b[i],'school','schools')+'</b>&nbsp;in '+escA(B)+(d?(' <span style="font-weight:700;color:'+(d>0?'var(--gG-tx)':'var(--gR-tx)')+'">('+(d>0?d+' more':(-d)+' fewer')+')</span>'):'')+'</div></div></div>';}).join('')+'</div>';}
+
+function bridgeSchoolsCard927(bA,R,P,A,B){var C=BRIDGE_CMP;
+  var linkBtn=scopeIsTL()?'':(function(){var un=bridgeUnlinked(bA.rows.map(function(r){return r.m;}));return '<button class="btn'+(un.length?'':' ghost')+' block" style="margin-bottom:8px" onclick="bridgeOpenLink()"><i class="ti ti-users"></i> '+(un.length?('Link teachers to '+bridgeN(un.length,'school','schools')):'Change teacher links')+'</button>';})();
+  var inner;
+  if(BRIDGE_GROUP==='teacher'){var tg=bridgeTeacherGroups(bA.rows.map(function(r){return r.m;}));
+    var gap=tg.unmatched.length?('<div class="card" style="border-left:3px solid #eda100;border-radius:0;margin:8px 0 0"><div style="font-weight:700;font-size:12.5px">'+bridgeN(tg.unmatched.length,'school is','schools are')+' not linked to any teacher</div><div style="font-size:12px;margin-top:5px">'+tg.unmatched.slice(0,14).map(function(m){return escA(m.school);}).join(' · ')+(tg.unmatched.length>14?(' … +'+(tg.unmatched.length-14)):'')+'</div></div>'):'';
+    inner='<div class="muted" style="font-size:11.5px;margin-bottom:6px">Each teacher\'s schools, Start → latest figure (hollow dot = Start, solid dot = latest).</div>'+bridgeViewToggle()+(tg.groups.length?bridgeGroupView(tg.groups):'<div class="empty">No teacher is linked to a bridge course school yet</div>')+gap;}
+  else{var q=String(C.q||'').trim().toLowerCase();
+    var rows=R.filter(function(r){return (C.move==='all'||r.move===C.move)&&(C.status==='all'||bridgeStatusKey(r.m)===C.status)&&(!q||(r.m.school+' '+(r.m.head||'')+' '+bridgeTeacherNames(r.m)).toLowerCase().indexOf(q)>-1);});
+    var k=BRIDGE_SORT.k,asc=BRIDGE_SORT.asc;
+    var val=function(r){var m=r.m;if(k==='school')return String(m.school||'').toLowerCase();if(k==='teacher')return bridgeTeacherNames(m).toLowerCase();if(k==='head')return String(m.head||'').toLowerCase();
+      if(k==='students')return m.students||0;if(k==='status')return bridgeStatusKey(m);if(BRIDGE_SUBJ.indexOf(k)>-1)return r.subj[k].g;if(k==='now'||k==='avg')return r.in?r.bAvg:bridgeAvgLevel(m);return r.chg;};
+    rows.sort(function(x,y){var vx=val(x),vy=val(y);if(vx==null&&vy==null)return 0;if(vx==null)return 1;if(vy==null)return -1;if(typeof vx==='string')return asc?vx.localeCompare(vy):vy.localeCompare(vx);return asc?vx-vy:vy-vx;});
+    var th=function(key,lab,left,sub){return '<th onclick="setBridgeSort(\''+key+'\')" style="cursor:pointer;'+(left?'text-align:left':'')+'">'+lab+(k===key?(asc?' ↑':' ↓'):'')+(sub?'<div style="font-weight:500;text-transform:none;letter-spacing:0">'+sub+'</div>':'')+'</th>';};
+    var filt=(C.move!=='all'||C.status!=='all')?('<div class="card" style="margin:0 0 8px;padding:9px 11px;background:var(--brand-tint);border-color:#f6df91;display:flex;align-items:center;gap:9px;flex-wrap:wrap"><div style="flex:1;min-width:150px;font-size:12.5px;font-weight:700;color:var(--brand-d)">Showing '
+      +(C.move!=='all'?({up:'schools that went up',down:'schools that went down',same:'schools with no change',out:'schools not in both'}[C.move]+', '+escA(A)+' → '+escA(B)):({ok:'schools on track',att:'schools that need attention',no:'schools not re-measured'}[C.status]+' since Start'))
+      +' · '+bridgeN(rows.length,'school','schools')+'</div><span onclick="BRIDGE_CMP.move=\'all\';BRIDGE_CMP.status=\'all\';renderDetail()" style="cursor:pointer;background:var(--brand-d);color:#fff;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;white-space:nowrap">Show all</span></div>'):'';
+    var body=rows.map(function(r){var m=r.m,tn=bridgeTeacherNames(m);
+      return '<tr onclick="bridgeOpen(\''+escAJ(m.id)+'\')" style="cursor:pointer"><td style="text-align:left;font-weight:700">'+escA(m.school)+'</td>'
+        +'<td style="text-align:left;color:'+(tn?'var(--muted)':'#b3261e')+'">'+(tn?escA(tn):'not linked')+'</td>'
+        +'<td style="text-align:left">'+escA(m.head||'')+'<div class="muted" style="font-size:10.5px">'+escA(m.cluster||'')+'</div></td>'
+        +'<td>'+(m.students||0)+'</td>'
+        +BRIDGE_SUBJ.map(function(kk){var s=r.subj[kk];if(s.g==null)return '<td class="muted">'+(s.b?('— → '+bridgeF2(s.b.v)):(s.a?(bridgeF2(s.a.v)+' → —'):'—'))+'</td>';
+          return '<td>'+bridgeF2(s.a.v)+' <span class="muted">→</span> <b>'+bridgeF2(s.b.v)+'</b> <span style="font-weight:800;font-size:11px;color:'+(s.g<0?'var(--gR-tx)':(s.g===0?'var(--muted)':'var(--gG-tx)'))+'">'+bridgeSg(s.g)+'</span></td>';}).join('')
+        +'<td>'+(r.in?(bridgeF2(r.aAvg)+' <span class="muted">→</span> <b>'+bridgeF2(r.bAvg)+'</b>'):'<span class="muted">—</span>')+'</td>'
+        +'<td style="font-weight:800;color:'+(r.chg==null?'var(--muted)':(r.chg<0?'var(--gR-tx)':'var(--gG-tx)'))+'">'+(r.in?bridgeSg(r.chg):'not in both')+'</td>'
+        +'<td style="text-align:left">'+bridgeStatusPill(m)+'</td></tr>';}).join('');
+    inner=filt+linkBtn
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px"><input class="fld" id="bcQ" placeholder="Search school, cluster head or teacher" value="'+escA(C.q||'')+'" oninput="BRIDGE_CMP.q=this.value;bridgeSchoolsSoon()" style="flex:1;min-width:170px;max-width:300px;padding:7px 10px;font-size:13px">'
+      +'<span class="muted" style="font-size:12px">'+bridgeN(rows.length,'school','schools')+'</span></div>'
+      +'<div class="muted" style="font-size:11.5px;margin-bottom:6px">Each subject: <b style="color:var(--ink)">'+escA(A)+' → '+escA(B)+'</b> and the change. Status is since Start. Tap a heading to sort, a row for every test.</div>'
+      +(rows.length?('<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="pf-mx bc-tbl"><tr>'+th('school','School',1)+th('teacher','Teacher',1)+th('head','Cluster head · NGO',1)+th('students','Students','', 'at Start')
+        +BRIDGE_SUBJ.map(function(kk){return th(kk,bridgeSubjLabel(kk),'',escA(A)+' → '+escA(B));}).join('')+th('now','Average','',escA(A)+' → '+escA(B))+th('change','Change','','average')+th('status','Status',1,'since Start')+'</tr>'+body+'</table></div>')
+        :'<div class="empty">No school matches.</div>');}
+  return '<div class="card" id="bridgeSchools"><h3><i class="ti ti-school"></i> Schools</h3>'+bridgeGroupToggle()+inner+'</div>';}
+var _bcQT=null;
+function bridgeSchoolsSoon(){clearTimeout(_bcQT);_bcQT=setTimeout(function(){var el=document.getElementById('bcQ'),pos=el?el.selectionStart:null;renderDetail();var n=document.getElementById('bcQ');if(n){n.focus();if(pos!=null)try{n.setSelectionRange(pos,pos);}catch(_e){}}},250);}
+
+/* every test of one school, with the two being compared outlined */
+function bridgeTimeline927(m){var C=BRIDGE_CMP;
+  return BRIDGE_SUBJ.map(function(k){var se=bridgeSeries(m,k),a=C.from?bridgePV(m,k,C.mode,C.from):null,b=C.to?bridgePV(m,k,C.mode,C.to):null;
+    var cells=se.map(function(x){var mt=bridgeLabMeta(x.l),nm=mt?mt.tname:String(x.l||'').replace(/\s*level\s*$/i,'');
+      var cls=(a&&a.l===x.l&&x.v!=null&&a.v===x.v)?' from':((b&&b.l===x.l&&x.v!=null&&b.v===x.v)?' to':'');
+      return '<div class="bc-tc'+(x.v==null?' empty':'')+cls+'"><span>'+escA(nm)+'</span> <b>'+(x.v==null?'—':bridgeF2(x.v))+'</b></div>';}).join('');
+    return '<div style="margin-top:10px"><div style="font-weight:700;font-size:12.5px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgb('+BRIDGE_RGB[k]+');margin-right:6px"></span>'+bridgeSubjLabel(k)+'</div><div class="bc-tl">'+cells+'</div></div>';}).join('');}
+
 /* ---- NGO master (v5.9) ---- */
 function ngoSeedOnce(){if(DB.ngosSeeded)return;if(!DB.ngos)DB.ngos=[];var seen={};
   (DB.users||[]).forEach(function(x){if(!x||(x.role!=='TL'&&x.role!=='Teacher')||x.active===false)return;var c=clusterOf(x);if(!c)return;var k=bridgeNorm(c);if(seen[k])return;seen[k]=1;
